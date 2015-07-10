@@ -2627,7 +2627,7 @@ unless (-e "$reportdir/$daner_meta") {
 
 #	my $sys6 = "mv $reportdir/$daner_meta.tmp $reportdir/$daner_meta";
 
-	my $sys_loc = "my.dameta_cat $dametadir $reportdir/$daner_meta @dameta_files";
+	my $sys_loc = "$damecat_script $dametadir $reportdir/$daner_meta @dameta_files";
 	push @dametacat_arr, $sys_loc;
 
 #	print "$sys6\n";
