@@ -131,6 +131,8 @@ snp_out = open(snpout_nam, 'w')
 
 for line in snp_in:
     (chrom, snp, cm, bp, a1, a2) = line.split()
+    chrom = int(chrom)
+    bp = int(bp)
     
     if (a1.lower()=='a') and (a2.lower()=='t'):
 #        ambiex_out.write(snp + '\n')
@@ -233,7 +235,7 @@ dumphead = frqs.readline()
 for line in frqs:
     (chrom, snp, a1, a2, maf, nobs) = line.split()
 
-    if maf < args.maf_th or maf > args.maf_th:
+    if float(maf) < args.maf_th or (1.0-float(maf)) < args.maf_th:
         snp_out.write(snp + ' low_MAF\n')
 
 frqs.close()
@@ -250,7 +252,7 @@ dumphead = hwes.readline()
 for line in hwes:
     (chrom, snp, test, a1, a2, geno, Ohet, Ehet, p) = line.split()
     
-    if (test == "ALL") and ( p < args.hwe_th ):
+    if (test == "ALL") and ( float(p) < args.hwe_th ):
         snp_out.write(snp + ' HWE_fail\n')
 
 hwes.close()
@@ -267,7 +269,7 @@ dumphead = lmiss.readline()
 for line in lmiss:
     (chrom, snp, nmiss, ngeno, fmiss) = line.split()
     
-    if fmiss > args.miss_th:
+    if float(fmiss) > args.miss_th:
         snp_out.write(snp + ' high_missing\n')
 
 lmiss.close()
@@ -315,11 +317,11 @@ i = 1
 
 subprocess.check_call([str(plinkx), 
                "--bfile", filtered_out,
-               "--indep-pairwise", args.ld_wind, ld_move, args.ld_th,
+               "--indep-pairwise", str(args.ld_wind), str(ld_move), str(args.ld_th),
                "--out", args.output + '.prune' + str(i) + '.tmp' ])
 
 nprune_old = file_len(filtered_out + '.bim')
-nprune_new = file_len(args.output + '.prune' + str(i) + '.tmp' + '.bim')
+nprune_new = file_len(args.output + '.prune' + str(i) + '.tmp.prune.in')
 
 # loop til no additional exclusions
 while nprune_old > nprune_new:
@@ -327,12 +329,12 @@ while nprune_old > nprune_new:
     print '...LD pruning pass ' + str(i) + '...\n'
     subprocess.check_call([str(plinkx), 
                "--bfile", filtered_out,
-               "--extract", args.output + '.prune' + str(i-1) + '.tmp.prune.in'
-               "--indep-pairwise", args.ld_wind, ld_move, args.ld_th,
+               "--extract", args.output + '.prune' + str(i-1) + '.tmp.prune.in',
+               "--indep-pairwise", str(args.ld_wind), str(ld_move), str(args.ld_th),
                "--out", args.output + '.prune' + str(i) + '.tmp' ])
 
     nprune_old = nprune_new
-    nprune_new = file_len(args.output + '.prune' + str(i) + '.tmp' + '.bim')  
+    nprune_new = file_len(args.output + '.prune' + str(i) + '.tmp.prune.in')  
 
 print '...extracting LD pruned set...\n'
 # apply
