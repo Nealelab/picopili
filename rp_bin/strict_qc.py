@@ -1,7 +1,5 @@
 #! /usr/bin/env python
 
-
-
 print '...importing packages...'
 # load requirements
 import os
@@ -82,8 +80,6 @@ args, pass_through_args = parser.parse_known_args()
 
 ld_move = int(args.ld_wind / 2)
 
-print ld_move
-
 
 
 print '...reading ricopili config file...'
@@ -98,8 +94,6 @@ with open(conf_file, 'r') as f:
         configs[str(key)] = val
 
 plinkx = configs['p2loc']+"plink"
-
-print plinkx
 
 
 
@@ -124,7 +118,7 @@ print '...finding strand ambiguous SNPs and long LD regions...'
 bim_in_nam = args.input + '.bim'
 # ambiex_nam = args.output + '_ambiexclude.txt'
 # ldex_nam = args.output + '_ldexclude.txt'
-snpout_nam = args.output + '_exclude_snps.txt'
+snpout_nam = args.output + '.exclude_snps.txt'
 
 snp_in = open(bim_in_nam, 'r')
 # ambiex_out = open(ldex_nam, 'w')
@@ -227,7 +221,7 @@ snp_in.close()
 
 
 
-print '...finding low MAF SNPs...\n'
+print '...finding low MAF SNPs...'
 ### get low maf
 frq_nam = sumstat_out + '.frq'
 
@@ -244,7 +238,7 @@ frqs.close()
 
 
 
-print '...finding HWE failures...\n'
+print '...finding HWE failures...'
 ### get hwe failure
 hwe_nam = sumstat_out + '.hwe'
 
@@ -261,7 +255,7 @@ hwes.close()
 
 
 
-print '...Finding call rate failures...\n'
+print '...Finding call rate failures...'
 ### get lmissing 
 lmiss_nam = sumstat_out + '.lmiss'
 
@@ -279,7 +273,7 @@ snp_out.close()
 
 
 
-print '...Removing filtered SNPs...\n'
+print '...Removing filtered SNPs...'
 ### run plink to exclude failures
 filtered_out = args.output+".strictqc"
 
@@ -361,8 +355,9 @@ subprocess.check_call([str(plinkx),
 # cleanup
 if not args.no_cleanup:
     print '...cleaning up files...'
+    print 'zipping to ' + args.output + '.qc_files.tar.gz:'
     subprocess.check_call(["tar", "-zcvf",
-                           args.output + '_qc_files.tar.gz',
+                           args.output + '.qc_files.tar.gz',
                            sumstat_out + '.log',
                            frq_nam,
                            hwe_nam, 
@@ -371,15 +366,36 @@ if not args.no_cleanup:
                            args.output + '.prune' + str(i) + '.tmp.prune.in',
                            args.output + '.prune' + str(i) + '.tmp.log',
                            ])
+    
+    subprocess.check_call(["gzip", snpout_nam])
 
+    print 'remove interim:'
     subprocess.check_call(["rm",
                            filtered_out + '.bed',
                            filtered_out + '.bim',
                            filtered_out + '.fam',
                            sumstat_out + '.imiss',
+                           frq_nam,
+                           hwe_nam,
+                           lmiss_nam,
+                           sumstat_out + '.log',
+                           filtered_out + '.log',
                            ])
     
     subprocess.check_call(["rm"] + glob(args.output+".prune*.tmp.*"))
+    
+    # allowing failure, since files may or may not exists
+    print 'remove if exist:' 
+    subprocess.call(["rm", 
+                     sumstat_out + '.hh',
+                     sumstat_out + '.nosex',
+                     filtered_out + '.hh',
+                     filtered_out + '.nosex',
+                     args.output + '.strictqc.pruned.hh',
+                     args.output + '.strictqc.pruned.nosex'])
 
+print '\n'
+print '############'
+print '\n'
 print 'SUCCESS!'
 exit(0)
