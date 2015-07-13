@@ -9,14 +9,14 @@ import argparse
 # parse arguments
 parser = argparse.ArgumentParser(prog='strict_qc.py',
                                  formatter_class=lambda prog:
-                                 argparse.HelpFormatter(prog, max_help_position=40))
+                                 argparse.ArgumentDefaultsHelpFormatter(prog, max_help_position=40))
 
-parser.add_argument('--input', '-i', 
+parser.add_argument('--input', 
                     type=str,
                     metavar='FILESTEM',
                     help='file stem for input plink bed/bim/fam',
                     required=True)
-parser.add_argument('--output', '-o', 
+parser.add_argument('--output',
                     type=str,
                     metavar='NAME',
                     help='base name for output; recommend 4 character stem to match ricopili',
@@ -68,7 +68,7 @@ parser.add_argument('--ld-wind',
 #                     default=100)
 parser.add_argument('--all-chr',
                     action='store_true',
-                    help='keep all chrosomes (default: only autosomes)')
+                    help='keep all chromosomes, instead of autosomes only')
 parser.add_argument('--no-cleanup',
                     action='store_true',
                     help='skip cleanup of interim files')
@@ -224,7 +224,7 @@ for line in frqs:
     (chrom, snp, a1, a2, maf, nobs) = line.split()
 
     if maf < args.maf_th or maf > args.maf_th:
-        snp_out.write(snp + ' lowMAF\n')
+        snp_out.write(snp + ' low_MAF\n')
 
 frqs.close()
 
@@ -236,7 +236,7 @@ hwe_nam = sumstat_out + '.hwe'
 hwes = open(hwe_nam, 'r')
 dumphead = hwes.readline()
 
-for line in frqs:
+for line in hwes:
     (chrom, snp, test, a1, a2, geno, Ohet, Ehet, p) = line.split()
     
     if (test == "ALL") and ( p < args.hwe_th ):
@@ -247,15 +247,38 @@ hwes.close()
 
 
 # get lmissing 
+lmiss_nam = sumstat_out + '.lmiss'
 
+lmiss = open(lmiss_nam, 'r')
+dumphead = lmiss.readline()
 
-# combine exclude lists
+for line in lmiss:
+    (chrom, snp, nmiss, ngeno, fmiss) = line.split()
+    
+    if fmiss > args.miss_th:
+        snp_out.write(snp + ' high_missing\n')
+
+lmiss.close()
+snp_out.close()
+
 
 
 # run plink to exclude
+filtered_out = args.output+".filtered.tmp"
+
+subprocess.check_call([str(plinkx), 
+               "--bfile", args.input,
+               "--mind", str(args.mind_th),
+               "--exclude", snpout_nam,
+               "--make-bed",
+               "--out", filtered_out])
+
 
 
 # ld prune (loop, apply)
+
+
+
 
 
 # cleanup
