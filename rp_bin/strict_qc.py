@@ -1,5 +1,8 @@
 #! /usr/bin/env python
 
+
+
+print '...importing packages...\n'
 # load requirements
 import os
 import subprocess
@@ -7,6 +10,7 @@ import argparse
 from glob import glob
 
 
+print '...parsing arguments...\n' 
 # parse arguments
 parser = argparse.ArgumentParser(prog='strict_qc.py',
                                  formatter_class=lambda prog:
@@ -82,6 +86,7 @@ print ld_move
 
 
 
+print '...reading ricopili config file...\n'
 ### read plink loc from config
 
 conf_file = os.environ['HOME']+"/ricopili.conf"
@@ -98,6 +103,7 @@ print plinkx
 
 
 
+print '...getting descriptive with plink...\n'
 ### get descriptives, exclude high mind
 sumstat_out = args.output+".qcsumstat"
 
@@ -110,6 +116,8 @@ subprocess.check_call([str(plinkx),
                "--out", sumstat_out])
 
 
+
+print '...finding strand ambiguous SNPs and long LD regions...\n'
 ### get strand ambi list, mhc/etc liost
 bim_in_nam = args.input + '.bim'
 # ambiex_nam = args.output + '_ambiexclude.txt'
@@ -215,6 +223,7 @@ snp_in.close()
 
 
 
+print '...finding low MAF SNPs...\n'
 ### get low maf
 frq_nam = sumstat_out + '.frq'
 
@@ -231,6 +240,7 @@ frqs.close()
 
 
 
+print '...finding HWE failures...\n'
 ### get hwe failure
 hwe_nam = sumstat_out + '.hwe'
 
@@ -247,6 +257,7 @@ hwes.close()
 
 
 
+print '...Finding call rate failures...\n'
 ### get lmissing 
 lmiss_nam = sumstat_out + '.lmiss'
 
@@ -264,6 +275,7 @@ snp_out.close()
 
 
 
+print '...Removing filtered SNPs...\n'
 ### run plink to exclude failures
 filtered_out = args.output+".strictqc"
 
@@ -285,6 +297,8 @@ else:
 
 
 
+
+print '...beginning LD pruning...\n'
 ### ld prune (loop, apply)
 
 # wc -l, taken from http://stackoverflow.com/questions/845058
@@ -310,6 +324,7 @@ nprune_new = file_len(args.output + '.prune' + str(i) + '.tmp' + '.bim')
 # loop til no additional exclusions
 while nprune_old > nprune_new:
     i += 1
+    print '...LD pruning pass ' + str(i) + '...\n'
     subprocess.check_call([str(plinkx), 
                "--bfile", filtered_out,
                "--extract", args.output + '.prune' + str(i-1) + '.tmp.prune.in'
@@ -319,6 +334,7 @@ while nprune_old > nprune_new:
     nprune_old = nprune_new
     nprune_new = file_len(args.output + '.prune' + str(i) + '.tmp' + '.bim')  
 
+print '...extracting LD pruned set...\n'
 # apply
 subprocess.check_call([str(plinkx), 
                "--bfile", filtered_out,
@@ -330,6 +346,7 @@ subprocess.check_call([str(plinkx),
 
 # cleanup
 if not args.no_cleanup:
+    print '...cleaning up files...\n'
     subprocess.check_call(["tar", "-zcvf",
                            args.output + '_qc_files.tar.gz',
                            sumstat_out + '.log',
