@@ -2,7 +2,7 @@
 
 
 
-print '...importing packages...\n'
+print '...importing packages...'
 # load requirements
 import os
 import subprocess
@@ -10,7 +10,7 @@ import argparse
 from glob import glob
 
 
-print '...parsing arguments...\n' 
+print '...parsing arguments...' 
 # parse arguments
 parser = argparse.ArgumentParser(prog='strict_qc.py',
                                  formatter_class=lambda prog:
@@ -86,7 +86,7 @@ print ld_move
 
 
 
-print '...reading ricopili config file...\n'
+print '...reading ricopili config file...'
 ### read plink loc from config
 
 conf_file = os.environ['HOME']+"/ricopili.conf"
@@ -103,7 +103,7 @@ print plinkx
 
 
 
-print '...getting descriptive with plink...\n'
+print '...getting descriptive with plink...'
 ### get descriptives, exclude high mind
 sumstat_out = args.output+".qcsumstat"
 
@@ -113,11 +113,13 @@ subprocess.check_call([str(plinkx),
                "--freq",
                "--missing",
                "--hardy",
+               "--silent",
+               "--allow-no-sex",
                "--out", sumstat_out])
 
 
 
-print '...finding strand ambiguous SNPs and long LD regions...\n'
+print '...finding strand ambiguous SNPs and long LD regions...'
 ### get strand ambi list, mhc/etc liost
 bim_in_nam = args.input + '.bim'
 # ambiex_nam = args.output + '_ambiexclude.txt'
@@ -287,6 +289,8 @@ if args.all_chr:
                    "--mind", str(args.mind_th),
                    "--exclude", snpout_nam,
                    "--make-bed",
+                   "--silent",
+                   "--allow-no-sex",
                    "--out", filtered_out])
 else:
    subprocess.check_call([str(plinkx), 
@@ -295,12 +299,14 @@ else:
                "--exclude", snpout_nam,
                "--autosome",
                "--make-bed",
+               "--silent",
+               "--allow-no-sex",
                "--out", filtered_out]) 
 
 
 
 
-print '...beginning LD pruning...\n'
+print '...beginning LD pruning...'
 ### ld prune (loop, apply)
 
 # wc -l, taken from http://stackoverflow.com/questions/845058
@@ -318,6 +324,8 @@ i = 1
 subprocess.check_call([str(plinkx), 
                "--bfile", filtered_out,
                "--indep-pairwise", str(args.ld_wind), str(ld_move), str(args.ld_th),
+               "--silent",
+               "--allow-no-sex",
                "--out", args.output + '.prune' + str(i) + '.tmp' ])
 
 nprune_old = file_len(filtered_out + '.bim')
@@ -326,29 +334,33 @@ nprune_new = file_len(args.output + '.prune' + str(i) + '.tmp.prune.in')
 # loop til no additional exclusions
 while nprune_old > nprune_new:
     i += 1
-    print '...LD pruning pass ' + str(i) + '...\n'
+    print '...LD pruning pass ' + str(i) + '...'
     subprocess.check_call([str(plinkx), 
                "--bfile", filtered_out,
                "--extract", args.output + '.prune' + str(i-1) + '.tmp.prune.in',
                "--indep-pairwise", str(args.ld_wind), str(ld_move), str(args.ld_th),
+               "--silent",
+               "--allow-no-sex",
                "--out", args.output + '.prune' + str(i) + '.tmp' ])
 
     nprune_old = nprune_new
     nprune_new = file_len(args.output + '.prune' + str(i) + '.tmp.prune.in')  
 
-print '...extracting LD pruned set...\n'
+print '...extracting LD pruned set...'
 # apply
 subprocess.check_call([str(plinkx), 
                "--bfile", filtered_out,
                "--extract", args.output + '.prune' + str(i) + '.tmp.prune.in',
                "--make-bed",
+               "--silent",
+               "--allow-no-sex",
                "--out", args.output + '.strictqc.pruned' ])
 
 
 
 # cleanup
 if not args.no_cleanup:
-    print '...cleaning up files...\n'
+    print '...cleaning up files...'
     subprocess.check_call(["tar", "-zcvf",
                            args.output + '_qc_files.tar.gz',
                            sumstat_out + '.log',
