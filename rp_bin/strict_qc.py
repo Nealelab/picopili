@@ -367,7 +367,7 @@ if not args.no_cleanup:
                            args.output + '.prune' + str(i) + '.tmp.log',
                            ])
     
-    subprocess.check_call(["gzip", snpout_nam])
+    subprocess.check_call(["gzip", "-f", snpout_nam])
 
     print 'remove interim:'
     subprocess.check_call(["rm",
@@ -394,8 +394,7 @@ if not args.no_cleanup:
                      args.output + '.strictqc.pruned.hh',
                      args.output + '.strictqc.pruned.nosex'])
 
-print '\n'
 print '############'
 print '\n'
-print 'SUCCESS!'
+print 'SUCCESS!\n'
 exit(0)
