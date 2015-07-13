@@ -4,6 +4,7 @@
 import os
 import subprocess
 import argparse
+from glob import glob
 
 
 # parse arguments
@@ -230,7 +231,7 @@ frqs.close()
 
 
 
-# get hwe failure
+### get hwe failure
 hwe_nam = sumstat_out + '.hwe'
 
 hwes = open(hwe_nam, 'r')
@@ -246,7 +247,7 @@ hwes.close()
 
 
 
-# get lmissing 
+### get lmissing 
 lmiss_nam = sumstat_out + '.lmiss'
 
 lmiss = open(lmiss_nam, 'r')
@@ -263,26 +264,91 @@ snp_out.close()
 
 
 
-# run plink to exclude
-filtered_out = args.output+".filtered.tmp"
+### run plink to exclude failures
+filtered_out = args.output+".strictqc"
 
-subprocess.check_call([str(plinkx), 
+if args.all_chr:
+    subprocess.check_call([str(plinkx), 
+                   "--bfile", args.input,
+                   "--mind", str(args.mind_th),
+                   "--exclude", snpout_nam,
+                   "--make-bed",
+                   "--out", filtered_out])
+else:
+   subprocess.check_call([str(plinkx), 
                "--bfile", args.input,
                "--mind", str(args.mind_th),
                "--exclude", snpout_nam,
+               "--autosome",
                "--make-bed",
-               "--out", filtered_out])
+               "--out", filtered_out]) 
 
 
 
-# ld prune (loop, apply)
+### ld prune (loop, apply)
 
+# wc -l, taken from http://stackoverflow.com/questions/845058
+def file_len(fname):
+    p = subprocess.Popen(['wc', '-l', fname], stdout=subprocess.PIPE, 
+                                              stderr=subprocess.PIPE)
+    result, err = p.communicate()
+    if p.returncode != 0:
+        raise IOError(err)
+    return int(result.strip().split()[0])
 
+# init
+i = 1
+
+subprocess.check_call([str(plinkx), 
+               "--bfile", filtered_out,
+               "--indep-pairwise", args.ld_wind, ld_move, args.ld_th,
+               "--out", args.output + '.prune' + str(i) + '.tmp' ])
+
+nprune_old = file_len(filtered_out + '.bim')
+nprune_new = file_len(args.output + '.prune' + str(i) + '.tmp' + '.bim')
+
+# loop til no additional exclusions
+while nprune_old > nprune_new:
+    i += 1
+    subprocess.check_call([str(plinkx), 
+               "--bfile", filtered_out,
+               "--extract", args.output + '.prune' + str(i-1) + '.tmp.prune.in'
+               "--indep-pairwise", args.ld_wind, ld_move, args.ld_th,
+               "--out", args.output + '.prune' + str(i) + '.tmp' ])
+
+    nprune_old = nprune_new
+    nprune_new = file_len(args.output + '.prune' + str(i) + '.tmp' + '.bim')  
+
+# apply
+subprocess.check_call([str(plinkx), 
+               "--bfile", filtered_out,
+               "--extract", args.output + '.prune' + str(i) + '.tmp.prune.in',
+               "--make-bed",
+               "--out", args.output + '.strictqc.pruned' ])
 
 
 
 # cleanup
+if not args.no_cleanup:
+    subprocess.check_call(["tar", "-zcvf",
+                           args.output + '_qc_files.tar.gz',
+                           sumstat_out + '.log',
+                           frq_nam,
+                           hwe_nam, 
+                           lmiss_nam,
+                           filtered_out + '.log',
+                           args.output + '.prune' + str(i) + '.tmp.prune.in',
+                           args.output + '.prune' + str(i) + '.tmp.log',
+                           ])
 
+    subprocess.check_call(["rm",
+                           filtered_out + '.bed',
+                           filtered_out + '.bim',
+                           filtered_out + '.fam',
+                           sumstat_out + '.imiss',
+                           ])
+    
+    subprocess.check_call(["rm"] + glob(args.output+".prune*.tmp.*"))
 
-
-# exit
+print 'SUCCESS!'
+exit(0)
