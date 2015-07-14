@@ -129,24 +129,24 @@ print '############\n'
 
 print '...Computing IMUS (unrelated) set...'
 primelog = 'primus_' + args.out + '_imus.log'
-#subprocess.check_call([args.primus_ex,
-#                       "--file", args.bfile,
-#                       "--genome",
-#                       "--degree_rel_cutoff", str(args.rel_deg),
-#                       "--no_PR",
-#                       "--plink_ex", plinkx,
-#                       "--smartpca_ex", args.smartpca_ex,
-#                       "&>", primelog])
+subprocess.check_call([args.primus_ex,
+                       "--file", args.bfile,
+                       "--genome",
+                       "--degree_rel_cutoff", str(args.rel_deg),
+                       "--no_PR",
+                       "--plink_ex", plinkx,
+                       "--smartpca_ex", args.smartpca_ex,
+                       "&>", primelog])
 
 # verify successful output
 primedir = os.getcwd() + '/' + args.bfile + '_PRIMUS'
 imus_file = args.bfile + '_cleaned.genome_maximum_independent_set'
 imus_dirfile = primedir + '/' + imus_file
 
-#if not os.path.isdir(primedir):
-#    raise IOError("Expected PRIMUS output directory %r not found" % primedir)
-#elif not os.path.isfile(imus_dirfile):
-#    raise IOError("Failed to create IMUS set (missing %r)" % imus_dirfile)
+if not os.path.isdir(primedir):
+    raise IOError("Expected PRIMUS output directory %r not found" % primedir)
+elif not os.path.isfile(imus_dirfile):
+    raise IOError("Failed to create IMUS set (missing %r)" % imus_dirfile)
 
 
 
@@ -181,6 +181,7 @@ bfile_imus = args.bfile + '.imus'
 subprocess.check_call([plinkx,
                        "--bfile", args.bfile,
                        "--keep", imus_file,
+                       "--freq",
                        "--silent",
                        "--make-bed",
                        "--out", bfile_imus])
@@ -203,12 +204,46 @@ subprocess.check_call([args.flashpca_ex,
 
 print '...Projecting PCs for remaining individuals...'
 
+# label snpweights to setup pca projection
+snpw = open(str(args.out+'_imus_pca.snpw.txt'), 'r')
+imus_bim = open(str(bfile_imus+'.bim'), 'r')
+snpw_out = open(str(args.out+'_imus_pca.snpw.lab.txt'), 'w')
+
+# add bim info to snp weights
+for bimline in imus_bim:
+    (chrom, snp, cm, bp, a1, a2) = bimline.split()
+    snpw_out.write(snp + ' ' + a1 + ' ' + ' '.join(snpw.readline().split()) + '\n')
+
+# note: shell probably faster, but less readable/robust
+# cut -f 2,5 file.bim | tr '\t' ' ' | paste -d ' ' - <(cat file_snpw.txt | tr -s ' ' | sed 's/^ //') > file_snpw_labelled.txt
+
+snpw.close()
+imus_bim.close()
+snpw_out.close()
 
 
+# project with plink
+for pcnum in xrange(1,args.npcs+1):
+
+    pccol = pcnum + 2
+    
+    subprocess.check_call([plinkx,
+                           "--bfile", args.bfile,
+                           "--score", str(args.out+'_imus_pca.snpw.lab.txt'), "1", "2", str(pccol), "center",
+                           "--read-freq", str(bfile_imus + '.frq'),                           
+                           "--silent",
+                           "--out", str(args.out + '.projpca.pc' + str(pcnum) )])
+
+
+#########
+######### join to single file?
+#########
 
 print '...Plotting PCs...'
 
-
+#########
+######### add r plotting
+#########
 
 
 print '############'
