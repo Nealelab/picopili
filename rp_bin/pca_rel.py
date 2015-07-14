@@ -10,9 +10,6 @@ import argparse
 
 
 # init vars that may be set as functions of others
-primusx = ""
-flashpcax = ""
-rscriptx = ""
 pcadir = ""
 
 print '...Parsing arguments...' 
@@ -70,18 +67,28 @@ parser.add_argument('--flashpca-ex',
                     help='path to flashpca executable',
                     required=False,
                     default="/humgen/atgu1/fs03/shared_resources/shared_software/bin/flashpca")
+parser.add_argument('--smartpca-ex',
+                    type=str,
+                    metavar='PATH',
+                    help='path to smartpca executable',
+                    required=False,
+                    default="/humgen/atgu1/fs03/shared_resources/shared_software/EIG6.0beta_noreq/bin/smartpca")
 
 args, pass_through_args = parser.parse_known_args()
 
-#set remaining defaults#
-if pcadir == "":
+#set remaining defaults
+if args.pcadir == None:
     pcadir = 'pca_imus_' + args.out
+else:
+    pcadir = args.pcadir
+    
 # mem?
 
  
 
 print '...reading ricopili config file...'
 ### read plink loc from config
+# not getting R here since ricopili.conf currently relies on platform info
 
 conf_file = os.environ['HOME']+"/ricopili.conf"
 
@@ -97,20 +104,22 @@ plinkx = configs['p2loc']+"plink"
 
 print '...Checking dependencies...'
 # R from path
-if rscriptx == None:
+if args.rscript_ex == None:
     raise AssertionError('Unable to find Rscript in search path')
     
 # file exists
 assert os.path.isfile(args.primus_ex), "PRIMUS not found at %r" % args.primus_ex
 assert os.path.isfile(args.flashpca_ex), "FlashPCA not found at %r" % args.flashpca_ex
+assert os.path.isfile(args.smartpca_ex), "SmartPCA not found at %r" % args.smartpca_ex
 assert os.path.isfile(plinkx), "Plink not found at %r" % plinkx
 assert os.path.isfile(args.rscript_ex), "Rscript not found at %r" % args.rscript_ex
 
 # file executable
-assert os.access(args.primus_ex, os.X_OK), 'FlashPCA not executable (' + args.primus_ex + ')'
-assert os.access(args.flashpca_ex, os.X_OK), 'FlashPCA not executable (' + args.flashpca_ex + ')'
-assert os.access(plinkx, os.X_OK), 'Plink not executable (' + plinkx + ')'
-assert os.access(args.rscript_ex, os.X_OK), 'Rscript not executable (' + args.rscript_ex + ')'
+assert os.access(args.primus_ex, os.X_OK), "FlashPCA not executable (%r)" % args.primus_ex
+assert os.access(args.flashpca_ex, os.X_OK), "FlashPCA not executable (%r)" % args.flashpca_ex
+assert os.access(args.smartpca_ex, os.X_OK), "FlashPCA not executable (%r)" % args.smartpca_ex
+assert os.access(plinkx, os.X_OK), "Plink not executable (%r)" % plinkx
+assert os.access(args.rscript_ex, os.X_OK), "Rscript not executable (%r)" % args.rscript_ex
 
 
 
@@ -119,6 +128,24 @@ print 'Begin!'
 print '############\n'
 
 print '...Computing IMUS (unrelated) set...'
+primelog = 'primus_' + args.out + '_imus.log'
+subprocess.check_call([args.primus_ex,
+                       "--file", args.bfile,
+                       "--genome",
+                       "--degree_rel_cutoff", str(args.rel_deg),
+                       "--no_PR",
+                       "--plink_ex", plinkx,
+                       "--smartpca_ex", args.smartpca_ex,
+                       "&>", primelog])
+
+# verify successful output
+primedir = os.getcwd() + '/' + args.bfile + '_PRIMUS'
+imus_file = primedir + '/' + args.bfile + '_cleaned.genome_maximum_independent_set'
+
+if not os.path.isdir(primedir):
+    raise IOError("Expected PRIMUS output directory %r not found" % primedir)
+elif not os.path.isfile(imus_file):
+    raise IOError("Failed to create IMUS set (missing %r)" % imus_file)
 
 
 
