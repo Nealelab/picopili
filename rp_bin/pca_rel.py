@@ -82,7 +82,7 @@ if args.pcadir == None:
 else:
     pcadir = args.pcadir
     
-# mem?
+wd = os.getcwd()
 
  
 
@@ -129,40 +129,75 @@ print '############\n'
 
 print '...Computing IMUS (unrelated) set...'
 primelog = 'primus_' + args.out + '_imus.log'
-subprocess.check_call([args.primus_ex,
-                       "--file", args.bfile,
-                       "--genome",
-                       "--degree_rel_cutoff", str(args.rel_deg),
-                       "--no_PR",
-                       "--plink_ex", plinkx,
-                       "--smartpca_ex", args.smartpca_ex,
-                       "&>", primelog])
+#subprocess.check_call([args.primus_ex,
+#                       "--file", args.bfile,
+#                       "--genome",
+#                       "--degree_rel_cutoff", str(args.rel_deg),
+#                       "--no_PR",
+#                       "--plink_ex", plinkx,
+#                       "--smartpca_ex", args.smartpca_ex,
+#                       "&>", primelog])
 
 # verify successful output
 primedir = os.getcwd() + '/' + args.bfile + '_PRIMUS'
-imus_file = primedir + '/' + args.bfile + '_cleaned.genome_maximum_independent_set'
+imus_file = args.bfile + '_cleaned.genome_maximum_independent_set'
+imus_dirfile = primedir + '/' + imus_file
 
-if not os.path.isdir(primedir):
-    raise IOError("Expected PRIMUS output directory %r not found" % primedir)
-elif not os.path.isfile(imus_file):
-    raise IOError("Failed to create IMUS set (missing %r)" % imus_file)
+#if not os.path.isdir(primedir):
+#    raise IOError("Expected PRIMUS output directory %r not found" % primedir)
+#elif not os.path.isfile(imus_dirfile):
+#    raise IOError("Failed to create IMUS set (missing %r)" % imus_dirfile)
 
 
 
 print '...Setting up PCA directory...'
 
+if not os.path.exists(pcadir):
+    os.makedirs(pcadir)
+
+os.chdir(pcadir)
+
+# setup file links
+os.symlink(imus_dirfile,imus_file)
+os.symlink(wd+'/'+args.bfile+'.bed',args.bfile+'.bed')
+os.symlink(wd+'/'+args.bfile+'.bim',args.bfile+'.bim')
+os.symlink(wd+'/'+args.bfile+'.fam',args.bfile+'.fam')
+
+# verify links
+if not os.path.isfile(imus_file):
+    raise IOError("Failed to link IMUS file (%r)" % imus_file)
+elif not os.path.isfile(args.bfile+'.bed'):
+    raise IOError("Failed to link bed file (%r)" % str(args.bfile+'.bed') )
+elif not os.path.isfile(args.bfile+'.bim'):
+    raise IOError("Failed to link bim file (%r)" % str(args.bfile+'.bim') )
+elif not os.path.isfile(imus_file):
+    raise IOError("Failed to link fam file (%r)" % str(args.bfile+'.fam') )
 
 
 
 print '...Extracting IMUS set from data...'
 
-
+bfile_imus = args.bfile + '.imus'
+subprocess.check_call([plinkx,
+                       "--bfile", args.bfile,
+                       "--keep", imus_file,
+                       "--silent",
+                       "--make-bed",
+                       "--out", bfile_imus])
 
 
 
 print '...Computing PCA with IMUS individuals...'
 
-
+subprocess.check_call([args.flashpca_ex,
+                       "--bfile", bfile_imus,
+                       "--ndim", args.npcs,
+                       "--outpc",str(args.out+'_imus_pca.pcs.txt'),
+                       "--outvec",str(args.out+'_imus_pca.evec.txt'),
+                       "--outval",str(args.out+'_imus_pca.eval.txt'),
+                       "--outpve",str(args.out+'_imus_pca.pve.txt'),
+                       "--outload",str(args.out+'_imus_pca.snpw.txt'),
+                       "&>", str('flashpca_'+args.out+'_imus_pca.log')])
 
 
 
