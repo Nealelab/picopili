@@ -1,12 +1,11 @@
 #! /usr/bin/env python
 
 ####################################
-#
 # pca_rel.py
-# by Raymond Walters, July 2015
-#
-# Runs PCA for GWAS data with related individuals
-#
+# written by Raymond Walters, July 2015
+"""
+Runs PCA for GWAS data with related individuals
+"""
 # Overview:
 # 1) Input QCed plink bed/bim/fam
 # 2) Define set of unrelated individuals using PRIMUS
@@ -18,7 +17,6 @@
 
 
 
-
 ####################################
 # Setup
 # a) load python dependencies
@@ -27,9 +25,10 @@
 # d) check dependencies
 ####################################
 
-
+import sys
 #############
-print '...Importing packages...'
+if not (('-h' in sys.argv) or ('--help' in sys.argv)):
+    print '\n...Importing packages...'
 #############
 
 ### load requirements
@@ -41,7 +40,8 @@ from py_helpers import file_len, read_conf
 
 
 #############
-print '...Parsing arguments...' 
+if not (('-h' in sys.argv) or ('--help' in sys.argv)):
+    print '\n...Parsing arguments...' 
 #############
 
 ### init vars that may be set as functions of others
@@ -111,8 +111,7 @@ parser.add_argument('--smartpca-ex',
                     required=False,
                     default="/humgen/atgu1/fs03/shared_resources/shared_software/EIG6.0beta_noreq/bin/smartpca")
 
-
-args, pass_through_args = parser.parse_known_args()
+args = parser.parse_args()
 
 # set remaining defaults
 if args.pcadir == None:
@@ -122,9 +121,17 @@ else:
     
 wd = os.getcwd()
 
+# print settings
+print 'Using settings:'
+print '--bfile '+args.bfile
+print '--out '+args.out
+print '--rel-deg '+str(args.rel_deg)
+print '--npcs '+str(args.npcs)
+
+
  
 #############
-print '...reading ricopili config file...'
+print '\n...reading ricopili config file...'
 #############
 
 ### read plink loc from config
@@ -136,32 +143,43 @@ plinkx = configs['p2loc']+"plink"
 
 
 #############
-print '...Checking dependencies...'
+print '\n...Checking dependencies...'
+# check exists, executable
 #############
 
 # R from path
 if args.rscript_ex == None:
     raise AssertionError('Unable to find Rscript in search path')
-    
-# file exists
-assert os.path.isfile(args.primus_ex), "PRIMUS not found at %r" % args.primus_ex
-assert os.path.isfile(args.flashpca_ex), "FlashPCA not found at %r" % args.flashpca_ex
-assert os.path.isfile(args.smartpca_ex), "SmartPCA not found at %r" % args.smartpca_ex
-assert os.path.isfile(plinkx), "Plink not found at %r" % plinkx
 assert os.path.isfile(args.rscript_ex), "Rscript not found at %r" % args.rscript_ex
-
-# file executable
-assert os.access(args.primus_ex, os.X_OK), "FlashPCA not executable (%r)" % args.primus_ex
-assert os.access(args.flashpca_ex, os.X_OK), "FlashPCA not executable (%r)" % args.flashpca_ex
-assert os.access(args.smartpca_ex, os.X_OK), "FlashPCA not executable (%r)" % args.smartpca_ex
-assert os.access(plinkx, os.X_OK), "Plink not executable (%r)" % plinkx
 assert os.access(args.rscript_ex, os.X_OK), "Rscript not executable (%r)" % args.rscript_ex
+print "Rscript found: %s" % args.rscript_ex
+
+# primus
+assert os.path.isfile(args.primus_ex), "PRIMUS not found at %r" % args.primus_ex
+assert os.access(args.primus_ex, os.X_OK), "FlashPCA not executable (%r)" % args.primus_ex
+print "PRIMUS found: %s" % args.primus_ex
+
+# plink
+assert os.path.isfile(plinkx), "Plink not found at %r" % plinkx
+assert os.access(plinkx, os.X_OK), "Plink not executable (%r)" % plinkx
+print "Plink found: %s" % plinkx
+    
+# smartpca
+assert os.path.isfile(args.smartpca_ex), "SmartPCA not found at %r" % args.smartpca_ex
+assert os.access(args.smartpca_ex, os.X_OK), "FlashPCA not executable (%r)" % args.smartpca_ex
+print "smartpca found: %s" % args.smartpca_ex
+    
+# flashpca
+assert os.path.isfile(args.flashpca_ex), "FlashPCA not found at %r" % args.flashpca_ex
+assert os.access(args.flashpca_ex, os.X_OK), "FlashPCA not executable (%r)" % args.flashpca_ex
+print "flashpca found: %s" % args.flashpca_ex
 
 
 
+print '\n'
 print '############'
 print 'Begin!'
-print '############\n'
+print '############'
 
 ####################################
 # Compute maximum unrelated set
@@ -170,7 +188,7 @@ print '############\n'
 ####################################
 
 #############
-print '...Computing IMUS (unrelated) set...'
+print '\n...Computing IMUS (unrelated) set...'
 #############
 
 primelog = 'primus_' + args.out + '_imus.log'
@@ -203,7 +221,7 @@ elif not os.path.isfile(imus_dirfile):
 ####################################
 
 #############
-print '...Setting up PCA directory...'
+print '\n...Setting up PCA directory...'
 #############
 
 if not os.path.exists(pcadir):
@@ -229,7 +247,7 @@ elif not os.path.isfile(imus_file):
 
 
 #############
-print '...Extracting IMUS set from data...'
+print '\n...Extracting IMUS set from data...'
 #############
 
 bfile_imus = args.bfile + '.imus'
@@ -243,7 +261,7 @@ subprocess.check_call([plinkx,
 
 
 #############
-print '...Computing PCA with IMUS individuals...'
+print '\n...Computing PCA with IMUS individuals...'
 #############
 
 subprocess.check_call([args.flashpca_ex,
@@ -267,7 +285,7 @@ subprocess.check_call([args.flashpca_ex,
 ####################################
 
 #############
-print '...Projecting PCs for remaining individuals...'
+print '\n...Projecting PCs for remaining individuals...'
 #############
 
 ### label snpweights to setup pca projection
@@ -353,7 +371,7 @@ for i in xrange(0,len(pc_files)):
 ####################################
 
 #############
-print '...Plotting PCs...'
+print '\n...Plotting PCs...'
 #############
 
 #########
@@ -369,12 +387,12 @@ print '...Plotting PCs...'
 ####################################
 
 if not args.no_cleanup:
-    print '...Clean-up interim files...'
+    print '\n...Clean-up interim files...'
     
     subprocess.check_call(["gzip", "-f", pc_out_nam])
 
 
-print '############'
+print '\n############'
 print '\n'
 print 'SUCCESS!\n'
 exit(0)
