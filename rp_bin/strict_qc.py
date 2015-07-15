@@ -1,7 +1,43 @@
 #! /usr/bin/env python
 
-print '...importing packages...'
-# load requirements
+####################################
+# strict_qc.py
+# written by Raymond Walters, July 2015
+"""
+Runs strict QC for GWAS data
+"""
+# Overview:
+# 1) Input QCed plink bed/bim/fam
+# 2) Get QC metrics with plink
+# 3) Get SNPs to exlcude
+#     - not ACGT (e.g. indels)
+#     - strand ambiguous
+#     - long-range LD regions
+#     - low MAF
+#     - HWE failures
+#     - low call rate
+# 4) Remove failed SNPs
+# 5) LD prune
+# 6) Clean up files
+#
+####################################
+
+
+
+####################################
+# Setup
+# a) load python dependencies
+# b) get variables/arguments
+# c) read config file
+# d) check dependencies
+####################################
+
+import sys
+#############
+if not (('-h' in sys.argv) or ('--help' in sys.argv)):
+    print '\n...Importing packages...'
+#############
+
 import os
 import subprocess
 import argparse
@@ -9,8 +45,12 @@ from glob import glob
 from py_helpers import file_len, read_conf
 
 
-print '...parsing arguments...' 
-# parse arguments
+
+#############
+if not (('-h' in sys.argv) or ('--help' in sys.argv)):
+    print '\n...Parsing arguments...' 
+#############
+
 parser = argparse.ArgumentParser(prog='strict_qc.py',
                                  formatter_class=lambda prog:
                                  argparse.ArgumentDefaultsHelpFormatter(prog, max_help_position=40))
@@ -31,6 +71,9 @@ parser.add_argument('--mind-th',
                     help='individual missingness threshold',
                     required=False,
                     default=0.95)
+parser.add_argument('--keep-indels',
+                    action='store_true',
+                    help='do not remove indels, i.e. variants with alleles I, D, -, or multiple bases')                    
 parser.add_argument('--extra-ld-regions',
                     action='store_true',
                     help='exclude additional LD regions from Price et al. (2008, AJHG)')
@@ -79,7 +122,22 @@ parser.add_argument('--no-cleanup',
 
 args, pass_through_args = parser.parse_known_args()
 
+# derived arguments
 ld_move = int(args.ld_wind / 2)
+
+# print settings
+print 'Using settings:'
+print '--bfile '+args.bfile
+print '--out '+args.out
+print '--mind-th '+str(args.mind_th)
+print '--mind-th '+str(args.mind_th)
+print '--npcs '+str(args.npcs)
+
+
+ 
+#############
+print '\n...reading ricopili config file...'
+#############
 
 
 
@@ -109,7 +167,7 @@ subprocess.check_call([str(plinkx),
 
 
 
-print '...finding strand ambiguous SNPs and long LD regions...'
+print '...finding indels, strand ambiguous SNPs, and long LD regions...'
 ### get strand ambi list, mhc/etc liost
 bim_in_nam = args.bfile + '.bim'
 # ambiex_nam = args.out + '_ambiexclude.txt'
@@ -121,21 +179,32 @@ snp_in = open(bim_in_nam, 'r')
 # ldex_out = open(ldex_nam, 'w')
 snp_out = open(snpout_nam, 'w')
 
+indels = ['i','d','-']
+
 for line in snp_in:
     (chrom, snp, cm, bp, a1, a2) = line.split()
     chrom = int(chrom)
     bp = int(bp)
     
-    if (a1.lower()=='a') and (a2.lower()=='t'):
+    a1l = a1.lower()
+    a2l = a2.lower()
+    
+    if not args.keep_indels:
+        if len(a1l) > 1 or len(a2l) > 1:
+            snp_out.write(snp + ' indel_allele\n')    
+        elif any(a == a1l for a in indels) or any(a == a2l for a in indels):
+            snp_out.write(snp + ' indel_allele\n')
+   
+    if (a1l=='a') and (a2l=='t'):
 #        ambiex_out.write(snp + '\n')
         snp_out.write(snp + ' strand_ambiguous\n')
-    elif (a1.lower()=='t') and (a2.lower()=='a'):
+    elif (a1l=='t') and (a2l=='a'):
 #        ambiex_out.write(snp + '\n')
         snp_out.write(snp + ' strand_ambiguous\n')
-    elif (a1.lower()=='g') and (a2.lower()=='c'):
+    elif (a1l=='g') and (a2l=='c'):
 #        ambiex_out.write(snp + '\n')
         snp_out.write(snp + ' strand_ambiguous\n')
-    elif (a1.lower()=='c') and (a2.lower()=='g'):
+    elif (a1l=='c') and (a2l=='g'):
 #        ambiex_out.write(snp + '\n')
         snp_out.write(snp + ' strand_ambiguous\n')
         
