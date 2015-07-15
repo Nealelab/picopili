@@ -9,8 +9,8 @@ Runs strict QC for GWAS data
 # Overview:
 # 1) Input QCed plink bed/bim/fam
 # 2) Get QC metrics with plink
-# 3) Get SNPs to exlcude
-#     - not ACGT (e.g. indels)
+# 3) Get SNPs to exclude
+#     - indels
 #     - strand ambiguous
 #     - long-range LD regions
 #     - low MAF
@@ -130,18 +130,21 @@ print 'Using settings:'
 print '--bfile '+args.bfile
 print '--out '+args.out
 print '--mind-th '+str(args.mind_th)
-print '--mind-th '+str(args.mind_th)
-print '--npcs '+str(args.npcs)
+print '--keep-indels '+str(args.keep_indels)
+print '--extra-ld-regions '+str(args.extra_ld_regions)
+print '--maf-th '+str(args.maf_th)
+print '--hwe-th '+str(args.hwe_th)
+print '--miss-th '+str(args.miss_th)
+print '--ld-th '+str(args.ld_th)
+print '--ld_wind '+str(args.ld_wind)
+print '--all_chr '+str(args.all_chr)
 
 
  
 #############
-print '\n...reading ricopili config file...'
+print '\n...Reading ricopili config file...'
 #############
 
-
-
-print '...reading ricopili config file...'
 ### read plink loc from config
 
 conf_file = os.environ['HOME']+"/ricopili.conf"
@@ -151,8 +154,37 @@ plinkx = configs['p2loc']+"plink"
 
 
 
-print '...getting descriptive with plink...'
-### get descriptives, exclude high mind
+#############
+print '\n...Checking dependencies...'
+# check exists, executable
+#############
+
+# plink
+assert os.path.isfile(plinkx), "Plink not found at %r" % plinkx
+assert os.access(plinkx, os.X_OK), "Plink not executable (%r)" % plinkx
+print "Plink found: %s" % plinkx
+
+
+
+print '\n'
+print '############'
+print 'Begin!'
+print '############'
+
+
+
+####################################
+# Get QC metrics with plink
+# - exclude mostly missing IDs (>95% missing)
+# - allele freqs
+# - missingness rate
+# - hardy-weinberg
+####################################
+
+#############
+print '...Getting QC metrics...'
+#############
+
 sumstat_out = args.out+".qcsumstat"
 
 subprocess.check_call([str(plinkx), 
@@ -167,16 +199,23 @@ subprocess.check_call([str(plinkx),
 
 
 
-print '...finding indels, strand ambiguous SNPs, and long LD regions...'
-### get strand ambi list, mhc/etc liost
+####################################
+# Identify exclusions in bim file
+# - indels (based on alleles of I, D, -, or multiple bases)
+# - strand ambiguous
+# - long LD regions
+# write all to file with reason (snpout_nam)
+####################################
+
+#############
+print '...Finding indels, strand ambiguous SNPs, and long LD regions...'
+#############
+
+### get strand ambi list, mhc/etc list
 bim_in_nam = args.bfile + '.bim'
-# ambiex_nam = args.out + '_ambiexclude.txt'
-# ldex_nam = args.out + '_ldexclude.txt'
 snpout_nam = args.out + '.exclude_snps.txt'
 
 snp_in = open(bim_in_nam, 'r')
-# ambiex_out = open(ldex_nam, 'w')
-# ldex_out = open(ldex_nam, 'w')
 snp_out = open(snpout_nam, 'w')
 
 indels = ['i','d','-']
@@ -196,100 +235,78 @@ for line in snp_in:
             snp_out.write(snp + ' indel_allele\n')
    
     if (a1l=='a') and (a2l=='t'):
-#        ambiex_out.write(snp + '\n')
         snp_out.write(snp + ' strand_ambiguous\n')
     elif (a1l=='t') and (a2l=='a'):
-#        ambiex_out.write(snp + '\n')
         snp_out.write(snp + ' strand_ambiguous\n')
     elif (a1l=='g') and (a2l=='c'):
-#        ambiex_out.write(snp + '\n')
         snp_out.write(snp + ' strand_ambiguous\n')
     elif (a1l=='c') and (a2l=='g'):
-#        ambiex_out.write(snp + '\n')
         snp_out.write(snp + ' strand_ambiguous\n')
         
     if (chrom==6) and (bp > 25000000) and (bp < 35000000):
-#        ldex_out.write(snp + '\n')
         snp_out.write(snp + ' mhc_region\n')
     elif (chrom==8) and (bp > 7000000) and (bp < 13000000):
-#        ldex_out.write(snp + '\n')
         snp_out.write(snp + ' chr8inv_region\n')
     elif args.extra_ld_regions:
         if (chrom==1) and (bp > 48000000) and (bp < 52000000):
-#            ldex_out.write(snp + '\n')
             snp_out.write(snp + ' longLD_region\n')
         elif (chrom==2) and (bp > 86000000) and (bp < 101000000):
-#            ldex_out.write(snp + '\n')
             snp_out.write(snp + ' longLD_region\n')
         elif (chrom==2) and (bp > 134000000) and (bp < 138000000):
-#            ldex_out.write(snp + '\n')
             snp_out.write(snp + ' longLD_region\n')
         elif (chrom==2) and (bp > 183000000) and (bp < 190000000):
-#            ldex_out.write(snp + '\n')
             snp_out.write(snp + ' longLD_region\n')
         elif (chrom==3) and (bp > 47000000) and (bp < 50000000):
-#            ldex_out.write(snp + '\n')
             snp_out.write(snp + ' longLD_region\n')
         elif (chrom==3) and (bp > 83000000) and (bp < 87000000):
-#            ldex_out.write(snp + '\n')
             snp_out.write(snp + ' longLD_region\n')
         elif (chrom==3) and (bp > 89000000) and (bp < 98000000):
-#            ldex_out.write(snp + '\n')
             snp_out.write(snp + ' longLD_region\n')
         elif (chrom==5) and (bp > 44000000) and (bp < 51000000):
-#            ldex_out.write(snp + '\n')
             snp_out.write(snp + ' longLD_region\n')
         elif (chrom==5) and (bp > 98000000) and (bp < 101000000):
-#            ldex_out.write(snp + '\n')
             snp_out.write(snp + ' longLD_region\n')
         elif (chrom==5) and (bp > 129000000) and (bp < 132000000):
-#            ldex_out.write(snp + '\n')
             snp_out.write(snp + ' longLD_region\n')
         elif (chrom==5) and (bp > 135000000) and (bp < 139000000):
-#            ldex_out.write(snp + '\n')
             snp_out.write(snp + ' longLD_region\n')
         elif (chrom==6) and (bp > 57000000) and (bp < 64000000):
-#            ldex_out.write(snp + '\n')
             snp_out.write(snp + ' longLD_region\n')
         elif (chrom==6) and (bp > 140000000) and (bp < 143000000):
-#            ldex_out.write(snp + '\n')
             snp_out.write(snp + ' longLD_region\n')
         elif (chrom==7) and (bp > 55000000) and (bp < 66000000):
-#            ldex_out.write(snp + '\n')
             snp_out.write(snp + ' longLD_region\n')
         elif (chrom==8) and (bp > 43000000) and (bp < 50000000):
-#            ldex_out.write(snp + '\n')
             snp_out.write(snp + ' longLD_region\n')
         elif (chrom==8) and (bp > 112000000) and (bp < 115000000):
-#            ldex_out.write(snp + '\n')
             snp_out.write(snp + ' longLD_region\n')
         elif (chrom==10) and (bp > 37000000) and (bp < 43000000):
-#            ldex_out.write(snp + '\n')
             snp_out.write(snp + ' longLD_region\n')
         elif (chrom==11) and (bp > 46000000) and (bp < 57000000):
-#            ldex_out.write(snp + '\n')
             snp_out.write(snp + ' longLD_region\n')
         elif (chrom==11) and (bp > 87000000) and (bp < 91000000):
-#            ldex_out.write(snp + '\n')
             snp_out.write(snp + ' longLD_region\n')
         elif (chrom==12) and (bp > 33000000) and (bp < 40000000):
-#            ldex_out.write(snp + '\n')
             snp_out.write(snp + ' longLD_region\n')
         elif (chrom==12) and (bp > 109000000) and (bp < 112000000):
-#            ldex_out.write(snp + '\n')
             snp_out.write(snp + ' longLD_region\n')
         elif (chrom==20) and (bp > 32000000) and (bp < 35000000):
-#            ldex_out.write(snp + '\n')
             snp_out.write(snp + ' longLD_region\n')
 
 snp_in.close()
 
 
 
-print '...finding low MAF SNPs...'
-### get low maf
-frq_nam = sumstat_out + '.frq'
+####################################
+# Identify low MAF SNPs
+# - write to snp_out_nam
+####################################
 
+#############
+print '...Finding low MAF SNPs...'
+#############
+
+frq_nam = sumstat_out + '.frq'
 frqs = open(frq_nam, 'r')
 dumphead = frqs.readline()
 
@@ -302,11 +319,16 @@ for line in frqs:
 frqs.close()
 
 
+####################################
+# Identify HWE failures
+# - write to snp_out_nam
+####################################
 
-print '...finding HWE failures...'
-### get hwe failure
+#############
+print '...Finding HWE failures...'
+#############
+
 hwe_nam = sumstat_out + '.hwe'
-
 hwes = open(hwe_nam, 'r')
 dumphead = hwes.readline()
 
@@ -319,11 +341,16 @@ for line in hwes:
 hwes.close()
 
 
+####################################
+# Identify call rate failures
+# - write to snp_out_nam
+####################################
 
+#############
 print '...Finding call rate failures...'
-### get lmissing 
-lmiss_nam = sumstat_out + '.lmiss'
+#############
 
+lmiss_nam = sumstat_out + '.lmiss'
 lmiss = open(lmiss_nam, 'r')
 dumphead = lmiss.readline()
 
@@ -338,8 +365,16 @@ snp_out.close()
 
 
 
+####################################
+# Remove QC failures using plink
+# - autosomes only, unless otherwise specified
+# - also removes to high missingness IDs
+####################################
+
+#############
 print '...Removing filtered SNPs...'
-### run plink to exclude failures
+#############
+
 filtered_out = args.out+".strictqc"
 
 if args.all_chr:
@@ -364,9 +399,16 @@ else:
 
 
 
+####################################
+# LD prune the QC+ SNPs
+# - using in-sample LD
+# - for robustness, loop pruning until no further exclusions
+# - once stable, extract LD pruned set
+####################################
 
-print '...beginning LD pruning...'
-### ld prune (loop, apply)
+#############
+print '...Beginning LD pruning...'
+#############
 
 # init
 i = 1
@@ -378,13 +420,17 @@ subprocess.check_call([str(plinkx),
                "--allow-no-sex",
                "--out", args.out + '.prune' + str(i) + '.tmp' ])
 
+# tracking number of SNPs before, after altest round of pruning
 nprune_old = file_len(filtered_out + '.bim')
 nprune_new = file_len(args.out + '.prune' + str(i) + '.tmp.prune.in')
 
 # loop til no additional exclusions
 while nprune_old > nprune_new:
+
     i += 1
-    print '...LD pruning pass ' + str(i) + '...'
+    #############
+    print 'Pruning pass ' + str(i)
+    #############
     subprocess.check_call([str(plinkx), 
                "--bfile", filtered_out,
                "--extract", args.out + '.prune' + str(i-1) + '.tmp.prune.in',
@@ -396,8 +442,11 @@ while nprune_old > nprune_new:
     nprune_old = nprune_new
     nprune_new = file_len(args.out + '.prune' + str(i) + '.tmp.prune.in')  
 
-print '...extracting LD pruned set...'
-# apply
+
+#############
+print '...Extracting LD pruned set...'
+#############
+
 subprocess.check_call([str(plinkx), 
                "--bfile", filtered_out,
                "--extract", args.out + '.prune' + str(i) + '.tmp.prune.in',
@@ -408,10 +457,22 @@ subprocess.check_call([str(plinkx),
 
 
 
-# cleanup
+####################################
+# Clean up files
+# - tar.gz the plink QC metrics, logs, and final LD pruning
+# - zip SNP exclusion list with reasons
+# - remove interim bed/bim/fam (QC+ pre-pruning), unused metrics, tar-ed files
+# - remove interim pruning results
+# - remove extraneuous .hh and .nosex files if present 
+####################################
+
 if not args.no_cleanup:
-    print '...cleaning up files...'
-    print 'zipping to ' + args.out + '.qc_files.tar.gz:'
+    
+    #############
+    print '...Cleaning up files...'
+    #############
+    
+    print 'Zipping to ' + args.out + '.qc_files.tar.gz:'
     subprocess.check_call(["tar", "-zcvf",
                            args.out + '.qc_files.tar.gz',
                            sumstat_out + '.log',
@@ -425,8 +486,8 @@ if not args.no_cleanup:
     
     subprocess.check_call(["gzip", "-f", snpout_nam])
 
-    print 'remove interim:'
-    subprocess.check_call(["rm",
+    print 'Remove interim:'
+    subprocess.check_call(["rm", "-v",
                            filtered_out + '.bed',
                            filtered_out + '.bim',
                            filtered_out + '.fam',
@@ -438,11 +499,11 @@ if not args.no_cleanup:
                            filtered_out + '.log',
                            ])
     
-    subprocess.check_call(["rm"] + glob(args.out+".prune*.tmp.*"))
+    subprocess.check_call(["rm", "-v"] + glob(args.out+".prune*.tmp.*"))
     
     # allowing failure, since files may or may not exists
-    print 'remove if exist:' 
-    subprocess.call(["rm", 
+    print 'Remove if exist:' 
+    subprocess.call(["rm", "-v",
                      sumstat_out + '.hh',
                      sumstat_out + '.nosex',
                      filtered_out + '.hh',
@@ -450,7 +511,9 @@ if not args.no_cleanup:
                      args.out + '.strictqc.pruned.hh',
                      args.out + '.strictqc.pruned.nosex'])
 
-print '############'
+
+
+print '\n############'
 print '\n'
 print 'SUCCESS!\n'
 exit(0)

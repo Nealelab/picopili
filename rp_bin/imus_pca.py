@@ -131,7 +131,7 @@ print '--npcs '+str(args.npcs)
 
  
 #############
-print '\n...reading ricopili config file...'
+print '\n...Reading ricopili config file...'
 #############
 
 ### read plink loc from config
