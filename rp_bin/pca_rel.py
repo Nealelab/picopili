@@ -44,6 +44,9 @@ parser.add_argument('--pcadir',
                     metavar='DIRNAME',
                     help='name for PCA output directory, defaults to pca_imus_OUTNAME',
                     required=False)
+parser.add_argument('--no_cleanup',
+                    action='store_true',
+                    help='skip cleanup of interim files')
 # parser.add_argument('--plink-ex',
 #                    type=str,
 #                    metavar='PATH',
@@ -73,6 +76,7 @@ parser.add_argument('--smartpca-ex',
                     help='path to smartpca executable',
                     required=False,
                     default="/humgen/atgu1/fs03/shared_resources/shared_software/EIG6.0beta_noreq/bin/smartpca")
+
 
 args, pass_through_args = parser.parse_known_args()
 
@@ -234,16 +238,71 @@ for pcnum in xrange(1,args.npcs+1):
                            "--silent",
                            "--out", str(args.out + '.projpca.pc' + str(pcnum) )])
 
+# verify all outputs have same length
+# wc -l, taken from http://stackoverflow.com/questions/845058
+def file_len(fname):
+    p = subprocess.Popen(['wc', '-l', fname], stdout=subprocess.PIPE, 
+                                              stderr=subprocess.PIPE)
+    result, err = p.communicate()
+    if p.returncode != 0:
+        raise IOError(err)
+    return int(result.strip().split()[0])
 
-#########
-######### join to single file?
-#########
+# list of file names
+pc_files_nam = [str(args.out + '.projpca.pc' + str(i) + '.profile') for i in xrange(1,args.npcs+1)]
+
+# nrow for each file
+pc_nrows = [file_len(pc_files_nam[i-1]) for i in xrange(1,args.npcs+1)]
+
+# check all equal
+if not (pc_nrows.count(pc_nrows[0]) == len(pc_nrows)):
+    raise IOError("Projected PCA results files %r not all the same size" % str(args.out + '.projpca.pc[1-' + str(args.npcs) + '].profile'))
+    
+# combine columns, anchored with fam
+bfile_fam = open(str(args.bfile + '.fam'), 'r')
+pc_files = [open(pc_files_nam[i], 'r') for i in xrange(0,len(pc_files_nam))]
+pc_out_nam = str(args.out + '.projpca.allpcs.txt')
+pc_out = open(pc_out_nam, 'w')
+
+# strip headers
+dumphead = [pc_files[i].readline() for i in xrange(0,len(pc_files))]
+
+# init output header
+pc_out.write('FID IID ' + ' '.join( [str('PC'+str(i)) for i in xrange(1,args.npcs+1)] ) + '\n')
+
+for famline in bfile_fam:
+    (fid, iid, mat, pat, sex, phen) = famline.split()
+    pc_val = []
+
+    for pcnum in xrange(0,args.npcs):
+        (pc_fid, pc_iid, pc_phen, pc_cnt, pc_cnt2, pc_score) = pc_files[pcnum].readline().split()
+
+        if not ( pc_fid == fid and pc_iid == iid):
+            raise ValueError("Unexpected FID:IID in %r (%s:%s instead of %s:%s)", pc_files_nam[pcnum], pc_fid, pc_iid, fid, iid )
+
+        else:
+            pc_val.append(pc_score)
+
+    pc_out.write(fid + ' ' + iid + ' ' + ' '.join(pc_val) + '\n')
+
+bfile_fam.close()
+pc_out.close()
+for i in xrange(0,len(pc_files)):
+    pc_files[i].close()
+
+
 
 print '...Plotting PCs...'
 
 #########
 ######### add r plotting
 #########
+
+
+if not args.no_cleanup:
+    print '...Clean-up interim files...'
+    
+    subprocess.check_call(["gzip", "-f", pc_out_nam])
 
 
 print '############'
