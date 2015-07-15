@@ -11,7 +11,7 @@ Runs PCA for GWAS data with related individuals
 # 2) Define set of unrelated individuals using PRIMUS
 # 3) Compute PCA on the unrelated set
 # 4) Project PCA results on the full dataset
-# 5) Plot proected PCs
+# 5) Plot projected PCs
 #
 ####################################
 
@@ -76,7 +76,7 @@ parser.add_argument('--npcs',
 parser.add_argument('--pcadir',
                     type=str,
                     metavar='DIRNAME',
-                    help='name for PCA output directory, defaults to pca_imus_OUTNAME',
+                    help='name for PCA output directory, defaults to OUTNAME_imus_pca',
                     required=False)
 parser.add_argument('--no_cleanup',
                     action='store_true',
@@ -115,7 +115,7 @@ args = parser.parse_args()
 
 # set remaining defaults
 if args.pcadir == None:
-    pcadir = 'pca_imus_' + args.out
+    pcadir = args.out + '_imus_pca'
 else:
     pcadir = args.pcadir
     
@@ -266,7 +266,7 @@ print '\n...Computing PCA with IMUS individuals...'
 
 subprocess.check_call([args.flashpca_ex,
                        "--bfile", bfile_imus,
-                       "--ndim", args.npcs,
+                       "--ndim", str(args.npcs),
                        "--outpc",str(args.out+'_imus_pca.pcs.txt'),
                        "--outvec",str(args.out+'_imus_pca.evec.txt'),
                        "--outval",str(args.out+'_imus_pca.eval.txt'),
