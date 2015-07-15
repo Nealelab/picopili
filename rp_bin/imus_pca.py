@@ -1,7 +1,7 @@
 #! /usr/bin/env python
 
 ####################################
-# pca_rel.py
+# imus_pca.py
 # written by Raymond Walters, July 2015
 """
 Runs PCA for GWAS data with related individuals
@@ -48,7 +48,7 @@ if not (('-h' in sys.argv) or ('--help' in sys.argv)):
 pcadir = ""
 
 ### parse arguments
-parser = argparse.ArgumentParser(prog='pca_rel.py',
+parser = argparse.ArgumentParser(prog='imus_pca.py',
                                  formatter_class=lambda prog:
                                  argparse.ArgumentDefaultsHelpFormatter(prog, max_help_position=40))
 parser.add_argument('--bfile', 
