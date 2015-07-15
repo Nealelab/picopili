@@ -182,7 +182,7 @@ print '############'
 ####################################
 
 #############
-print '...Getting QC metrics...'
+print '\n...Getting QC metrics...'
 #############
 
 sumstat_out = args.out+".qcsumstat"
@@ -208,7 +208,7 @@ subprocess.check_call([str(plinkx),
 ####################################
 
 #############
-print '...Finding indels, strand ambiguous SNPs, and long LD regions...'
+print '\n...Finding indels, strand ambiguous SNPs, and long LD regions...'
 #############
 
 ### get strand ambi list, mhc/etc list
@@ -303,7 +303,7 @@ snp_in.close()
 ####################################
 
 #############
-print '...Finding low MAF SNPs...'
+print '\n...Finding low MAF SNPs...'
 #############
 
 frq_nam = sumstat_out + '.frq'
@@ -325,7 +325,7 @@ frqs.close()
 ####################################
 
 #############
-print '...Finding HWE failures...'
+print '\n...Finding HWE failures...'
 #############
 
 hwe_nam = sumstat_out + '.hwe'
@@ -347,7 +347,7 @@ hwes.close()
 ####################################
 
 #############
-print '...Finding call rate failures...'
+print '\n...Finding call rate failures...'
 #############
 
 lmiss_nam = sumstat_out + '.lmiss'
@@ -372,7 +372,7 @@ snp_out.close()
 ####################################
 
 #############
-print '...Removing filtered SNPs...'
+print '\n...Removing filtered SNPs...'
 #############
 
 filtered_out = args.out+".strictqc"
@@ -407,7 +407,7 @@ else:
 ####################################
 
 #############
-print '...Beginning LD pruning...'
+print '\n...Beginning LD pruning...'
 #############
 
 # init
@@ -444,7 +444,7 @@ while nprune_old > nprune_new:
 
 
 #############
-print '...Extracting LD pruned set...'
+print '\n...Extracting LD pruned set...'
 #############
 
 subprocess.check_call([str(plinkx), 
@@ -469,10 +469,12 @@ subprocess.check_call([str(plinkx),
 if not args.no_cleanup:
     
     #############
-    print '...Cleaning up files...'
+    print '\n...Cleaning up files...'
     #############
     
+    #############
     print 'Zipping to ' + args.out + '.qc_files.tar.gz:'
+    #############
     subprocess.check_call(["tar", "-zcvf",
                            args.out + '.qc_files.tar.gz',
                            sumstat_out + '.log',
@@ -483,10 +485,14 @@ if not args.no_cleanup:
                            args.out + '.prune' + str(i) + '.tmp.prune.in',
                            args.out + '.prune' + str(i) + '.tmp.log',
                            ])
-    
-    subprocess.check_call(["gzip", "-f", snpout_nam])
+    #############
+    print 'Compress:'
+    #############
+    subprocess.check_call(["gzip", "-fv", snpout_nam])
 
+    #############
     print 'Remove interim:'
+    #############
     subprocess.check_call(["rm", "-v",
                            filtered_out + '.bed',
                            filtered_out + '.bim',
@@ -501,8 +507,10 @@ if not args.no_cleanup:
     
     subprocess.check_call(["rm", "-v"] + glob(args.out+".prune*.tmp.*"))
     
+    #############
+    print 'Remove if exist:'
+    #############
     # allowing failure, since files may or may not exists
-    print 'Remove if exist:' 
     subprocess.call(["rm", "-v",
                      sumstat_out + '.hh',
                      sumstat_out + '.nosex',

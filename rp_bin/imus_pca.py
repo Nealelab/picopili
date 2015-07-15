@@ -367,7 +367,7 @@ for i in xrange(0,len(pc_files)):
 
 ####################################
 # Plot projected PCs
-# a) 
+# a) TODO
 ####################################
 
 #############
@@ -383,13 +383,20 @@ print '\n...Plotting PCs...'
 
 ####################################
 # Clean up files
+# - TODO
 ####################################
 
 if not args.no_cleanup:
-    print '\n...Clean-up interim files...'
     
-    subprocess.check_call(["gzip", "-f", pc_out_nam])
-
+    #############
+    print '\n...Clean-up interim files...'
+    #############
+    
+    #############
+    print 'Compress:'
+    subprocess.check_call(["gzip", "-fv", pc_out_nam])
+    #############
+    
 
 print '\n############'
 print '\n'
