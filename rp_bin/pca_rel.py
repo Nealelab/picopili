@@ -1,7 +1,38 @@
 #! /usr/bin/env python
 
+####################################
+#
+# pca_rel.py
+# by Raymond Walters, July 2015
+#
+# Runs PCA for GWAS data with related individuals
+#
+# Overview:
+# 1) Input QCed plink bed/bim/fam
+# 2) Define set of unrelated individuals using PRIMUS
+# 3) Compute PCA on the unrelated set
+# 4) Project PCA results on the full dataset
+# 5) Plot proected PCs
+#
+####################################
+
+
+
+
+####################################
+# Setup
+# a) load python dependencies
+# b) get variables/arguments
+# c) read config file
+# d) check dependencies
+####################################
+
+
+#############
 print '...Importing packages...'
-# load requirements
+#############
+
+### load requirements
 import os
 import subprocess
 from distutils import spawn
@@ -9,11 +40,14 @@ import argparse
 from py_helpers import file_len, read_conf
 
 
-# init vars that may be set as functions of others
+#############
+print '...Parsing arguments...' 
+#############
+
+### init vars that may be set as functions of others
 pcadir = ""
 
-print '...Parsing arguments...' 
-# parse arguments
+### parse arguments
 parser = argparse.ArgumentParser(prog='pca_rel.py',
                                  formatter_class=lambda prog:
                                  argparse.ArgumentDefaultsHelpFormatter(prog, max_help_position=40))
@@ -80,7 +114,7 @@ parser.add_argument('--smartpca-ex',
 
 args, pass_through_args = parser.parse_known_args()
 
-#set remaining defaults
+# set remaining defaults
 if args.pcadir == None:
     pcadir = 'pca_imus_' + args.out
 else:
@@ -89,19 +123,22 @@ else:
 wd = os.getcwd()
 
  
-
+#############
 print '...reading ricopili config file...'
+#############
+
 ### read plink loc from config
 # not getting R here since ricopili.conf currently relies on platform info
-
 conf_file = os.environ['HOME']+"/ricopili.conf"
 configs = read_conf(conf_file)
 
 plinkx = configs['p2loc']+"plink"
 
 
-
+#############
 print '...Checking dependencies...'
+#############
+
 # R from path
 if args.rscript_ex == None:
     raise AssertionError('Unable to find Rscript in search path')
@@ -126,7 +163,16 @@ print '############'
 print 'Begin!'
 print '############\n'
 
+####################################
+# Compute maximum unrelated set
+# a) run PRIMUS
+# b) verify ran successfully
+####################################
+
+#############
 print '...Computing IMUS (unrelated) set...'
+#############
+
 primelog = 'primus_' + args.out + '_imus.log'
 subprocess.check_call([args.primus_ex,
                        "--file", args.bfile,
@@ -149,7 +195,16 @@ elif not os.path.isfile(imus_dirfile):
 
 
 
+####################################
+# Compute PCA on unrelated set
+# a) setup PCA directory
+# b) extract unrelated IDs from plink data
+# c) run PCA
+####################################
+
+#############
 print '...Setting up PCA directory...'
+#############
 
 if not os.path.exists(pcadir):
     os.makedirs(pcadir)
@@ -173,8 +228,9 @@ elif not os.path.isfile(imus_file):
     raise IOError("Failed to link fam file (%r)" % str(args.bfile+'.fam') )
 
 
-
+#############
 print '...Extracting IMUS set from data...'
+#############
 
 bfile_imus = args.bfile + '.imus'
 subprocess.check_call([plinkx,
@@ -186,8 +242,9 @@ subprocess.check_call([plinkx,
                        "--out", bfile_imus])
 
 
-
+#############
 print '...Computing PCA with IMUS individuals...'
+#############
 
 subprocess.check_call([args.flashpca_ex,
                        "--bfile", bfile_imus,
@@ -201,27 +258,37 @@ subprocess.check_call([args.flashpca_ex,
 
 
 
-print '...Projecting PCs for remaining individuals...'
+####################################
+# Project PCs on full data
+# a) format SNP weights
+# b) project PCs using plink --score
+# c) verify output files
+# d) combine per-PC results to single file
+####################################
 
-# label snpweights to setup pca projection
+#############
+print '...Projecting PCs for remaining individuals...'
+#############
+
+### label snpweights to setup pca projection
 snpw = open(str(args.out+'_imus_pca.snpw.txt'), 'r')
 imus_bim = open(str(bfile_imus+'.bim'), 'r')
 snpw_out = open(str(args.out+'_imus_pca.snpw.lab.txt'), 'w')
 
-# add bim info to snp weights
 for bimline in imus_bim:
     (chrom, snp, cm, bp, a1, a2) = bimline.split()
     snpw_out.write(snp + ' ' + a1 + ' ' + ' '.join(snpw.readline().split()) + '\n')
-
-# note: shell probably faster, but less readable/robust
-# cut -f 2,5 file.bim | tr '\t' ' ' | paste -d ' ' - <(cat file_snpw.txt | tr -s ' ' | sed 's/^ //') > file_snpw_labelled.txt
+    # note: shell probably faster, but less readable/robust
+    # cut -f 2,5 file.bim | tr '\t' ' ' | \
+    # paste -d ' ' - <(cat file_snpw.txt | tr -s ' ' | sed 's/^ //') \
+    # > file_snpw_labelled.txt
 
 snpw.close()
 imus_bim.close()
 snpw_out.close()
 
 
-# project with plink
+### project with plink
 for pcnum in xrange(1,args.npcs+1):
 
     pccol = pcnum + 2
@@ -233,7 +300,8 @@ for pcnum in xrange(1,args.npcs+1):
                            "--silent",
                            "--out", str(args.out + '.projpca.pc' + str(pcnum) )])
 
-# verify all outputs have same length
+
+### verify all outputs have same length
 # list of file names
 pc_files_nam = [str(args.out + '.projpca.pc' + str(i) + '.profile') for i in xrange(1,args.npcs+1)]
 
@@ -243,8 +311,9 @@ pc_nrows = [file_len(pc_files_nam[i-1]) for i in xrange(1,args.npcs+1)]
 # check all equal
 if not (pc_nrows.count(pc_nrows[0]) == len(pc_nrows)):
     raise IOError("Projected PCA results files %r not all the same size" % str(args.out + '.projpca.pc[1-' + str(args.npcs) + '].profile'))
-    
-# combine columns, anchored with fam
+   
+   
+### combine columns, anchored with fam
 bfile_fam = open(str(args.bfile + '.fam'), 'r')
 pc_files = [open(pc_files_nam[i], 'r') for i in xrange(0,len(pc_files_nam))]
 pc_out_nam = str(args.out + '.projpca.allpcs.txt')
@@ -278,12 +347,26 @@ for i in xrange(0,len(pc_files)):
 
 
 
+####################################
+# Plot projected PCs
+# a) 
+####################################
+
+#############
 print '...Plotting PCs...'
+#############
 
 #########
 ######### add r plotting
 #########
 
+
+
+
+
+####################################
+# Clean up files
+####################################
 
 if not args.no_cleanup:
     print '...Clean-up interim files...'
