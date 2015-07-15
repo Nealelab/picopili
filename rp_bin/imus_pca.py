@@ -257,6 +257,7 @@ subprocess.check_call([plinkx,
                        "--freq",
                        "--silent",
                        "--make-bed",
+                       "--allow-no-sex",
                        "--out", bfile_imus])
 
 
@@ -316,6 +317,7 @@ for pcnum in xrange(1,args.npcs+1):
                            "--score", str(args.out+'_imus_pca.snpw.lab.txt'), "1", "2", str(pccol), "center",
                            "--read-freq", str(bfile_imus + '.frq'),                           
                            "--silent",
+                           "--allow-no-sex",
                            "--out", str(args.out + '.projpca.pc' + str(pcnum) )])
 
 
