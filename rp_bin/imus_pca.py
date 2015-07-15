@@ -385,19 +385,48 @@ print '\n...Plotting PCs...'
 
 ####################################
 # Clean up files
-# - TODO
+# TODO
 ####################################
+
+os.chdir(wd)
 
 if not args.no_cleanup:
     
     #############
     print '\n...Clean-up interim files...'
     #############
+
+# zip 1:
+# [str(args.out + '.projpca.pc' + str(i) + '.log') for i in xrange(1,args.npcs+1)]
+
+# zip 2:
+# str(pcadir + '/' + args.out+'_imus_pca.evec.txt')
+# str(pcadir + '/' + args.out+'_imus_pca.eval.txt')
+# str(pcadir + '/' + args.out+'_imus_pca.pve.txt')
     
     #############
     print 'Compress:'
-    subprocess.check_call(["gzip", "-fv", pc_out_nam])
     #############
+    subprocess.check_call(["gzip", "-fv", str(pcadir + '/' + pc_out_nam)])
+    
+    #############
+    print 'Remove interim:'
+    #############
+    subprocess.check_call(["rm", "-v",
+                           str(pcadir + '/' + pc_files_nam),
+                           str(pcadir + '/' + snpw)])    
+    
+    #############
+    print 'Remove if exist:'
+    #############
+    # allowing failure, since files may or may not exists
+    subprocess.call(["rm", "-v",
+                     str(pcadir + '/' + bfile_imus +'.nosex'),
+                     str(pcadir + '/' + bfile_imus +'.hh'),
+                     [str(pcadir + '/' + args.out + '.projpca.pc' + str(i) + '.nosex') for i in xrange(1,args.npcs+1)],
+                     [str(pcadir + '/' + args.out + '.projpca.pc' + str(i) + '.hh') for i in xrange(1,args.npcs+1)]])
+
+
     
 
 print '\n############'
