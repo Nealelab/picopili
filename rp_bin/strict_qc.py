@@ -6,6 +6,7 @@ import os
 import subprocess
 import argparse
 from glob import glob
+from py_helpers import file_len, read_conf
 
 
 print '...parsing arguments...' 
@@ -14,14 +15,14 @@ parser = argparse.ArgumentParser(prog='strict_qc.py',
                                  formatter_class=lambda prog:
                                  argparse.ArgumentDefaultsHelpFormatter(prog, max_help_position=40))
 
-parser.add_argument('--input', 
+parser.add_argument('--bfile', 
                     type=str,
                     metavar='FILESTEM',
                     help='file stem for input plink bed/bim/fam',
                     required=True)
-parser.add_argument('--output',
+parser.add_argument('--out',
                     type=str,
-                    metavar='NAME',
+                    metavar='OUTNAME',
                     help='base name for output; recommend 4 character stem to match ricopili',
                     required=True)
 parser.add_argument('--mind-th',
@@ -86,12 +87,7 @@ print '...reading ricopili config file...'
 ### read plink loc from config
 
 conf_file = os.environ['HOME']+"/ricopili.conf"
-
-configs = {}
-with open(conf_file, 'r') as f:
-    for line in f:
-        (key, val) = line.split()
-        configs[str(key)] = val
+configs = read_conf(conf_file)
 
 plinkx = configs['p2loc']+"plink"
 
@@ -99,10 +95,10 @@ plinkx = configs['p2loc']+"plink"
 
 print '...getting descriptive with plink...'
 ### get descriptives, exclude high mind
-sumstat_out = args.output+".qcsumstat"
+sumstat_out = args.out+".qcsumstat"
 
 subprocess.check_call([str(plinkx), 
-               "--bfile", args.input,
+               "--bfile", args.bfile,
                "--mind", str(args.mind_th),
                "--freq",
                "--missing",
@@ -115,10 +111,10 @@ subprocess.check_call([str(plinkx),
 
 print '...finding strand ambiguous SNPs and long LD regions...'
 ### get strand ambi list, mhc/etc liost
-bim_in_nam = args.input + '.bim'
-# ambiex_nam = args.output + '_ambiexclude.txt'
-# ldex_nam = args.output + '_ldexclude.txt'
-snpout_nam = args.output + '.exclude_snps.txt'
+bim_in_nam = args.bfile + '.bim'
+# ambiex_nam = args.out + '_ambiexclude.txt'
+# ldex_nam = args.out + '_ldexclude.txt'
+snpout_nam = args.out + '.exclude_snps.txt'
 
 snp_in = open(bim_in_nam, 'r')
 # ambiex_out = open(ldex_nam, 'w')
@@ -275,11 +271,11 @@ snp_out.close()
 
 print '...Removing filtered SNPs...'
 ### run plink to exclude failures
-filtered_out = args.output+".strictqc"
+filtered_out = args.out+".strictqc"
 
 if args.all_chr:
     subprocess.check_call([str(plinkx), 
-                   "--bfile", args.input,
+                   "--bfile", args.bfile,
                    "--mind", str(args.mind_th),
                    "--exclude", snpout_nam,
                    "--make-bed",
@@ -288,7 +284,7 @@ if args.all_chr:
                    "--out", filtered_out])
 else:
    subprocess.check_call([str(plinkx), 
-               "--bfile", args.input,
+               "--bfile", args.bfile,
                "--mind", str(args.mind_th),
                "--exclude", snpout_nam,
                "--autosome",
@@ -303,15 +299,6 @@ else:
 print '...beginning LD pruning...'
 ### ld prune (loop, apply)
 
-# wc -l, taken from http://stackoverflow.com/questions/845058
-def file_len(fname):
-    p = subprocess.Popen(['wc', '-l', fname], stdout=subprocess.PIPE, 
-                                              stderr=subprocess.PIPE)
-    result, err = p.communicate()
-    if p.returncode != 0:
-        raise IOError(err)
-    return int(result.strip().split()[0])
-
 # init
 i = 1
 
@@ -320,10 +307,10 @@ subprocess.check_call([str(plinkx),
                "--indep-pairwise", str(args.ld_wind), str(ld_move), str(args.ld_th),
                "--silent",
                "--allow-no-sex",
-               "--out", args.output + '.prune' + str(i) + '.tmp' ])
+               "--out", args.out + '.prune' + str(i) + '.tmp' ])
 
 nprune_old = file_len(filtered_out + '.bim')
-nprune_new = file_len(args.output + '.prune' + str(i) + '.tmp.prune.in')
+nprune_new = file_len(args.out + '.prune' + str(i) + '.tmp.prune.in')
 
 # loop til no additional exclusions
 while nprune_old > nprune_new:
@@ -331,40 +318,40 @@ while nprune_old > nprune_new:
     print '...LD pruning pass ' + str(i) + '...'
     subprocess.check_call([str(plinkx), 
                "--bfile", filtered_out,
-               "--extract", args.output + '.prune' + str(i-1) + '.tmp.prune.in',
+               "--extract", args.out + '.prune' + str(i-1) + '.tmp.prune.in',
                "--indep-pairwise", str(args.ld_wind), str(ld_move), str(args.ld_th),
                "--silent",
                "--allow-no-sex",
-               "--out", args.output + '.prune' + str(i) + '.tmp' ])
+               "--out", args.out + '.prune' + str(i) + '.tmp' ])
 
     nprune_old = nprune_new
-    nprune_new = file_len(args.output + '.prune' + str(i) + '.tmp.prune.in')  
+    nprune_new = file_len(args.out + '.prune' + str(i) + '.tmp.prune.in')  
 
 print '...extracting LD pruned set...'
 # apply
 subprocess.check_call([str(plinkx), 
                "--bfile", filtered_out,
-               "--extract", args.output + '.prune' + str(i) + '.tmp.prune.in',
+               "--extract", args.out + '.prune' + str(i) + '.tmp.prune.in',
                "--make-bed",
                "--silent",
                "--allow-no-sex",
-               "--out", args.output + '.strictqc.pruned' ])
+               "--out", args.out + '.strictqc.pruned' ])
 
 
 
 # cleanup
 if not args.no_cleanup:
     print '...cleaning up files...'
-    print 'zipping to ' + args.output + '.qc_files.tar.gz:'
+    print 'zipping to ' + args.out + '.qc_files.tar.gz:'
     subprocess.check_call(["tar", "-zcvf",
-                           args.output + '.qc_files.tar.gz',
+                           args.out + '.qc_files.tar.gz',
                            sumstat_out + '.log',
                            frq_nam,
                            hwe_nam, 
                            lmiss_nam,
                            filtered_out + '.log',
-                           args.output + '.prune' + str(i) + '.tmp.prune.in',
-                           args.output + '.prune' + str(i) + '.tmp.log',
+                           args.out + '.prune' + str(i) + '.tmp.prune.in',
+                           args.out + '.prune' + str(i) + '.tmp.log',
                            ])
     
     subprocess.check_call(["gzip", "-f", snpout_nam])
@@ -382,7 +369,7 @@ if not args.no_cleanup:
                            filtered_out + '.log',
                            ])
     
-    subprocess.check_call(["rm"] + glob(args.output+".prune*.tmp.*"))
+    subprocess.check_call(["rm"] + glob(args.out+".prune*.tmp.*"))
     
     # allowing failure, since files may or may not exists
     print 'remove if exist:' 
@@ -391,8 +378,8 @@ if not args.no_cleanup:
                      sumstat_out + '.nosex',
                      filtered_out + '.hh',
                      filtered_out + '.nosex',
-                     args.output + '.strictqc.pruned.hh',
-                     args.output + '.strictqc.pruned.nosex'])
+                     args.out + '.strictqc.pruned.hh',
+                     args.out + '.strictqc.pruned.nosex'])
 
 print '############'
 print '\n'
