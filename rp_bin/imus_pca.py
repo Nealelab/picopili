@@ -77,7 +77,7 @@ parser.add_argument('--pcadir',
                     metavar='DIRNAME',
                     help='name for PCA output directory, defaults to OUTNAME_imus_pca',
                     required=False)
-parser.add_argument('--no_cleanup',
+parser.add_argument('--no-cleanup',
                     action='store_true',
                     help='skip cleanup of interim files')
 # parser.add_argument('--plink-ex',
@@ -180,15 +180,18 @@ print '############'
 print '\n...Computing IMUS (unrelated) set...'
 #############
 
-primelog = 'primus_' + args.out + '_imus.log'
+primelog = open(str('primus_' + args.out + '_imus.log'), 'w')
 subprocess.check_call([args.primus_ex,
                        "--file", args.bfile,
                        "--genome",
                        "--degree_rel_cutoff", str(args.rel_deg),
                        "--no_PR",
                        "--plink_ex", plinkx,
-                       "--smartpca_ex", smartpcax,
-                       "&>", primelog])
+                       "--smartpca_ex", smartpcax],
+                       stderr=subprocess.STDOUT,
+                       stdout=primelog)
+                       
+primelog.close()
 
 # verify successful output
 primedir = os.getcwd() + '/' + args.bfile + '_PRIMUS'
@@ -299,9 +302,9 @@ for line in bfile_fam:
     
     # write pedind with "IMUS" if match, "RELATED" if not
     if any(bfile_id == refid for refid in imus_ids):
-        pedind.write(shortfid +' '+ shortiid +' 0 0 U IMUS')
+        pedind.write(shortfid +' '+ shortiid +' 0 0 U IMUS\n')
     else:
-        pedind.write(shortfid +' '+ shortiid +' 0 0 U RELATEDS')
+        pedind.write(shortfid +' '+ shortiid +' 0 0 U RELATEDS\n')
     
 
 pedind.close()
@@ -327,14 +330,18 @@ par.close()
 
 ### create poplist file
 poplist = open(str(args.bfile+'.refpoplist.txt'), 'w')
-poplist.write("IMUS")
+poplist.write("IMUS\n")
 poplist.close()
 
 
 ### run smartpca
+pcalog = open(str('smartpca_'+args.out+'_imusproj.log'), 'w')
 subprocess.check_call([smartpcax, 
-                       "-p", str(bfile_imus + '.pca.par'),
-                       "&>", str('smartpca_'+args.out+'_imusproj.log')])
+                       "-p", str(bfile_imus + '.pca.par')],
+                       stderr=subprocess.STDOUT,
+                       stdout=pcalog)
+
+pcalog.close()
 
 exit(0)
 
