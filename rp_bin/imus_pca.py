@@ -335,6 +335,8 @@ poplist.close()
 subprocess.check_call([smartpcax, 
                        "-p", str(bfile_imus + '.pca.par') ])
 
+exit(0)
+
 ### TODO: process output
 # - convert fid:iids back
 # - fix header
