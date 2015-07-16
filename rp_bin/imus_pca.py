@@ -9,9 +9,8 @@ Runs PCA for GWAS data with related individuals
 # Overview:
 # 1) Input QCed plink bed/bim/fam
 # 2) Define set of unrelated individuals using PRIMUS
-# 3) Compute PCA on the unrelated set
-# 4) Project PCA results on the full dataset
-# 5) Plot projected PCs
+# 3) Compute PCA on the unrelated set and projects to remainder
+# 4) Plot projected PCs
 #
 ####################################
 
@@ -98,18 +97,12 @@ parser.add_argument('--primus-ex',
                     help='path to PRIMUS executable',
                     required=False,
                     default=os.environ['HOME']+"/PRIMUS_v1.8.0/bin/run_PRIMUS.pl")
-parser.add_argument('--flashpca-ex',
-                    type=str,
-                    metavar='PATH',
-                    help='path to flashpca executable',
-                    required=False,
-                    default="/humgen/atgu1/fs03/shared_resources/shared_software/bin/flashpca")
-parser.add_argument('--smartpca-ex',
-                    type=str,
-                    metavar='PATH',
-                    help='path to smartpca executable',
-                    required=False,
-                    default="/humgen/atgu1/fs03/shared_resources/shared_software/EIG6.0beta_noreq/bin/smartpca")
+#parser.add_argument('--smartpca-ex',
+#                    type=str,
+#                    metavar='PATH',
+#                    help='path to smartpca executable',
+#                    required=False,
+#                    default="/humgen/atgu1/fs03/shared_resources/shared_software/EIG6.0beta_noreq/bin/smartpca")
 
 args = parser.parse_args()
 
@@ -140,6 +133,7 @@ conf_file = os.environ['HOME']+"/ricopili.conf"
 configs = read_conf(conf_file)
 
 plinkx = configs['p2loc']+"plink"
+smartpcax = configs['eloc']+"/smartpca"
 
 
 #############
@@ -156,7 +150,7 @@ print "Rscript found: %s" % args.rscript_ex
 
 # primus
 assert os.path.isfile(args.primus_ex), "PRIMUS not found at %r" % args.primus_ex
-assert os.access(args.primus_ex, os.X_OK), "FlashPCA not executable (%r)" % args.primus_ex
+assert os.access(args.primus_ex, os.X_OK), "PRIMUS not executable (%r)" % args.primus_ex
 print "PRIMUS found: %s" % args.primus_ex
 
 # plink
@@ -165,14 +159,9 @@ assert os.access(plinkx, os.X_OK), "Plink not executable (%r)" % plinkx
 print "Plink found: %s" % plinkx
     
 # smartpca
-assert os.path.isfile(args.smartpca_ex), "SmartPCA not found at %r" % args.smartpca_ex
-assert os.access(args.smartpca_ex, os.X_OK), "FlashPCA not executable (%r)" % args.smartpca_ex
-print "smartpca found: %s" % args.smartpca_ex
-    
-# flashpca
-assert os.path.isfile(args.flashpca_ex), "FlashPCA not found at %r" % args.flashpca_ex
-assert os.access(args.flashpca_ex, os.X_OK), "FlashPCA not executable (%r)" % args.flashpca_ex
-print "flashpca found: %s" % args.flashpca_ex
+assert os.path.isfile(smartpcax), "Eigensoft smartpca not found at %r" % smartpcax
+assert os.access(smartpcax, os.X_OK), "Eigensoft smartpca not executable (%r)" % smartpcax
+print "Smartpca found: %s" % smartpcax
 
 
 
@@ -198,7 +187,7 @@ subprocess.check_call([args.primus_ex,
                        "--degree_rel_cutoff", str(args.rel_deg),
                        "--no_PR",
                        "--plink_ex", plinkx,
-                       "--smartpca_ex", args.smartpca_ex,
+                       "--smartpca_ex", smartpcax,
                        "&>", primelog])
 
 # verify successful output
@@ -214,10 +203,10 @@ elif not os.path.isfile(imus_dirfile):
 
 
 ####################################
-# Compute PCA on unrelated set
-# a) setup PCA directory
-# b) extract unrelated IDs from plink data
-# c) run PCA
+# Start output directory
+# a) create PCA directory with links to input files, PRIMUS results
+# b) verify links
+# c) extr
 ####################################
 
 #############
@@ -261,111 +250,94 @@ subprocess.check_call([plinkx,
                        "--out", bfile_imus])
 
 
-#############
-print '\n...Computing PCA with IMUS individuals...'
-#############
-
-subprocess.check_call([args.flashpca_ex,
-                       "--bfile", bfile_imus,
-                       "--ndim", str(args.npcs),
-                       "--outpc",str(args.out+'_imus_pca.pcs.txt'),
-                       "--outvec",str(args.out+'_imus_pca.evec.txt'),
-                       "--outval",str(args.out+'_imus_pca.eval.txt'),
-                       "--outpve",str(args.out+'_imus_pca.pve.txt'),
-                       "--outload",str(args.out+'_imus_pca.snpw.txt'),
-                       "&>", str('flashpca_'+args.out+'_imus_pca.log')])
-
-
 
 ####################################
-# Project PCs on full data
-# a) format SNP weights
-# b) project PCs using plink --score
-# c) verify output files
-# d) combine per-PC results to single file
+# Compute PCA using unrelated set and project to full sample
+# a) create pedind file labelling IMUS vs. RELATEDS for projection 
+# b) setup smartpca par file
+# c) run smartpca to compute PCs on IMUS, project to remainder
+# d) process output
 ####################################
 
-#############
-print '\n...Projecting PCs for remaining individuals...'
-#############
-
-### label snpweights to setup pca projection
-snpw = open(str(args.out+'_imus_pca.snpw.txt'), 'r')
-imus_bim = open(str(bfile_imus+'.bim'), 'r')
-snpw_out = open(str(args.out+'_imus_pca.snpw.lab.txt'), 'w')
-
-for bimline in imus_bim:
-    (chrom, snp, cm, bp, a1, a2) = bimline.split()
-    snpw_out.write(snp + ' ' + a1 + ' ' + ' '.join(snpw.readline().split()) + '\n')
-    # note: shell probably faster, but less readable/robust
-    # cut -f 2,5 file.bim | tr '\t' ' ' | \
-    # paste -d ' ' - <(cat file_snpw.txt | tr -s ' ' | sed 's/^ //') \
-    # > file_snpw_labelled.txt
-
-snpw.close()
-imus_bim.close()
-snpw_out.close()
+# load IDs from imus bim file, in format FID:IID
+imus_ids = []
+with open(str(bfile_imus+'.fam'), 'r') as f:
+    imus_ids = [':'.join(line.split()[0:2]) for line in f]
 
 
-### project with plink
-for pcnum in xrange(1,args.npcs+1):
+### process fam file from full data
+# - read fam file
+# - create short id, print conversion to file
+# - compare FID/IID to IMUS set
+# - print pedind file for smartpca (shortfid, shortiid, 0, 0, U, [IMUS or RELATEDS])
 
-    pccol = pcnum + 2
+# init conversion file
+id_conv = open(str(args.bfile)+'.pedind.ids.txt', 'w')
+id_conv.write('FID IID pca_id' + '\n')
+
+# init pedind file
+pedind = open(str(args.bfile)+'.pedind', 'w')
+
+# process fam file by line
+bfile_fam = open(str(args.bfile+'.fam'), 'r')
+i=0
+for line in bfile_fam:
+    # iterate line counter, used for short id
+    i += 1
     
-    subprocess.check_call([plinkx,
-                           "--bfile", args.bfile,
-                           "--score", str(args.out+'_imus_pca.snpw.lab.txt'), "1", "2", str(pccol), "center",
-                           "--read-freq", str(bfile_imus + '.frq'),                           
-                           "--silent",
-                           "--allow-no-sex",
-                           "--out", str(args.out + '.projpca.pc' + str(pcnum) )])
+    # read
+    (longfid, longiid, pat, mat, sex, phen) = line.split()
+
+    # assign and record short identifier
+    shortfid = str(i)
+    shortiid = str(i)
+    pcaid = shortfid +':'+ shortiid
+    id_conv.write(longfid +' '+ longiid +' '+ pcaid + '\n')
+
+    # get FID:IID identifier to compare to imus
+    bfile_id = longfid +':'+ longiid
+    
+    # write pedind with "IMUS" if match, "RELATED" if not
+    if any(bfile_id == refid for refid in imus_ids):
+        pedind.write(shortfid +' '+ shortiid +' 0 0 U IMUS')
+    else:
+        pedind.write(shortfid +' '+ shortiid +' 0 0 U RELATEDS')
+    
+
+pedind.close()
+id_conv.close()
 
 
-### verify all outputs have same length
-# list of file names
-pc_files_nam = [str(args.out + '.projpca.pc' + str(i) + '.profile') for i in xrange(1,args.npcs+1)]
+### create par file
+par = open(str(bfile_imus + '.pca.par'), 'w')
 
-# nrow for each file
-pc_nrows = [file_len(pc_files_nam[i-1]) for i in xrange(1,args.npcs+1)]
+par.write('genotypename:     '+str(args.bfile+'.bed')+'\n')
+par.write('snpname:          '+str(args.bfile+'.bim')+'\n')
+par.write('indivname:        '+str(args.bfile+'.pedind')+'\n')
+par.write('poplistname:      '+str(args.bfile+'.refpoplist.txt')+'\n')
+par.write('evecoutname:      '+str(args.bfile+'.pca.txt')+'\n')
+par.write('snpweightoutname  '+str(args.bfile+'.pca_snpw.txt')+'\n')
+par.write('fastmode:         '+'YES'+'\n')
+par.write('altnormstyle:     '+'NO'+'\n')
+par.write('numoutevec:       '+str(args.npcs)+'\n')
+par.write('numoutlieriter:   '+str(0)+'\n')
 
-# check all equal
-if not (pc_nrows.count(pc_nrows[0]) == len(pc_nrows)):
-    raise IOError("Projected PCA results files %r not all the same size" % str(args.out + '.projpca.pc[1-' + str(args.npcs) + '].profile'))
-   
-   
-### combine columns, anchored with fam
-bfile_fam = open(str(args.bfile + '.fam'), 'r')
-pc_files = [open(pc_files_nam[i], 'r') for i in xrange(0,len(pc_files_nam))]
-pc_out_nam = str(args.out + '.projpca.allpcs.txt')
-pc_out = open(pc_out_nam, 'w')
-
-# strip headers
-dumphead = [pc_files[i].readline() for i in xrange(0,len(pc_files))]
-
-# init output header
-pc_out.write('FID IID ' + ' '.join( [str('PC'+str(i)) for i in xrange(1,args.npcs+1)] ) + '\n')
-
-for famline in bfile_fam:
-    (fid, iid, mat, pat, sex, phen) = famline.split()
-    pc_val = []
-
-    for pcnum in xrange(0,args.npcs):
-        (pc_fid, pc_iid, pc_phen, pc_cnt, pc_cnt2, pc_score) = pc_files[pcnum].readline().split()
-
-        if not ( pc_fid == fid and pc_iid == iid):
-            raise ValueError("Unexpected FID:IID in %r (%s:%s instead of %s:%s)", pc_files_nam[pcnum], pc_fid, pc_iid, fid, iid )
-
-        else:
-            pc_val.append(pc_score)
-
-    pc_out.write(fid + ' ' + iid + ' ' + ' '.join(pc_val) + '\n')
-
-bfile_fam.close()
-pc_out.close()
-for i in xrange(0,len(pc_files)):
-    pc_files[i].close()
+par.close()
 
 
+### create poplist file
+poplist = open(str(args.bfile+'.refpoplist.txt'), 'w')
+poplist.write("IMUS")
+poplist.close()
+
+
+### run smartpca
+subprocess.check_call([smartpcax, 
+                       "-p", str(bfile_imus + '.pca.par') ])
+
+### TODO: process output
+# - convert fid:iids back
+# - fix header
 
 ####################################
 # Plot projected PCs
@@ -380,6 +352,8 @@ print '\n...Plotting PCs...'
 ######### TODO: add r plotting
 #########
 
+
+######### TODO: no cm
 
 
 
