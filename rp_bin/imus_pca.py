@@ -333,7 +333,8 @@ poplist.close()
 
 ### run smartpca
 subprocess.check_call([smartpcax, 
-                       "-p", str(bfile_imus + '.pca.par') ])
+                       "-p", str(bfile_imus + '.pca.par'),
+                       "&>", str('smartpca_'+args.out+'_imusproj.log')])
 
 exit(0)
 
