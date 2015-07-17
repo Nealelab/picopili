@@ -118,6 +118,7 @@ else:
 wd = os.getcwd()
 
 # plot settings
+default_nplot = 6
 case_color = "orange"
 case_pch = "3"
 con_color = "blue"
@@ -456,14 +457,14 @@ with open(str(args.bfile+'.fam'), 'r') as fam:
     for line in fam:
         (fid, iid, pat, mat, sex, phen) = line.split()
         if int(phen)==1:
-            plotinfo.write(' '.join([fid, iid, con_color, con_pch, str(1)]) )
+            plotinfo.write(' '.join([fid, iid, con_color, con_pch, str(1)]) +'\n')
         elif int(phen)==2:
-            plotinfo.write(' '.join([fid, iid, case_color, case_pch, str(2)]) )
+            plotinfo.write(' '.join([fid, iid, case_color, case_pch, str(2)]) +'\n')
         elif int(phen)==0 or int(phen)==-9:
-            plotinfo.write(' '.join([fid, iid, miss_color, miss_pch, str(0)]) )
+            plotinfo.write(' '.join([fid, iid, miss_color, miss_pch, str(0)]) +'\n')
             anymiss = True
         else:
-            plotinfo.write(' '.join([fid, iid, other_color, other_pch, str(-1)]) )
+            plotinfo.write(' '.join([fid, iid, other_color, other_pch, str(-1)]) +'\n')
             anyother = True
 
 # legend
@@ -483,7 +484,7 @@ legend.close()
 if args.plot_all or (int(args.npcs) <= 6):
     nplot = int(args.npcs)
 else:
-    nplot = 6
+    nplot = default_nplot
 
 
 #############
@@ -496,12 +497,17 @@ print '\n...Plotting PCA results...'
 # - number of PCs to plot
 # - output name stem
 
+rplotlog = open(str('rplot_'+args.out+'_pca.log'), 'w')
 subprocess.check_call([Rplotpcax,
                        str(args.out+'.pca.txt'),
                        str(args.out+'.pca.plotinfo.txt'),
                        str(args.out+'.pca.legend.txt'),
                        str(nplot),
-                       str(args.out)])
+                       str(args.out)],
+                       stderr=subprocess.STDOUT,
+                       stdout=rplotlog)
+
+rplotlog.close()
 
 exit(0)
 
