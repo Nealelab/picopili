@@ -321,11 +321,22 @@ pedind.close()
 id_conv.close()
 
 
+### process bim file to remove any centi-morgan distances
+bim_nocm = open(str(args.bfile+'.nocm.bim'), 'w')
+
+with open(str(args.bfile+'.bim'), 'r') as bim_in:
+    for bimline in bim_in:
+        (chrom, snp, cm, bp, a1, a2) = bimline.split()
+        bim_nocm.write(' '.join(chrom, snp, str(0), bp, a1, a2) + '\n')
+        
+bim_nocm.close()
+
+
 ### create par file
 par = open(str(bfile_imus + '.pca.par'), 'w')
 
 par.write('genotypename:     '+str(args.bfile+'.bed')+'\n')
-par.write('snpname:          '+str(args.bfile+'.bim')+'\n')
+par.write('snpname:          '+str(args.bfile+'.nocm.bim')+'\n')
 par.write('indivname:        '+str(args.bfile+'.pca.pedind')+'\n')
 par.write('poplistname:      '+str(args.bfile+'.pca.refpoplist.txt')+'\n')
 par.write('evecoutname:      '+str(args.bfile+'.pca.raw.txt')+'\n')
@@ -407,8 +418,6 @@ print '\n...Plotting PCs...'
 ######### TODO: add r plotting
 #########
 
-
-######### TODO: no cm
 
 exit(0)
 
