@@ -248,10 +248,10 @@ if not os.path.exists(pcadir):
 os.chdir(pcadir)
 
 # setup file links
-os.symlink(imus_dirfile,imus_file)
-os.symlink(wd+'/'+args.bfile+'.bed',args.bfile+'.bed')
-os.symlink(wd+'/'+args.bfile+'.bim',args.bfile+'.bim')
-os.symlink(wd+'/'+args.bfile+'.fam',args.bfile+'.fam')
+os.symlink(imus_dirfile, imus_file)
+os.symlink(wd+'/'+args.bfile+'.bed', args.bfile+'.bed')
+os.symlink(wd+'/'+args.bfile+'.bim', args.bfile+'.bim')
+os.symlink(wd+'/'+args.bfile+'.fam', args.bfile+'.fam')
 
 # verify links
 if not os.path.isfile(imus_file):
@@ -517,7 +517,6 @@ rplotlog.close()
 
 ####################################
 # Clean up files
-# TODO: 
 ####################################
 
 os.chdir(wd)
@@ -525,7 +524,7 @@ os.chdir(wd)
 if not args.no_cleanup:
     
     #############
-    print '\n...Clean-up interim files...'
+    print '\n...Cleaning up output files...'
     #############
 
     #############
@@ -534,6 +533,7 @@ if not args.no_cleanup:
     os.chdir(pcadir)
     subprocess.check_call(["tar", "-zcvf",
                            args.out + '.pca_files.tar.gz',
+                           args.bfile + '.pca.par',
                            args.bfile + '.pca.eval.txt',
                            args.bfile + '.pca.snpw.txt',
                            args.bfile + '.pca.raw.txt',
@@ -544,6 +544,7 @@ if not args.no_cleanup:
 
     # remove successfully zipped files
     subprocess.check_call(["rm",
+                           args.bfile + '.pca.par',
                            args.bfile + '.pca.eval.txt',
                            args.bfile + '.pca.snpw.txt',
                            args.bfile + '.pca.raw.txt',
@@ -556,7 +557,7 @@ if not args.no_cleanup:
 
     
     #############
-    print 'Compress:'
+    print '\nCompressing PCA results:'
     #############
     os.chdir(pcadir)
     subprocess.check_call(["gzip", "-fv", str(args.out + '.pca.txt')])
@@ -564,41 +565,60 @@ if not args.no_cleanup:
 
 
     #############
-    print 'Removing interim PRIMUS files:'
+    print '\nLinking useful PRIMUS plots to ./' + pcadir + '/plots:'
+    #############
+    os.chdir(pcadir)
+    os.symlink(wd+'/'+args.out+'_primus/'+args.bfile+'_prePRIMUS/'+args.bfile+'_noDups_autosomal_unrelateds_PCV1vPCV2.pdf', './plots/')
+    os.symlink(wd+'/'+args.out+'_primus/'+args.bfile+'_prePRIMUS/'+args.bfile+'_noDups_autosomal_unrelateds_merged_KDE_contours.pdf', './plots/')
+    os.symlink(wd+'/'+args.out+'_primus/'+args.bfile+'_prePRIMUS/'+args.bfile+'_noDups_autosomal_unrelateds_merged_PCV1vPCV2.pdf', './plots/')
+    os.symlink(wd+'/'+args.out+'_primus/'+args.bfile+'_prePRIMUS/'+args.bfile+'_cleaned.genome_IBD0_vs_IBD1.jpeg', './plots/')
+    os.chdir(wd)
+
+
+    #############
+    print '\nRemoving interim files:'
     #############
     os.chdir(primedir)
-    subprocess.check_call(["rm",
-                           args.out + '.primus_network_genomes.tar.gz'] + \
-                           glob(args.bfile+"_cleaned.genome_network*.genome"))
+    print 'Files in ./' + args.out + '_primus'
+    subprocess.check_call(["rm", "-v"] + glob(args.bfile+"_cleaned.genome_network*.genome"))
     subprocess.check_call(["rm", "-v"] + glob(args.bfile+'_prePRIMUS/'+args.bfile+"_*.bed~"))
     subprocess.check_call(["rm", "-v"] + glob(args.bfile+'_prePRIMUS/'+args.bfile+"_*.bim~"))
     subprocess.check_call(["rm", "-v"] + glob(args.bfile+'_prePRIMUS/'+args.bfile+"_*.fam~"))
-    subprocess.call(["rm", "-v"] + glob(args.bfile+'_prePRIMUS/'+args.bfile+"_cleaned.genome"))
+    subprocess.check_call(["rm", "-v"] + glob(args.bfile+'_prePRIMUS/'+args.bfile+"*.log"))
+    subprocess.check_call(["rm", "-v"] + glob(args.bfile+'_prePRIMUS/'+args.bfile+"_cleaned.genome"))
     os.chdir(wd)
     
+    os.chdir(pcadir)
+    print '\nFiles in ./' + pcadir + '/'
+    subprocess.check_call(["rm", "-v",
+                           args.out + '.pca.legend.txt',
+                           args.out + '.pca.plotinfo.txt'])  
+    os.chdir(wd)
    
     #############
-    print 'Remove if exist:'
+    print '\nRemove if exist:'
     #############
-    # allowing failure, since files may or may not exists
+    # allowing failure, since files may or may not exists    
+    # additional primus files to remove
+    os.chdir(primedir)
+    print 'Files in ./' + args.out + '_primus'
+    subprocess.call(["rm", "-r",
+                     str(args.bfile+'_prePRIMUS/'+args.bfile+'_noDups_autosomal_IMUS')])
+    subprocess.call(["rm", "-v"] + glob(args.bfile+'_prePRIMUS/'+args.bfile+"*.nosex"))
+    subprocess.call(["rm", "-v"] + glob(args.bfile+'_prePRIMUS/'+args.bfile+"_*.het"))
+    subprocess.call(["rm", "-v"] + glob(args.bfile+'_prePRIMUS/'+args.bfile+"_*.*miss"))
+    subprocess.call(["rm", "-v"] + glob(args.bfile+'_prePRIMUS/'+args.bfile+".fam_temp"))
+    os.chdir(wd)    
+    
+    # additional pca files to remove
     os.chdir(pcadir)
-    print 'Files in ./' + pcadir + '/'
+    print '\nFiles in ./' + pcadir + '/'
     subprocess.call(["rm", "-v",
                      str(bfile_imus +'.nosex'),
                      str(bfile_imus +'.hh')])
     os.chdir(wd)
 
-    # remove lots of unneeded primus files
-    os.chdir(primedir)
-    print 'Files in ./' + primedir + '/'
-    subprocess.call(["rm", "-r",
-                     str(args.bfile+'_prePRIMUS/'+args.bfile+'_noDups_autosomal_IMUS')])
-    subprocess.call(["rm", "-v"] + glob(args.bfile+'_prePRIMUS/'+args.bfile+"*.nosex"))
-    subprocess.call(["rm", "-v"] + glob(args.bfile+'_prePRIMUS/'+args.bfile+"*.log"))
-    subprocess.call(["rm", "-v"] + glob(args.bfile+'_prePRIMUS/'+args.bfile+"_*.het"))
-    subprocess.call(["rm", "-v"] + glob(args.bfile+'_prePRIMUS/'+args.bfile+"_*.*miss"))
-    subprocess.call(["rm", "-v"] + glob(args.bfile+'_prePRIMUS/'+args.bfile+".fam_temp"))
-    os.chdir(wd)
+
 
 
 print '\n############'
