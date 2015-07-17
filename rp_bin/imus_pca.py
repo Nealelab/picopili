@@ -413,7 +413,7 @@ with open(str(args.bfile+'.pca.raw.txt'), 'r') as evec:
 
         # verify num fields matches fid:iid + PCs + pop label
         if len(pc_in) != (int(args.npcs)+2):
-            raise ValueError("Incorrect number of fields in %s (expected %d, found %d)" % evec.name, int(args.npcs)+2, len(pc_in))
+            raise ValueError("Incorrect number of fields in %s (expected %d, found %d)" % (evec.name, int(args.npcs)+2, len(pc_in)))
 
         # convert back fid:iid
         matched_id = id_dict[pc_in[0]]
@@ -421,7 +421,7 @@ with open(str(args.bfile+'.pca.raw.txt'), 'r') as evec:
         
         # verify nothing weird with resulting match
         if len(out_id) != 2:
-            raise ValueError("Problem parsing fid:iid for %r, check %s?" % pc_in[0], str(args.bfile+'.pca.pedind.ids.txt'))
+            raise ValueError("Problem parsing fid:iid for %r, check %s?" % (pc_in[0], str(args.bfile+'.pca.pedind.ids.txt')))
         
         # print
         pc_out.write( out_id[0] +' '+ out_id[1] +' '+ ' '.join(pc_in[1:(int(args.npcs)+1) ]) + '\n' )
@@ -467,6 +467,8 @@ with open(str(args.bfile+'.fam'), 'r') as fam:
             plotinfo.write(' '.join([fid, iid, other_color, other_pch, str(-1)]) +'\n')
             anyother = True
 
+plotinfo.close()
+
 # legend
 legend = open(str(args.out)+'.pca.legend.txt', 'w')
 
@@ -497,6 +499,9 @@ print '\n...Plotting PCA results...'
 # - number of PCs to plot
 # - output name stem
 
+if not os.path.exists("plots"):
+    os.makedirs("plots")
+
 rplotlog = open(str('rplot_'+args.out+'_pca.log'), 'w')
 subprocess.check_call([Rplotpcax,
                        str(args.out+'.pca.txt'),
@@ -509,11 +514,10 @@ subprocess.check_call([Rplotpcax,
 
 rplotlog.close()
 
-exit(0)
 
 ####################################
 # Clean up files
-# TODO
+# TODO: 
 ####################################
 
 os.chdir(wd)
