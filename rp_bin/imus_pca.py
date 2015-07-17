@@ -35,6 +35,7 @@ import os
 import subprocess
 from distutils import spawn
 import argparse
+from glob import glob
 from py_helpers import file_len, read_conf
 
 
@@ -271,7 +272,6 @@ bfile_imus = args.bfile + '.imus'
 subprocess.check_call([plinkx,
                        "--bfile", args.bfile,
                        "--keep", imus_file,
-                       "--freq",
                        "--silent",
                        "--make-bed",
                        "--allow-no-sex",
@@ -528,38 +528,78 @@ if not args.no_cleanup:
     print '\n...Clean-up interim files...'
     #############
 
-# zip 1:
-# [str(args.out + '.projpca.pc' + str(i) + '.log') for i in xrange(1,args.npcs+1)]
+    #############
+    print 'Zipping ' + pcadir + '/' + args.out + '.pca_files.tar.gz:'
+    #############
+    os.chdir(pcadir)
+    subprocess.check_call(["tar", "-zcvf",
+                           args.out + '.pca_files.tar.gz',
+                           args.bfile + '.pca.eval.txt',
+                           args.bfile + '.pca.snpw.txt',
+                           args.bfile + '.pca.raw.txt',
+                           args.bfile + '.pca.refpoplist.txt',
+                           args.bfile + '.nocm.bim',
+                           args.bfile + '.pca.pedind',
+                           args.bfile + '.pca.pedind.ids.txt'])
 
-# zip 2:
-# str(pcadir + '/' + args.out+'_imus_pca.evec.txt')
-# str(pcadir + '/' + args.out+'_imus_pca.eval.txt')
-# str(pcadir + '/' + args.out+'_imus_pca.pve.txt')
+    # remove successfully zipped files
+    subprocess.check_call(["rm",
+                           args.bfile + '.pca.eval.txt',
+                           args.bfile + '.pca.snpw.txt',
+                           args.bfile + '.pca.raw.txt',
+                           args.bfile + '.pca.refpoplist.txt',
+                           args.bfile + '.nocm.bim',
+                           args.bfile + '.pca.pedind',
+                           args.bfile + '.pca.pedind.ids.txt'])
+                           
+    os.chdir(wd)
+
     
     #############
     print 'Compress:'
     #############
-    subprocess.check_call(["gzip", "-fv", str(pcadir + '/' + pc_out_nam)])
-    
+    os.chdir(pcadir)
+    subprocess.check_call(["gzip", "-fv", str(args.out + '.pca.txt')])
+    os.chdir(wd)
+
+
     #############
-    print 'Remove interim:'
+    print 'Removing interim PRIMUS files:'
     #############
-    subprocess.check_call(["rm", "-v",
-                           str(pcadir + '/' + pc_files_nam),
-                           str(pcadir + '/' + snpw)])    
+    os.chdir(primedir)
+    subprocess.check_call(["rm",
+                           args.out + '.primus_network_genomes.tar.gz'] + \
+                           glob(args.bfile+"_cleaned.genome_network*.genome"))
+    subprocess.check_call(["rm", "-v"] + glob(args.bfile+'_prePRIMUS/'+args.bfile+"_*.bed~"))
+    subprocess.check_call(["rm", "-v"] + glob(args.bfile+'_prePRIMUS/'+args.bfile+"_*.bim~"))
+    subprocess.check_call(["rm", "-v"] + glob(args.bfile+'_prePRIMUS/'+args.bfile+"_*.fam~"))
+    subprocess.call(["rm", "-v"] + glob(args.bfile+'_prePRIMUS/'+args.bfile+"_cleaned.genome"))
+    os.chdir(wd)
     
+   
     #############
     print 'Remove if exist:'
     #############
     # allowing failure, since files may or may not exists
+    os.chdir(pcadir)
+    print 'Files in ./' + pcadir + '/'
     subprocess.call(["rm", "-v",
-                     str(pcadir + '/' + bfile_imus +'.nosex'),
-                     str(pcadir + '/' + bfile_imus +'.hh'),
-                     [str(pcadir + '/' + args.out + '.projpca.pc' + str(i) + '.nosex') for i in xrange(1,args.npcs+1)],
-                     [str(pcadir + '/' + args.out + '.projpca.pc' + str(i) + '.hh') for i in xrange(1,args.npcs+1)]])
+                     str(bfile_imus +'.nosex'),
+                     str(bfile_imus +'.hh')])
+    os.chdir(wd)
 
+    # remove lots of unneeded primus files
+    os.chdir(primedir)
+    print 'Files in ./' + primedir + '/'
+    subprocess.call(["rm", "-r",
+                     str(args.bfile+'_prePRIMUS/'+args.bfile+'_noDups_autosomal_IMUS')])
+    subprocess.call(["rm", "-v"] + glob(args.bfile+'_prePRIMUS/'+args.bfile+"*.nosex"))
+    subprocess.call(["rm", "-v"] + glob(args.bfile+'_prePRIMUS/'+args.bfile+"*.log"))
+    subprocess.call(["rm", "-v"] + glob(args.bfile+'_prePRIMUS/'+args.bfile+"_*.het"))
+    subprocess.call(["rm", "-v"] + glob(args.bfile+'_prePRIMUS/'+args.bfile+"_*.*miss"))
+    subprocess.call(["rm", "-v"] + glob(args.bfile+'_prePRIMUS/'+args.bfile+".fam_temp"))
+    os.chdir(wd)
 
-    
 
 print '\n############'
 print '\n'
