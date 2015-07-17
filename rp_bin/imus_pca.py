@@ -187,14 +187,15 @@ subprocess.check_call([args.primus_ex,
                        "--degree_rel_cutoff", str(args.rel_deg),
                        "--no_PR",
                        "--plink_ex", plinkx,
-                       "--smartpca_ex", smartpcax],
+                       "--smartpca_ex", smartpcax,
+                       "--output-dir", str(args.out+'_primus')],
                        stderr=subprocess.STDOUT,
                        stdout=primelog)
                        
 primelog.close()
 
 # verify successful output
-primedir = os.getcwd() + '/' + args.bfile + '_PRIMUS'
+primedir = os.getcwd() + '/' + args.out + '_primus'
 imus_file = args.bfile + '_cleaned.genome_maximum_independent_set'
 imus_dirfile = primedir + '/' + imus_file
 
@@ -262,6 +263,10 @@ subprocess.check_call([plinkx,
 # d) process output
 ####################################
 
+#############
+print '\n...Preparing files for PCA...'
+#############
+
 # load IDs from imus bim file, in format FID:IID
 imus_ids = []
 with open(str(bfile_imus+'.fam'), 'r') as f:
@@ -275,27 +280,30 @@ with open(str(bfile_imus+'.fam'), 'r') as f:
 # - print pedind file for smartpca (shortfid, shortiid, 0, 0, U, [IMUS or RELATEDS])
 
 # init conversion file
-id_conv = open(str(args.bfile)+'.pedind.ids.txt', 'w')
+id_conv = open(str(args.bfile)+'.pca.pedind.ids.txt', 'w')
 id_conv.write('FID IID pca_id' + '\n')
 
 # init pedind file
-pedind = open(str(args.bfile)+'.pedind', 'w')
+pedind = open(str(args.bfile)+'.pca.pedind', 'w')
+
+# init dict for converting back
+id_dict = {}
 
 # process fam file by line
 bfile_fam = open(str(args.bfile+'.fam'), 'r')
-i=0
+idnum=0
 for line in bfile_fam:
     # iterate line counter, used for short id
-    i += 1
+    idnum += 1
     
     # read
     (longfid, longiid, pat, mat, sex, phen) = line.split()
 
     # assign and record short identifier
-    shortfid = str(i)
-    shortiid = str(i)
-    pcaid = shortfid +':'+ shortiid
-    id_conv.write(longfid +' '+ longiid +' '+ pcaid + '\n')
+    shortfid = str(idnum)
+    shortiid = str(idnum)
+    pca_id = shortfid +':'+ shortiid
+    id_conv.write(longfid +' '+ longiid +' '+ pca_id + '\n')
 
     # get FID:IID identifier to compare to imus
     bfile_id = longfid +':'+ longiid
@@ -306,6 +314,8 @@ for line in bfile_fam:
     else:
         pedind.write(shortfid +' '+ shortiid +' 0 0 U RELATEDS\n')
     
+    # record id pair in dict for converting back
+    id_dict[pca_id] = bfile_id
 
 pedind.close()
 id_conv.close()
@@ -316,10 +326,11 @@ par = open(str(bfile_imus + '.pca.par'), 'w')
 
 par.write('genotypename:     '+str(args.bfile+'.bed')+'\n')
 par.write('snpname:          '+str(args.bfile+'.bim')+'\n')
-par.write('indivname:        '+str(args.bfile+'.pedind')+'\n')
-par.write('poplistname:      '+str(args.bfile+'.refpoplist.txt')+'\n')
-par.write('evecoutname:      '+str(args.bfile+'.pca.txt')+'\n')
-par.write('snpweightoutname  '+str(args.bfile+'.pca_snpw.txt')+'\n')
+par.write('indivname:        '+str(args.bfile+'.pca.pedind')+'\n')
+par.write('poplistname:      '+str(args.bfile+'.pca.refpoplist.txt')+'\n')
+par.write('evecoutname:      '+str(args.bfile+'.pca.raw.txt')+'\n')
+par.write('evaloutname:      '+str(args.bfile+'.pca.eval.txt')+'\n')
+par.write('snpweightoutname  '+str(args.bfile+'.pca.snpw.txt')+'\n')
 par.write('fastmode:         '+'YES'+'\n')
 par.write('altnormstyle:     '+'NO'+'\n')
 par.write('numoutevec:       '+str(args.npcs)+'\n')
@@ -329,25 +340,59 @@ par.close()
 
 
 ### create poplist file
-poplist = open(str(args.bfile+'.refpoplist.txt'), 'w')
+poplist = open(str(args.bfile+'.pca.refpoplist.txt'), 'w')
 poplist.write("IMUS\n")
 poplist.close()
 
 
+#############
+print '\n...Running PCA...'
+#############
+
 ### run smartpca
 pcalog = open(str('smartpca_'+args.out+'_imusproj.log'), 'w')
 subprocess.check_call([smartpcax, 
-                       "-p", str(bfile_imus + '.pca.par')],
+                       "-p", str(args.bfile + '.pca.par')],
                        stderr=subprocess.STDOUT,
                        stdout=pcalog)
 
 pcalog.close()
 
-exit(0)
 
-### TODO: process output
-# - convert fid:iids back
-# - fix header
+#############
+print '\n...Processing PCA results files...'
+#############
+
+# final formatted pca results
+pc_out = open(str(args.bfile+'.pca.txt'), 'w')
+
+# init header
+# ouput is FID, IID, PCs 1-npcs; all space sep.
+pc_out.write('FID IID ' + ' '.join( [str('PC'+str(i)) for i in xrange(1,args.npcs+1)] ) + '\n')
+
+# read in smartpca output, strip header, convert back fid:iid, remove pop designation
+with open(str(args.bfile+'.pca.raw.txt'), 'r') as evec:
+    dumphead = evec.readline()
+    for line in evec:
+        pc_in = line.split()
+
+        # verify num fields matches fid:iid + PCs + pop label
+        if len(pc_in) != (int(args.npcs)+2):
+            raise ValueError("Incorrect number of fields in %s (expected %d, found %d)" % evec.name, int(args.npcs)+2, len(pc_in))
+
+        # convert back fid:iid
+        matched_id = id_dict[pc_in[0]]
+        out_id = matched_id.split(':')
+        
+        # verify nothing weird with resulting match
+        if len(out_id) != 2:
+            raise ValueError("Problem parsing fid:iid for %r, check %s?" % pc_in[0], str(args.bfile+'.pca.pedind.ids.txt'))
+        
+        # print
+        pc_out.write( out_id[0] +' '+ out_id[1] +' '+ ' '.join(pc_in[1:(int(args.npcs)+1) ]) + '\n' )
+
+pc_out.close()
+
 
 ####################################
 # Plot projected PCs
@@ -365,7 +410,7 @@ print '\n...Plotting PCs...'
 
 ######### TODO: no cm
 
-
+exit(0)
 
 ####################################
 # Clean up files
