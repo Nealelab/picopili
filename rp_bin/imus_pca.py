@@ -72,6 +72,9 @@ parser.add_argument('--npcs',
                     help='number of principal components to compute',
                     required=False,
                     default=10)
+parser.add_argument('--plot-all',
+                    action='store_true',
+                    help='plot all pairs of PCs, instead of top 6')
 parser.add_argument('--pcadir',
                     type=str,
                     metavar='DIRNAME',
@@ -90,7 +93,7 @@ parser.add_argument('--rscript-ex',
                     metavar='PATH',
                     help='path to Rscript executable, tries reading from PATH if unspecified',
                     required=False,
-                    default=spawn.find_executable("Rscript"))
+                    default=None)
 parser.add_argument('--primus-ex',
                     type=str,
                     metavar='PATH',
@@ -113,6 +116,17 @@ else:
     pcadir = args.pcadir
     
 wd = os.getcwd()
+
+# plot settings
+case_color = "orange"
+case_pch = "3"
+con_color = "blue"
+con_pch = "1"
+miss_color = "green"
+miss_pch = "2"
+other_color = "black"
+other_pch = "4"
+
 
 # print settings
 print 'Using settings:'
@@ -143,6 +157,9 @@ print '\n...Checking dependencies...'
 
 # R from path
 if args.rscript_ex == None:
+    args.rscript_ex = spawn.find_executable("Rscript")
+# if still not found
+if args.rscript_ex == None:
     raise AssertionError('Unable to find Rscript in search path')
 assert os.path.isfile(args.rscript_ex), "Rscript not found at %r" % args.rscript_ex
 assert os.access(args.rscript_ex, os.X_OK), "Rscript not executable (%r)" % args.rscript_ex
@@ -162,6 +179,12 @@ print "Plink found: %s" % plinkx
 assert os.path.isfile(smartpcax), "Eigensoft smartpca not found at %r" % smartpcax
 assert os.access(smartpcax, os.X_OK), "Eigensoft smartpca not executable (%r)" % smartpcax
 print "Smartpca found: %s" % smartpcax
+
+# plotting script
+Rplotpcax = spawn.find_executable("plot_pca.Rscript")
+if Rplotpcax == None:
+    raise AssertionError('Unable to find plot_pca.Rscript in search path')
+print "PCA plotting script found: %s" % Rplotpcax
 
 
 
@@ -188,7 +211,7 @@ subprocess.check_call([args.primus_ex,
                        "--no_PR",
                        "--plink_ex", plinkx,
                        "--smartpca_ex", smartpcax,
-                       "--output-dir", str(args.out+'_primus')],
+                       "--output_dir", str(args.out+'_primus')],
                        stderr=subprocess.STDOUT,
                        stdout=primelog)
                        
@@ -327,13 +350,13 @@ bim_nocm = open(str(args.bfile+'.nocm.bim'), 'w')
 with open(str(args.bfile+'.bim'), 'r') as bim_in:
     for bimline in bim_in:
         (chrom, snp, cm, bp, a1, a2) = bimline.split()
-        bim_nocm.write(' '.join(chrom, snp, str(0), bp, a1, a2) + '\n')
+        bim_nocm.write(' '.join([chrom, snp, str(0), bp, a1, a2]) + '\n')
         
 bim_nocm.close()
 
 
 ### create par file
-par = open(str(bfile_imus + '.pca.par'), 'w')
+par = open(str(args.bfile + '.pca.par'), 'w')
 
 par.write('genotypename:     '+str(args.bfile+'.bed')+'\n')
 par.write('snpname:          '+str(args.bfile+'.nocm.bim')+'\n')
@@ -341,7 +364,7 @@ par.write('indivname:        '+str(args.bfile+'.pca.pedind')+'\n')
 par.write('poplistname:      '+str(args.bfile+'.pca.refpoplist.txt')+'\n')
 par.write('evecoutname:      '+str(args.bfile+'.pca.raw.txt')+'\n')
 par.write('evaloutname:      '+str(args.bfile+'.pca.eval.txt')+'\n')
-par.write('snpweightoutname  '+str(args.bfile+'.pca.snpw.txt')+'\n')
+par.write('snpweightoutname: '+str(args.bfile+'.pca.snpw.txt')+'\n')
 par.write('fastmode:         '+'YES'+'\n')
 par.write('altnormstyle:     '+'NO'+'\n')
 par.write('numoutevec:       '+str(args.npcs)+'\n')
@@ -375,7 +398,7 @@ print '\n...Processing PCA results files...'
 #############
 
 # final formatted pca results
-pc_out = open(str(args.bfile+'.pca.txt'), 'w')
+pc_out = open(str(args.out+'.pca.txt'), 'w')
 
 # init header
 # ouput is FID, IID, PCs 1-npcs; all space sep.
@@ -407,17 +430,78 @@ pc_out.close()
 
 ####################################
 # Plot projected PCs
-# a) TODO
+# a) create temp files of PCA results with plotting instructions
+# b) plot with R
 ####################################
 
 #############
-print '\n...Plotting PCs...'
+print '\n...Preparing to plot PCs...'
 #############
 
-#########
-######### TODO: add r plotting
-#########
+### Create input files for plot_pca.Rscript
+# - Plotting info file, with columns: FID, IID, col, pch, layer
+# - Legend file, with columns: col, pch, fill, text (either pch/col or fill = NA)
 
+# plot info, from fam
+plotinfo = open(str(args.out+'.pca.plotinfo.txt'), 'w')
+
+# header
+plotinfo.write('FID IID col pch layer\n')
+
+# track if need legend for missing, "other"
+anymiss = False
+anyother = False
+
+with open(str(args.bfile+'.fam'), 'r') as fam:
+    for line in fam:
+        (fid, iid, pat, mat, sex, phen) = line.split()
+        if int(phen)==1:
+            plotinfo.write(' '.join([fid, iid, con_color, con_pch, str(1)]) )
+        elif int(phen)==2:
+            plotinfo.write(' '.join([fid, iid, case_color, case_pch, str(2)]) )
+        elif int(phen)==0 or int(phen)==-9:
+            plotinfo.write(' '.join([fid, iid, miss_color, miss_pch, str(0)]) )
+            anymiss = True
+        else:
+            plotinfo.write(' '.join([fid, iid, other_color, other_pch, str(-1)]) )
+            anyother = True
+
+# legend
+legend = open(str(args.out)+'.pca.legend.txt', 'w')
+
+legend.write('col pch fill text\n') # header
+legend.write(con_color+' '+con_pch+' NA \"control, '+str(args.bfile+'.fam')+'\"\n')
+legend.write(case_color+' '+case_pch+' NA \"case, '+str(args.bfile+'.fam')+'\"\n')
+if anymiss:
+    legend.write(miss_color+' '+miss_pch+' NA \"missing, '+str(args.bfile+'.fam')+'\"\n')
+if anyother:
+    legend.write(other_color+' '+other_pch+' NA \"other (quant?), '+str(args.bfile+'.fam')+'\"\n')
+
+legend.close()
+
+# number of PCs to plot
+if args.plot_all or (int(args.npcs) <= 6):
+    nplot = int(args.npcs)
+else:
+    nplot = 6
+
+
+#############
+print '\n...Plotting PCA results...'
+#############
+# Args for plot_pca.Rscript are:
+# - PCA results file name
+# - Plotting info file name
+# - Legend file name
+# - number of PCs to plot
+# - output name stem
+
+subprocess.check_call([Rplotpcax,
+                       str(args.out+'.pca.txt'),
+                       str(args.out+'.pca.plotinfo.txt'),
+                       str(args.out+'.pca.legend.txt'),
+                       str(nplot),
+                       str(args.out)])
 
 exit(0)
 
