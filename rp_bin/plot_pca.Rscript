@@ -23,7 +23,7 @@ idna <- is.na(idtmp)
 idx <- idtmp[!idna]
 
 # pairs plot
-png(file=paste(out_name,".pca.pairs.png",sep=""), width=800, height=800, type="cairo")
+png(file=paste("./plots/",out_name,".pca.pairs.png",sep=""), width=800, height=800, type="cairo")
 pairs(pcval.M[idx,3:(npcs+2)], col=plotval.M$col[!idna], pch=plotval.M$pch[!idna])
 dev.off()
 
@@ -38,7 +38,7 @@ for(i in 1:(npcs-1)){
 			col=plotval.M$col[!idna],
 			pch=plotval.M$pch[!idna],
 			xlim=c(min(pcval.M[,i+2]),max(pcval.M[,i+2])+sd(pcval.M[,i+2])),
-			ylim=c(min(pcval.M[,j+2]),max(pcval.M[,i+j])+sd(pcval.M[,j+2]))
+			ylim=c(min(pcval.M[,j+2]),max(pcval.M[,j+2])+sd(pcval.M[,j+2]))
 		)
 
 		legend("topright",
