@@ -75,8 +75,15 @@ parser.add_argument('--keep-indels',
                     action='store_true',
                     help='do not remove indels, i.e. variants with alleles I, D, -, or multiple bases')                    
 parser.add_argument('--extra-ld-regions',
-                    action='store_true',
-                    help='exclude additional LD regions from Price et al. (2008, AJHG)')
+                    nargs='?',
+                    metavar='FILE',
+                    const='price_2008_ld_regions.txt',
+                    default=None,
+                    help='exclude LD regions other than than the MHC and the \
+                    chr 8 inversion. If FILE specified, \
+                    each line should have 3 columns indicating chromosome, \
+                    starting base pair, and end base pair of region to exclude. \
+                    If no file, uses regions from Price et al. (2008, AJHG).')
 parser.add_argument('--maf-th',
                     type=float,
                     metavar='FLOAT',
@@ -120,7 +127,7 @@ parser.add_argument('--no-cleanup',
                     action='store_true',
                     help='skip cleanup of interim files')
 
-args, pass_through_args = parser.parse_known_args()
+args = parser.parse_args()
 
 # derived arguments
 ld_move = int(args.ld_wind / 2)
@@ -152,6 +159,9 @@ configs = read_conf(conf_file)
 
 plinkx = configs['p2loc']+"plink"
 
+# get directory containing current script
+# (hack to help find ld region text file)
+rp_bin = os.path.dirname(os.path.realpath(__file__))
 
 
 #############
@@ -163,6 +173,17 @@ print '\n...Checking dependencies...'
 assert os.path.isfile(plinkx), "Plink not found at %r" % plinkx
 assert os.access(plinkx, os.X_OK), "Plink not executable (%r)" % plinkx
 print "Plink found: %s" % plinkx
+
+# ld region file, if needed
+# try in rp_bin/lib/ in addition to cwd
+if args.extra_ld_regions != None:
+    if os.path.isfile(args.extra_ld_regions):
+        print "LD region file found: %s" %  args.extra_ld_regions
+    elif os.path.isfile(str(rp_bin + '/lib/' + args.extra_ld_regions)):
+        args.extra_ld_regions = str(rp_bin + '/lib/' + args.extra_ld_regions)
+        print "LD region file found: %s" %  args.extra_ld_regions
+    else:
+        raise IOError("LD region file %s not found in current directory or %s." % (args.extra_ld_regions, str(rp_bin + '/lib/')))
 
 
 
