@@ -36,7 +36,7 @@ def read_conf(fname):
 
 
 # find mail program
-def find_mail():
+def pp_find_mail():
     # init
     scr_path = None
     from distutils import spawn
@@ -53,13 +53,13 @@ def find_mail():
 
 
 # send email with given subject using text in file
-def send_mail(subj, fname):
+def pp_send_mail(subj, fname):
 
         import os
         import subprocess
         
         # get email script
-        email_script = find_mail()
+        email_script = pp_find_mail()
         if email_script == None:
             raise IOError("Unable to find 'mutt' or 'mail' in path to send email")
         
@@ -71,10 +71,43 @@ def send_mail(subj, fname):
             raise IOError("Filename does not exist (%s)" % str(fname))
         
         # send
+        ff = open(fname, 'r')
         subprocess.check_call([email_script,
                                "-s", str(subj),
-                               configs['email'],
-                               "<", str(fname)])
+                               configs['email']],
+                               stdin = ff)
+        ff.close()
 
 
+
+
+def file_check_email(filename,taskname):
+    
+    import os
+    if os.path.isfile(filename):
+        fini_message = '\n\n' + \
+                       '##################################################################\n' + \
+                       '##### CONGRATULATIONS: \n' + \
+                       '##### ' + str(taskname) + ' finished successfully\n' + \
+                       '##################################################################\n'
+        print fini_message
+        with open('success_file', 'w') as suc_file:
+            suc_file.write(fini_message)
+      
+        pp_send_mail(str(taskname)+'_completed', 'success_file')        
+        return True
+        
+    else:
+        err_message = '\n\n' + \
+                       '##################################################################\n' + \
+                       '##### Error: \n' + \
+                       '##### ' + str(taskname) + ' failed to complete: \n' + \
+                       '##### Final output file ' + filename + ' not found.\n' + \
+                       '##################################################################\n'  
+        print err_message
+        with open('error_file', 'w') as err_file:
+            err_file.write(err_message)
+
+        pp_send_mail(str(taskname)+'_failed', 'error_file')        
+        return False  
 

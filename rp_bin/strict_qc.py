@@ -277,7 +277,7 @@ for line in snp_in:
         elif any(a == a1l for a in indels) or any(a == a2l for a in indels):
             snp_out.write(snp + ' indel_allele\n')
    
-   if no args.keep_strand_ambiguous:
+    if not args.keep_strand_ambiguous:
         if (a1l=='a') and (a2l=='t'):
             snp_out.write(snp + ' strand_ambiguous\n')
         elif (a1l=='t') and (a2l=='a'):
@@ -292,7 +292,7 @@ for line in snp_in:
             snp_out.write(snp + ' mhc_region\n')
             
     if not args.keep_chr8inv:
-        elif (chrom==8) and (bp > 7000000) and (bp < 13000000):
+        if (chrom==8) and (bp > 7000000) and (bp < 13000000):
             snp_out.write(snp + ' chr8inv_region\n')
         
     elif args.extra_ld_regions != None:
