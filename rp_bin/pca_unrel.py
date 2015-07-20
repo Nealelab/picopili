@@ -16,3 +16,13 @@ Runs PCA for GWAS data with related individuals
 ####################################
 
 
+import argparse
+from args_pca import *
+
+parser = argparse.ArgumentParser(prog='pca_rel.py',
+                                 formatter_class=lambda prog:
+                                 argparse.ArgumentDefaultsHelpFormatter(prog, max_help_position=40),
+                                 parents=[parserbase, parserqc, parserpca])
+                    
+args = parser.parse_args()
+

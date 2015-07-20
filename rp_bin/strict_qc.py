@@ -43,7 +43,7 @@ import subprocess
 import argparse
 from glob import glob
 from py_helpers import file_len, read_conf
-
+from args_pca import *
 
 
 #############
@@ -53,88 +53,8 @@ if not (('-h' in sys.argv) or ('--help' in sys.argv)):
 
 parser = argparse.ArgumentParser(prog='strict_qc.py',
                                  formatter_class=lambda prog:
-                                 argparse.ArgumentDefaultsHelpFormatter(prog, max_help_position=40))
-
-parser.add_argument('--bfile', 
-                    type=str,
-                    metavar='FILESTEM',
-                    help='file stem for input plink bed/bim/fam',
-                    required=True)
-parser.add_argument('--out',
-                    type=str,
-                    metavar='OUTNAME',
-                    help='base name for output; recommend 4 character stem to match ricopili',
-                    required=True)
-parser.add_argument('--mind-th',
-                    type=float,
-                    metavar='FLOAT',
-                    help='individual missingness threshold',
-                    required=False,
-                    default=0.95)
-parser.add_argument('--maf-th',
-                    type=float,
-                    metavar='FLOAT',
-                    help='minor allele frequency threshold',
-                    required=False,
-                    default=0.05)
-parser.add_argument('--hwe-th',
-                    type=float,
-                    metavar='FLOAT',
-                    help='Hardy-Weinberg p-value threshold',
-                    required=False,
-                    default=1e-4)
-parser.add_argument('--miss-th',
-                    type=float,
-                    metavar='FLOAT',
-                    help='SNP missingness threshold',
-                    required=False,
-                    default=0.02)
-parser.add_argument('--ld-th',
-                    type=float,
-                    metavar='FLOAT',
-                    help='LD pruning threshold',
-                    required=False,
-                    default=0.2)                    
-parser.add_argument('--ld-wind',
-                    type=int,
-                    metavar='INT',
-                    help='LD pruning window size',
-                    required=False,
-                    default=200)
-# parser.add_argument('--ld-wind-move',
-#                     type=int,
-#                     metavar='INT',
-#                     help='LD pruning window movement rate',
-#                     required=False,
-#                     default=100)
-parser.add_argument('--keep-indels',
-                    action='store_true',
-                    help='do not remove indels, i.e. variants with alleles I, D, -, or multiple bases')
-parser.add_argument('--keep-strand-ambiguous',
-                    action='store_true',
-                    help='do not remove strand ambiguous SNPs (i.e. A/T or G/C)')
-parser.add_argument('--keep-mhc',
-                    action='store_true',
-                    help='do not remove MHC region (chr 6: 25-35 Mb)')   
-parser.add_argument('--keep-chr8inv',
-                    action='store_true',
-                    help='do not remove chr. 8 inversion region (chr 8: 7-13 Mb)')
-parser.add_argument('--extra-ld-regions',
-                    nargs='?',
-                    metavar='FILE',
-                    const='price_2008_ld_regions.txt',
-                    default=None,
-                    help='exclude LD regions other than than the MHC and the \
-                    chr 8 inversion. If FILE specified, \
-                    each line should have 3 columns indicating chromosome, \
-                    starting base pair, and end base pair of region to exclude. \
-                    If no file, uses regions from Price et al. (2008, AJHG).')
-parser.add_argument('--all-chr',
-                    action='store_true',
-                    help='keep all chromosomes, instead of autosomes only')
-parser.add_argument('--no-cleanup',
-                    action='store_true',
-                    help='skip cleanup of interim files')
+                                 argparse.ArgumentDefaultsHelpFormatter(prog, max_help_position=40),
+                                 parents=[parserbase, parserqc])
 
 args = parser.parse_args()
 
@@ -158,7 +78,6 @@ print '--miss-th '+str(args.miss_th)
 print '--ld-th '+str(args.ld_th)
 print '--ld_wind '+str(args.ld_wind)
 print '--all_chr '+str(args.all_chr)
-
 
  
 #############
