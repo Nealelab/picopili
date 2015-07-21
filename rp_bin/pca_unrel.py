@@ -7,11 +7,16 @@
 Runs PCA for GWAS data with related individuals
 """
 # Overview:
-# 1) Input plink bed/bim/fam
-# 2) Run strict QC on the input data
-# 2) Define set of unrelated individuals using PRIMUS
-# 3) Compute PCA on the unrelated set and projects to remainder
-# 4) Plot projected PCs
+# 1) Parse arguments
+#    - Get arugments for each task
+#    - Handle pass-through args
+#    - Record settings (includes applied defaults)
+# 2) Submit job to: Run strict QC on the input data
+# 3) Submit job to: Run IMUS PCA workflow
+#    - Define set of unrelated individuals using PRIMUS
+#    - Compute PCA on the unrelated set and projects to remainder
+#    - Plot projected PCs
+# 4) Submit job to: Confirm completion
 #
 ####################################
 
@@ -39,7 +44,6 @@ parser = argparse.ArgumentParser(prog='pca_rel.py',
                                  argparse.ArgumentDefaultsHelpFormatter(prog, max_help_position=40),
                                  parents=[parserbase, parsergrid, parserqc, parserpca])
                     
-# parser.set_defaults(x=y, z=2, etc)
 args = parser.parse_args()
 
 
@@ -59,7 +63,7 @@ if args.keep_chr8inv:
 else:
     chr8inv_txt = ''
 
-if args.extra_ld_regions == None:
+if args.extra_ld_regions == None or args.extra_ld_regions == "None":
     ldregions_txt = ''
 else:
     ldregions_txt = str('--extra-ld-regions '+args.extra_ld_regions)
@@ -83,6 +87,43 @@ if args.plot_all:
     plotall_txt = '--plot-all'
 else:
     plotall_txt = ''
+
+
+### print settings in use
+print 'Basic settings:'
+print '--bfile '+args.bfile
+print '--out '+args.out
+print '\n'
+
+print 'QC Thresholds:'
+print '--mind-th '+str(args.mind_th)
+print '--maf-th '+str(args.maf_th)
+print '--hwe-th '+str(args.hwe_th)
+print '--miss-th '+str(args.miss_th)
+print '\n'
+
+print 'LD Pruning Parameters:'
+print '--ld-th '+str(args.ld_th)
+print '--ld_wind '+str(args.ld_wind)
+print '--keep-mhc '+str(args.keep_mhc)
+print '--keep-chr8inv '+str(args.keep_chr8inv)
+print '--extra-ld-regions '+str(args.extra_ld_regions)
+print '\n'
+
+print 'Additional SNP Criteria:'
+print '--keep-indels '+str(args.keep_indels)
+print '--keep-strand-ambiguous '+str(args.keep_strand_ambiguous)
+print '--all_chr '+str(args.all_chr)
+print '\n'
+
+print 'Unrelated Set (IMUS) Criteria:'
+print '--rel-deg '+str(args.rel_deg)
+print '\n'
+
+print 'Principal Components (PCA):'
+print '--npcs '+str(args.npcs) 
+print '--plot-all '+str(args.plot_all)
+print '\n'
 
 
 
@@ -201,6 +242,11 @@ if not args.test_sub:
     subprocess.check_call(final_lsf, shell=True)
 
 
+#######
+# Print completion message
+# - flags if need rerun for large mem
+# - depends on if actually submitted or just test run
+#######
 print '\n############\n'
 if warn_mem:
     print 'WARNING: Commands not submitted!'
