@@ -139,8 +139,8 @@ imuspca_call = ' '.join(['imus_pca.py',
 imuspca_lsf = ' '.join(["bsub",
                         "-w", str('\'ended(\"'+str('strictqc_'+args.out)+'\")\''),
                         "-E", str('\"sleep '+str(args.sleep)+'\"'),
-                        "-q", 'hour',
-                        "-R", str('\"rusage[mem=2]\"'),
+                        "-q", 'week',
+                        "-R", str('\"rusage[mem=4]\"'),
                         "-J", str('imuspca_'+args.out),
                         "-P", str('pico_'+args.out),
                         "-o", str('imuspca_'+args.out+'.bsub.log'),
@@ -157,8 +157,14 @@ if not args.test_sub:
 print '\n...Submitting final file checker/notifier...'
 #####
 
+wd = os.getcwd()
+if args.pcadir == None or args.pcadir == "None":
+    pcaout = str(args.out + '_imus_pca')
+else:
+    pcaout = str(args.pcadir)
+
 final_call = ' '.join(['final_file_check.py',
-                       '--filename', str(),
+                       '--filename', str(wd+'/'+pcaout+'/plots/'+args.out+'.pca.pairs.png'),
                        '--taskname', str('pca_rel_'+args.out)])
 
 final_lsf = ' '.join(["bsub",
