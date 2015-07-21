@@ -412,12 +412,12 @@ if not args.no_cleanup:
                            args.out + '.prune' + str(i) + '.tmp.log',
                            ])
     #############
-    print 'Compress:'
+    print '\nCompress:'
     #############
     subprocess.check_call(["gzip", "-fv", snpout_nam])
 
     #############
-    print 'Remove interim:'
+    print '\nRemove interim:'
     #############
     subprocess.check_call(["rm", "-v",
                            filtered_out + '.bed',
@@ -434,7 +434,7 @@ if not args.no_cleanup:
     subprocess.check_call(["rm", "-v"] + glob(args.out+".prune*.tmp.*"))
     
     #############
-    print 'Remove if exist:'
+    print '\nRemove if exist:'
     #############
     # allowing failure, since files may or may not exists
     subprocess.call(["rm", "-v",
