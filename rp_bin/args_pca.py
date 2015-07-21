@@ -196,11 +196,12 @@ arg_exloc.add_argument('--primus-ex',
 
 ############
 #
-# Griad Arguments
+# Grid Arguments
 # Arguments for the cluster job submission
 # 
 # Includes:
-# - 
+# - pre-execution sleep time
+# - test submission, to not actually run jobs
 #
 ############
 
