@@ -511,7 +511,7 @@ if not args.no_cleanup:
 
 
     #############
-    print '\nLinking useful PRIMUS plots to ./' + pcadir + '/plots:'
+    print '\nLinking useful PRIMUS plots to ./' + pcadir + '/plots/'
     #############
     os.chdir(pcadir)
     os.symlink(wd+'/'+args.out+'_primus/'+args.bfile+'_prePRIMUS/'+args.bfile+'_noDups_autosomal_unrelateds_PCV1vPCV2.pdf', './plots/'+args.bfile+'_noDups_autosomal_unrelateds_PCV1vPCV2.pdf')
@@ -525,7 +525,7 @@ if not args.no_cleanup:
     print '\nRemoving interim files:'
     #############
     os.chdir(primedir)
-    print 'Files in ./' + args.out + '_primus'
+    print 'Files in ./' + args.out + '_primus/:'
     subprocess.check_call(["rm", "-v"] + glob(args.bfile+"_cleaned.genome_network*.genome"))
     subprocess.check_call(["rm", "-v"] + glob(args.bfile+'_prePRIMUS/'+args.bfile+"_*.bed~"))
     subprocess.check_call(["rm", "-v"] + glob(args.bfile+'_prePRIMUS/'+args.bfile+"_*.bim~"))
@@ -535,7 +535,7 @@ if not args.no_cleanup:
     os.chdir(wd)
     
     os.chdir(pcadir)
-    print '\nFiles in ./' + pcadir + '/'
+    print '\nFiles in ./' + pcadir + '/:'
     subprocess.check_call(["rm", "-v",
                            args.out + '.pca.legend.txt',
                            args.out + '.pca.plotinfo.txt'])  
@@ -547,7 +547,7 @@ if not args.no_cleanup:
     # allowing failure, since files may or may not exists    
     # additional primus files to remove
     os.chdir(primedir)
-    print 'Files in ./' + args.out + '_primus'
+    print 'Files in ./' + args.out + '_primus/:'
     subprocess.call(["rm", "-r",
                      str(args.bfile+'_prePRIMUS/'+args.bfile+'_noDups_autosomal_IMUS')])
     subprocess.call(["rm", "-v"] + glob(args.bfile+'_prePRIMUS/'+args.bfile+"*.nosex"))
