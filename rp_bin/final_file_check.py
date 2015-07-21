@@ -10,11 +10,9 @@ Checks for file existance, and sends success/error to ricopili email address
 #
 ####################################
 
-import os
-import subprocess
 import argparse
 from py_helpers import *
-
+unbuffer_stdout()
 
 ### parse arguments
 parser = argparse.ArgumentParser(prog='final_file_check.py')

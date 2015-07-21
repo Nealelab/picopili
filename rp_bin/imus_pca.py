@@ -36,9 +36,9 @@ import subprocess
 from distutils import spawn
 import argparse
 from glob import glob
-from py_helpers import file_len, read_conf
+from py_helpers import read_conf, unbuffer_stdout
 from args_pca import *
-
+unbuffer_stdout()
 
 #############
 if not (('-h' in sys.argv) or ('--help' in sys.argv)):
