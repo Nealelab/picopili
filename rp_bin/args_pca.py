@@ -218,3 +218,7 @@ arg_grid.add_argument('--test-sub',
                        action='store_true',
                        help='Test run without submitting jobs',
                        required=False)
+arg_grid.add_argument('--large-mem-ok',
+                       action='store_true',
+                       help='Allow jobs to request > 16G memory',
+                       required=False)

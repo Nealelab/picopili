@@ -26,6 +26,7 @@ if not (('-h' in sys.argv) or ('--help' in sys.argv)):
 import argparse
 import subprocess
 from args_pca import *
+from py_helpers import file_len
 
 
 #############
@@ -84,6 +85,24 @@ else:
     plotall_txt = ''
 
 
+
+#####
+# check imus memory requirements
+# = 6 GB + 400MB*(n/1000)^2, rounded up to nearest 4GB
+# based on previous runs of PRIMUS
+#####
+
+warn_mem = False
+
+nsamp = float(file_len(str(args.bfile)+'.fam'))
+
+imus_mem = int(ceil( (6000.0+400.0*( (nsamp/1000.0)**2) )/4000.0 ) * 4000)
+
+if imus_mem > 16000 and not args.large_mem_ok:
+    warn_mem = True
+    args.test_sub = True
+
+
 #####
 # submit strict qc
 print '\n...Submitting Strict QC job...'
@@ -140,7 +159,7 @@ imuspca_lsf = ' '.join(["bsub",
                         "-w", str('\'ended(\"'+str('strictqc_'+args.out)+'\")\''),
                         "-E", str('\"sleep '+str(args.sleep)+'\"'),
                         "-q", 'week',
-                        "-R", str('\"rusage[mem=4]\"'),
+                        "-R", str('\"rusage[mem='+str(imus_mem)+']\"'),
                         "-J", str('imuspca_'+args.out),
                         "-P", str('pico_'+args.out),
                         "-o", str('imuspca_'+args.out+'.bsub.log'),
@@ -183,11 +202,16 @@ if not args.test_sub:
 
 
 print '\n############\n'
-if args.test_sub:
-    print 'Completed script. See dummy submit commands above.\n\n' 
+if warn_mem:
+    print 'WARNING: Commands not submitted!'
+    print 'IMUS PCA expected to require > 16 GB of RAM (estimate %d MB based on sample size)' % imus_mem
+    print 'Please resubmit with \'--large-mem-ok\' if this is acceptable.\n'
+    exit(1)
+elif args.test_sub:
+    print 'Completed script. See dummy submit commands above.\n' 
 else:
-    print 'Finished submitting jobs.\n'
-    print 'See bjobs to track job status.\n'
-    print 'Email will be sent when workflow completes.\n\n'
+    print 'Finished submitting jobs.'
+    print 'See bjobs to track job status.'
+    print 'Email will be sent when workflow completes.\n'
 
 exit(0)
