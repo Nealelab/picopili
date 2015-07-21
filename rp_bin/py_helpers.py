@@ -7,6 +7,14 @@
 #
 ####################
 
+# prevent output buffering
+def unbuffer_stdout():
+    import sys
+    import os
+    sys.stdout.flush()
+    sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0)
+    return 0
+
 
 # wc -l, taken from http://stackoverflow.com/questions/845058
 def file_len(fname):

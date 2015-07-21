@@ -36,8 +36,9 @@ import subprocess
 from distutils import spawn
 import argparse
 from glob import glob
-from py_helpers import file_len, read_conf
-
+from py_helpers import read_conf, unbuffer_stdout
+from args_pca import *
+unbuffer_stdout()
 
 #############
 if not (('-h' in sys.argv) or ('--help' in sys.argv)):
@@ -50,68 +51,13 @@ pcadir = ""
 ### parse arguments
 parser = argparse.ArgumentParser(prog='imus_pca.py',
                                  formatter_class=lambda prog:
-                                 argparse.ArgumentDefaultsHelpFormatter(prog, max_help_position=40))
-parser.add_argument('--bfile', 
-                    type=str,
-                    metavar='FILESTEM',
-                    help='file stem for input plink bed/bim/fam',
-                    required=True)
-parser.add_argument('--out',
-                    type=str,
-                    metavar='OUTNAME',
-                    help='base name for output; recommend 4 character stem to match ricopili',
-                    required=True)
-parser.add_argument('--rel-deg',
-                    type=int,
-                    metavar='INT',
-                    help='relatedness degree threshold for defining \"unrelated\" set',
-                    required=False,
-                    default=3)
-parser.add_argument('--npcs',
-                    type=int,
-                    metavar='INT',
-                    help='number of principal components to compute',
-                    required=False,
-                    default=10)
-parser.add_argument('--plot-all',
-                    action='store_true',
-                    help='plot all pairs of PCs, instead of top 6')
-parser.add_argument('--pcadir',
-                    type=str,
-                    metavar='DIRNAME',
-                    help='name for PCA output directory, defaults to OUTNAME_imus_pca',
-                    required=False)
-parser.add_argument('--no-cleanup',
-                    action='store_true',
-                    help='skip cleanup of interim files')
-# parser.add_argument('--plink-ex',
-#                    type=str,
-#                    metavar='PATH',
-#                    help='path to plink executable, read from ~/ricopili.conf if unspecified',
-#                    required=False)
-parser.add_argument('--rscript-ex',
-                    type=str,
-                    metavar='PATH',
-                    help='path to Rscript executable, tries reading from PATH if unspecified',
-                    required=False,
-                    default=None)
-parser.add_argument('--primus-ex',
-                    type=str,
-                    metavar='PATH',
-                    help='path to PRIMUS executable',
-                    required=False,
-                    default=os.environ['HOME']+"/PRIMUS_v1.8.0/bin/run_PRIMUS.pl")
-#parser.add_argument('--smartpca-ex',
-#                    type=str,
-#                    metavar='PATH',
-#                    help='path to smartpca executable',
-#                    required=False,
-#                    default="/humgen/atgu1/fs03/shared_resources/shared_software/EIG6.0beta_noreq/bin/smartpca")
-
+                                 argparse.ArgumentDefaultsHelpFormatter(prog, max_help_position=40),
+                                 parents=[parserbase, parserpca])
 args = parser.parse_args()
 
+
 # set remaining defaults
-if args.pcadir == None:
+if args.pcadir == None or args.pcadir == "None":
     pcadir = args.out + '_imus_pca'
 else:
     pcadir = args.pcadir
@@ -158,10 +104,10 @@ print '\n...Checking dependencies...'
 #############
 
 # R from path
-if args.rscript_ex == None:
+if args.rscript_ex == None or args.rscript_ex == "None":
     args.rscript_ex = spawn.find_executable("Rscript")
 # if still not found
-if args.rscript_ex == None:
+if args.rscript_ex == None or args.rscript_ex == "None":
     raise AssertionError('Unable to find Rscript in search path')
 assert os.path.isfile(args.rscript_ex), "Rscript not found at %r" % args.rscript_ex
 assert os.access(args.rscript_ex, os.X_OK), "Rscript not executable (%r)" % args.rscript_ex
@@ -565,13 +511,13 @@ if not args.no_cleanup:
 
 
     #############
-    print '\nLinking useful PRIMUS plots to ./' + pcadir + '/plots:'
+    print '\nLinking useful PRIMUS plots to ./' + pcadir + '/plots/'
     #############
     os.chdir(pcadir)
-    os.symlink(wd+'/'+args.out+'_primus/'+args.bfile+'_prePRIMUS/'+args.bfile+'_noDups_autosomal_unrelateds_PCV1vPCV2.pdf', './plots/')
-    os.symlink(wd+'/'+args.out+'_primus/'+args.bfile+'_prePRIMUS/'+args.bfile+'_noDups_autosomal_unrelateds_merged_KDE_contours.pdf', './plots/')
-    os.symlink(wd+'/'+args.out+'_primus/'+args.bfile+'_prePRIMUS/'+args.bfile+'_noDups_autosomal_unrelateds_merged_PCV1vPCV2.pdf', './plots/')
-    os.symlink(wd+'/'+args.out+'_primus/'+args.bfile+'_prePRIMUS/'+args.bfile+'_cleaned.genome_IBD0_vs_IBD1.jpeg', './plots/')
+    os.symlink(wd+'/'+args.out+'_primus/'+args.bfile+'_prePRIMUS/'+args.bfile+'_noDups_autosomal_unrelateds_PCV1vPCV2.pdf', './plots/'+args.bfile+'_noDups_autosomal_unrelateds_PCV1vPCV2.pdf')
+    os.symlink(wd+'/'+args.out+'_primus/'+args.bfile+'_prePRIMUS/'+args.bfile+'_noDups_autosomal_unrelateds_merged_KDE_contours.pdf', './plots/'+args.bfile+'_noDups_autosomal_unrelateds_merged_KDE_contours.pdf')
+    os.symlink(wd+'/'+args.out+'_primus/'+args.bfile+'_prePRIMUS/'+args.bfile+'_noDups_autosomal_unrelateds_merged_PCV1vPCV2.pdf', './plots/'+args.bfile+'_noDups_autosomal_unrelateds_merged_PCV1vPCV2.pdf')
+    os.symlink(wd+'/'+args.out+'_primus/'+args.bfile+'_prePRIMUS/'+args.bfile+'_cleaned.genome_IBD0_vs_IBD1.jpeg', './plots/'+args.bfile+'_cleaned.genome_IBD0_vs_IBD1.jpeg')
     os.chdir(wd)
 
 
@@ -579,7 +525,7 @@ if not args.no_cleanup:
     print '\nRemoving interim files:'
     #############
     os.chdir(primedir)
-    print 'Files in ./' + args.out + '_primus'
+    print 'Files in ./' + args.out + '_primus/:'
     subprocess.check_call(["rm", "-v"] + glob(args.bfile+"_cleaned.genome_network*.genome"))
     subprocess.check_call(["rm", "-v"] + glob(args.bfile+'_prePRIMUS/'+args.bfile+"_*.bed~"))
     subprocess.check_call(["rm", "-v"] + glob(args.bfile+'_prePRIMUS/'+args.bfile+"_*.bim~"))
@@ -589,7 +535,7 @@ if not args.no_cleanup:
     os.chdir(wd)
     
     os.chdir(pcadir)
-    print '\nFiles in ./' + pcadir + '/'
+    print '\nFiles in ./' + pcadir + '/:'
     subprocess.check_call(["rm", "-v",
                            args.out + '.pca.legend.txt',
                            args.out + '.pca.plotinfo.txt'])  
@@ -601,7 +547,7 @@ if not args.no_cleanup:
     # allowing failure, since files may or may not exists    
     # additional primus files to remove
     os.chdir(primedir)
-    print 'Files in ./' + args.out + '_primus'
+    print 'Files in ./' + args.out + '_primus/:'
     subprocess.call(["rm", "-r",
                      str(args.bfile+'_prePRIMUS/'+args.bfile+'_noDups_autosomal_IMUS')])
     subprocess.call(["rm", "-v"] + glob(args.bfile+'_prePRIMUS/'+args.bfile+"*.nosex"))
