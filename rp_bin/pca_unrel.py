@@ -30,8 +30,10 @@ if not (('-h' in sys.argv) or ('--help' in sys.argv)):
 ### load requirements
 import argparse
 import subprocess
+from math import ceil
 from args_pca import *
-from py_helpers import file_len
+from py_helpers import file_len, unbuffer_stdout
+unbuffer_stdout()
 
 
 #############
@@ -93,37 +95,31 @@ else:
 print 'Basic settings:'
 print '--bfile '+args.bfile
 print '--out '+args.out
-print '\n'
 
-print 'QC Thresholds:'
+print '\nQC Thresholds:'
 print '--mind-th '+str(args.mind_th)
 print '--maf-th '+str(args.maf_th)
 print '--hwe-th '+str(args.hwe_th)
 print '--miss-th '+str(args.miss_th)
-print '\n'
 
-print 'LD Pruning Parameters:'
+print '\nLD Pruning Parameters:'
 print '--ld-th '+str(args.ld_th)
 print '--ld_wind '+str(args.ld_wind)
 print '--keep-mhc '+str(args.keep_mhc)
 print '--keep-chr8inv '+str(args.keep_chr8inv)
 print '--extra-ld-regions '+str(args.extra_ld_regions)
-print '\n'
 
-print 'Additional SNP Criteria:'
+print '\nAdditional SNP Criteria:'
 print '--keep-indels '+str(args.keep_indels)
 print '--keep-strand-ambiguous '+str(args.keep_strand_ambiguous)
 print '--all_chr '+str(args.all_chr)
-print '\n'
 
-print 'Unrelated Set (IMUS) Criteria:'
+print '\nUnrelated Set (IMUS) Criteria:'
 print '--rel-deg '+str(args.rel_deg)
-print '\n'
 
-print 'Principal Components (PCA):'
+print '\nPrincipal Components (PCA):'
 print '--npcs '+str(args.npcs) 
 print '--plot-all '+str(args.plot_all)
-print '\n'
 
 
 
@@ -137,9 +133,9 @@ warn_mem = False
 
 nsamp = float(file_len(str(args.bfile)+'.fam'))
 
-imus_mem = int(ceil( (6000.0+400.0*( (nsamp/1000.0)**2) )/4000.0 ) * 4000)
+imus_mem = int(ceil( (6000.0+400.0*( (nsamp/1000.0)**2) )/4000.0 ) * 4)
 
-if imus_mem > 16000 and not args.large_mem_ok:
+if imus_mem > 16 and not args.large_mem_ok:
     warn_mem = True
     args.test_sub = True
 
