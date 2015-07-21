@@ -57,7 +57,7 @@ args = parser.parse_args()
 
 
 # set remaining defaults
-if args.pcadir == None:
+if args.pcadir == None or args.pcadir == "None":
     pcadir = args.out + '_imus_pca'
 else:
     pcadir = args.pcadir
@@ -104,10 +104,10 @@ print '\n...Checking dependencies...'
 #############
 
 # R from path
-if args.rscript_ex == None:
+if args.rscript_ex == None or args.rscript_ex == "None":
     args.rscript_ex = spawn.find_executable("Rscript")
 # if still not found
-if args.rscript_ex == None:
+if args.rscript_ex == None or args.rscript_ex == "None":
     raise AssertionError('Unable to find Rscript in search path')
 assert os.path.isfile(args.rscript_ex), "Rscript not found at %r" % args.rscript_ex
 assert os.access(args.rscript_ex, os.X_OK), "Rscript not executable (%r)" % args.rscript_ex

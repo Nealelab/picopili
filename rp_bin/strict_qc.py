@@ -108,7 +108,7 @@ print "Plink found: %s" % plinkx
 
 # ld region file, if needed
 # try in rp_bin/lib/ in addition to cwd
-if args.extra_ld_regions != None:
+if args.extra_ld_regions != None and args.extra_ld_regions != "None":
     if os.path.isfile(args.extra_ld_regions):
         print "LD region file found: %s" %  args.extra_ld_regions
     elif os.path.isfile(str(rp_bin + '/lib/' + args.extra_ld_regions)):
@@ -168,7 +168,7 @@ print '\n...Finding indels, strand ambiguous SNPs, and long LD regions...'
 indels = ['i','d','-']
 
 ### prep extra long LD regions
-if args.extra_ld_regions != None:
+if args.extra_ld_regions != None and args.extra_ld_regions != "None":
     ld_reg = []
     with open(args.extra_ld_regions, 'r') as f:
         for line in f:
