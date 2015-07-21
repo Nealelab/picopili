@@ -514,10 +514,10 @@ if not args.no_cleanup:
     print '\nLinking useful PRIMUS plots to ./' + pcadir + '/plots:'
     #############
     os.chdir(pcadir)
-    os.symlink(wd+'/'+args.out+'_primus/'+args.bfile+'_prePRIMUS/'+args.bfile+'_noDups_autosomal_unrelateds_PCV1vPCV2.pdf', './plots/')
-    os.symlink(wd+'/'+args.out+'_primus/'+args.bfile+'_prePRIMUS/'+args.bfile+'_noDups_autosomal_unrelateds_merged_KDE_contours.pdf', './plots/')
-    os.symlink(wd+'/'+args.out+'_primus/'+args.bfile+'_prePRIMUS/'+args.bfile+'_noDups_autosomal_unrelateds_merged_PCV1vPCV2.pdf', './plots/')
-    os.symlink(wd+'/'+args.out+'_primus/'+args.bfile+'_prePRIMUS/'+args.bfile+'_cleaned.genome_IBD0_vs_IBD1.jpeg', './plots/')
+    os.symlink(wd+'/'+args.out+'_primus/'+args.bfile+'_prePRIMUS/'+args.bfile+'_noDups_autosomal_unrelateds_PCV1vPCV2.pdf', './plots/'+args.bfile+'_noDups_autosomal_unrelateds_PCV1vPCV2.pdf')
+    os.symlink(wd+'/'+args.out+'_primus/'+args.bfile+'_prePRIMUS/'+args.bfile+'_noDups_autosomal_unrelateds_merged_KDE_contours.pdf', './plots/'+args.bfile+'_noDups_autosomal_unrelateds_merged_KDE_contours.pdf')
+    os.symlink(wd+'/'+args.out+'_primus/'+args.bfile+'_prePRIMUS/'+args.bfile+'_noDups_autosomal_unrelateds_merged_PCV1vPCV2.pdf', './plots/'+args.bfile+'_noDups_autosomal_unrelateds_merged_PCV1vPCV2.pdf')
+    os.symlink(wd+'/'+args.out+'_primus/'+args.bfile+'_prePRIMUS/'+args.bfile+'_cleaned.genome_IBD0_vs_IBD1.jpeg', './plots/'+args.bfile+'_cleaned.genome_IBD0_vs_IBD1.jpeg')
     os.chdir(wd)
 
 
