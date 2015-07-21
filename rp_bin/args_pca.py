@@ -191,3 +191,29 @@ arg_exloc.add_argument('--primus-ex',
 #                    required=False,
 #                    default="/humgen/atgu1/fs03/shared_resources/shared_software/EIG6.0beta_noreq/bin/smartpca")
 
+
+
+
+############
+#
+# Griad Arguments
+# Arguments for the cluster job submission
+# 
+# Includes:
+# - 
+#
+############
+
+parsergrid = argparse.ArgumentParser(add_help=False)
+arg_grid = parserpca.add_argument_group('Cluster Job Submission')
+
+arg_grid.add_argument('--sleep',
+                    type=int,
+                    metavar='INT',
+                    help='Pre-execution sleep time for each job',
+                    required=False,
+                    default=10)
+arg_grid.add_argument('--test-sub',
+                       action='store_true',
+                       help='Test run without submitting jobs',
+                       required=False)
