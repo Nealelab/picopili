@@ -43,6 +43,7 @@ import argparse
 from py_helpers import read_conf, unbuffer_stdout
 unbuffer_stdout()
 
+
 #############
 if not (('-h' in sys.argv) or ('--help' in sys.argv)):
     print '\n...Parsing arguments...' 
@@ -55,6 +56,7 @@ parser = argparse.ArgumentParser(prog='admix_rel.py',
 arg_base = parser.add_argument_group('Basic Arguments')
 arg_admix = parser.add_argument_group('Admixture Settings')
 arg_reap = parser.add_argument_group('Relatedness Settings')
+arg_plot = parser.add_argument_group('Plot Settings')
 arg_exloc = parser.add_argument_group('Software Executable Locations')
 
 arg_base.add_argument('--unrel-bfile', 
@@ -70,7 +72,7 @@ arg_base.add_argument('--target-bfile',
                          'Relatedness will be estimated for these samples. ' + \
                          'All individuals from --unrel-bfile should also be present in this data.',
                     required=True)
-arg_base.add_argument('--outname',
+arg_base.add_argument('--out',
                     type=str,
                     metavar='OUTNAME',
                     help='base name for output files; recommend 4 character stem to match ricopili',
@@ -79,7 +81,7 @@ arg_base.add_argument('--outdir',
                     type=str,
                     metavar='DIRNAME',
                     help='Directory for output files. Will create if needed. ' + \
-                    'Uses ./OUTNAME_admix_rel if unspecified',
+                         'Uses ./OUTNAME_admix_rel if unspecified',
                     required=False)
 arg_base.add_argument('--no-cleanup',
                     action='store_true',
@@ -106,19 +108,38 @@ arg_admix.add_argument('--min-exemplar',
                     required=False,
                     default=20)
 arg_admix.add_argument('--multithread-cores',
-                       type=int,
-                       metvar='INT',
-                       help='Number of cores to use for multi-threading in admixture analysis',
-                       required=False,
-                       default=1)
+                    type=int,
+                    metavar='INT',
+                    help='Number of cores to use for multi-threading in admixture analysis',
+                    required=False,
+                    default=1)
 
 arg_reap.add_argument('--min-rel',
-                      type=float,
-                      metavar='FLOAT',
-                      help='Minimum pi-hat relatedness level to include in output. ' + \
-                           'Default is halfway between 3rd and 4th degree relatives.',
-                      required=False,
-                      default=.09375)
+                    type=float,
+                    metavar='FLOAT',
+                    help='Minimum pi-hat relatedness level to include in output. ' + \
+                         'Default is halfway between 3rd and 4th degree relatives.',
+                    required=False,
+                    default=.09375)
+                    
+arg_plot.add_argument('--plot-admix-pca',
+                    type=str,
+                    metavar='FILE',
+                    help='PCA file for the target data; used for plotting admixture results. ' + \
+                         'If no file given, will skip plotting.', 
+                    required=False,
+                    default=None)
+                                         
+arg_plot.add_argument('--no-plots',
+                    action='store_true',
+                    help='Skip plotting admixture and relatedness results')
+arg_exloc.add_argument('--pca-file',
+                    type=str,
+                    metavar='FILE',
+                    help='path to ADMIXTURE executable',
+                    required=False,
+                    default="/humgen/atgu1/fs03/shared_resources/shared_software/bin/admixture")
+
 
 arg_exloc.add_argument('--rscript-ex',
                     type=str,
@@ -139,12 +160,82 @@ arg_exloc.add_argument('--reap-ex',
                     required=False,
                     default="/humgen/atgu1/fs03/shared_resources/shared_software/bin/REAP")
 
+args = parser.parse_args()
 
-# import
+# set dependent defaults
+if args.outdir == None or args.outdir == "None":
+    args.outdir = str(args.out)+'_admix_rel'
 
-# argparse
+# set remaining variables
+wd = os.getcwd()
 
-# check dependencies
+# print settings
+print 'Using settings:'
+print '--unrel-bfile '+args.unrel_bfile
+print '--target-bfile '+args.target_bfile
+print '--out '+args.out
+print '--outdir '+args.outdir
+print '--npops '+str(args.npops)
+print '--prop-th '+str(args.pop_th)
+print '--min-exemplar '+str(args.min_exemplar)
+print '--min-rel '+str(args.min_rel)
+
+
+#############
+print '\n...Reading ricopili config file...'
+#############
+
+### read plink loc from config
+# not getting R here since ricopili.conf currently relies on platform info
+conf_file = os.environ['HOME']+"/ricopili.conf"
+configs = read_conf(conf_file)
+
+plinkx = configs['p2loc']+"plink"
+
+
+#############
+print '\n...Checking dependencies...'
+# check exists, executable
+#############
+
+# get R from path
+if args.rscript_ex == None or args.rscript_ex == "None":
+    args.rscript_ex = spawn.find_executable("Rscript")
+# if still not found
+if args.rscript_ex == None or args.rscript_ex == "None":
+    raise AssertionError('Unable to find Rscript in search path')
+assert os.path.isfile(args.rscript_ex), "Rscript not found at %r" % args.rscript_ex
+assert os.access(args.rscript_ex, os.X_OK), "Rscript not executable (%r)" % args.rscript_ex
+print "Rscript found: %s" % args.rscript_ex
+
+# PCA plot script, if needed
+if not (args.plot_admix_pca == None or args.plot_admix_pca == "None"):
+    Rplotpcax = spawn.find_executable("plot_pca.Rscript")
+    if Rplotpcax == None:
+        raise AssertionError('Unable to find plot_pca.Rscript in search path')
+    print "PCA plotting script found: %s" % Rplotpcax
+
+# plink
+assert os.path.isfile(plinkx), "Plink not found at %r" % plinkx
+assert os.access(plinkx, os.X_OK), "Plink not executable (%r)" % plinkx
+print "Plink found: %s" % plinkx
+
+# admixture
+assert os.path.isfile(args.admixture_ex), "ADMIXTURE not found at %r" % args.admixture_ex
+assert os.access(args.admixture_ex, os.X_OK), "ADMIXTURE not executable (%r)" % args.admixture_ex
+print "ADMIXTURE found: %s" % args.admixture_ex
+
+# reap
+assert os.path.isfile(args.reap_ex), "REAP not found at %r" % args.reap_ex
+assert os.access(args.reap_ex, os.X_OK), "REAP not executable (%r)" % args.reap_ex
+print "REAP found: %s" % args.admixture_ex
+
+
+
+print '\n'
+print '############'
+print 'Begin!'
+print '############'
 
 # run admix
 
