@@ -115,7 +115,7 @@ print '--keep-strand-ambiguous '+str(args.keep_strand_ambiguous)
 print '--all_chr '+str(args.all_chr)
 
 print '\nUnrelated Set (IMUS) Criteria:'
-print '--rel-deg '+str(args.rel_deg)
+print '--rel-th '+str(args.rel_th)
 
 print '\nPrincipal Components (PCA):'
 print '--npcs '+str(args.npcs) 
@@ -184,7 +184,7 @@ imuspca_call = ' '.join(['imus_pca.py',
                          '--bfile', str(args.out+'.strictqc.pruned'),
                          '--out', args.out,
                          clean_txt,
-                         '--rel-deg', str(args.rel_deg),
+                         '--rel-th', str(args.rel_th),
                          '--npcs', str(args.npcs),
                          plotall_txt,
                          '--pcadir', str(args.pcadir),
