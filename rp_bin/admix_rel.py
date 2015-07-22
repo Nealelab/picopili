@@ -129,17 +129,6 @@ arg_plot.add_argument('--plot-admix-pca',
                          'If no file given, will skip plotting.', 
                     required=False,
                     default=None)
-                                         
-arg_plot.add_argument('--no-plots',
-                    action='store_true',
-                    help='Skip plotting admixture and relatedness results')
-arg_exloc.add_argument('--pca-file',
-                    type=str,
-                    metavar='FILE',
-                    help='path to ADMIXTURE executable',
-                    required=False,
-                    default="/humgen/atgu1/fs03/shared_resources/shared_software/bin/admixture")
-
 
 arg_exloc.add_argument('--rscript-ex',
                     type=str,
@@ -160,14 +149,17 @@ arg_exloc.add_argument('--reap-ex',
                     required=False,
                     default="/humgen/atgu1/fs03/shared_resources/shared_software/bin/REAP")
 
+#parser.add_argument('--test-sub',
+#                    action='store_true',
+#                    help='Test run without submitting tasks',
+#                    required=False)
+
 args = parser.parse_args()
 
 # set dependent defaults
 if args.outdir == None or args.outdir == "None":
     args.outdir = str(args.out)+'_admix_rel'
 
-# set remaining variables
-wd = os.getcwd()
 
 # print settings
 print 'Using settings:'
@@ -176,9 +168,11 @@ print '--target-bfile '+args.target_bfile
 print '--out '+args.out
 print '--outdir '+args.outdir
 print '--npops '+str(args.npops)
-print '--prop-th '+str(args.pop_th)
+print '--prop-th '+str(args.prop_th)
 print '--min-exemplar '+str(args.min_exemplar)
 print '--min-rel '+str(args.min_rel)
+print '--plot-admix-pca '+str(args.plot_admix_pca)
+
 
 
 #############
@@ -230,6 +224,15 @@ assert os.path.isfile(args.reap_ex), "REAP not found at %r" % args.reap_ex
 assert os.access(args.reap_ex, os.X_OK), "REAP not executable (%r)" % args.reap_ex
 print "REAP found: %s" % args.admixture_ex
 
+# pca file
+if not (args.plot_admix_pca==None or args.plot_admix_pca=="None"):
+    assert os.path.isfile(args.plot_admix_pca), "PCA file does not exist (%r)" % args.plot_admix_pca
+    assert '/' not in args.target_bfile, "--plot-admix-pca must specify only a file, not a path"
+
+# verify bfiles are files, not paths
+assert '/' not in args.unrel_bfile, "--unrel-bfile must specify only a file stem, not a path"
+assert '/' not in args.target_bfile, "--target-bfile must specify only a file stem, not a path"
+
 
 
 print '\n'
@@ -237,7 +240,55 @@ print '############'
 print 'Begin!'
 print '############'
 
-# run admix
+#############
+print '\n...Setting up working directory (%s)...' % str(args.outdir)
+#############
+
+wd = os.getcwd()
+
+if not os.path.isdir(str(args.outdir)):
+    os.makedirs(str(args.outdir))
+
+os.chdir(args.outdir)
+
+# link ref plink files
+os.symlink(str(wd+'/'+args.unrel_bfile+'.bed'), str(args.unrel_bfile+'.bed'))
+os.symlink(str(wd+'/'+args.unrel_bfile+'.bim'), str(args.unrel_bfile+'.bim'))
+os.symlink(str(wd+'/'+args.unrel_bfile+'.fam'), str(args.unrel_bfile+'.fam'))
+
+# link target plink files
+os.symlink(str(wd+'/'+args.target_bfile+'.bed'), str(args.target_bfile+'.bed'))
+os.symlink(str(wd+'/'+args.target_bfile+'.bim'), str(args.target_bfile+'.bim'))
+os.symlink(str(wd+'/'+args.target_bfile+'.fam'), str(args.target_bfile+'.fam'))
+
+# link pca file, if provided
+if not (args.plot_admix_pca==None or args.plot_admix_pca=="None"):
+    os.symlink(str(wd+'/'+args.plot_admix_pca), str(args.plot_admix_pca))
+
+
+
+#############
+print '\n...Running Admixture on unrelated dataset...'
+#############
+
+admix_call = [args.admixture_ex,
+              str(args.unrel_bfile+'.bed'),
+              str(args.npops),
+              '-j'+str(args.multithread_cores)]
+admix_unrel_log = open(str('admix_'+args.out+'_unrel.log'), 'w')
+
+print str(' '.join(admix_call))
+subprocess.check_call(admix_call, stdout=admix_unrel_log)
+
+admix_unrel_log.close()
+
+
+
+#############
+print '\n...Selecting exemplars for each ancestral population...'
+#############
+
+
 
 # select exemplars in admix output (error out if a pop has < 10 exemplars)
 
