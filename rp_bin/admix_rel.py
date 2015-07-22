@@ -40,7 +40,8 @@ import os
 import subprocess
 from distutils import spawn
 import argparse
-from py_helpers import read_conf, unbuffer_stdout
+from string import ascii_uppercase
+from py_helpers import read_conf, file_len, unbuffer_stdout
 unbuffer_stdout()
 
 
@@ -99,7 +100,7 @@ arg_admix.add_argument('--prop-th',
                     help='Minimum admixture proportion to select an individual ' + \
                          'from the unrelated set as an exemplar for the ancestral population',
                     required=False,
-                    default=.95)
+                    default=.9)
 arg_admix.add_argument('--min-exemplar',
                     type=int,
                     metavar='INT',
@@ -261,9 +262,27 @@ os.symlink(str(wd+'/'+args.target_bfile+'.bed'), str(args.target_bfile+'.bed'))
 os.symlink(str(wd+'/'+args.target_bfile+'.bim'), str(args.target_bfile+'.bim'))
 os.symlink(str(wd+'/'+args.target_bfile+'.fam'), str(args.target_bfile+'.fam'))
 
+# verify links
+if not os.path.isfile(str(args.unrel_bfile+'.bed')):
+    raise IOError("Failed to link bed file with unrelated individuals (%r)" % str(args.unrel_bfile+'.bed'))
+if not os.path.isfile(str(args.unrel_bfile+'.bim')):
+    raise IOError("Failed to link bim file with unrelated individuals (%r)" % str(args.unrel_bfile+'.bim'))
+if not os.path.isfile(str(args.unrel_bfile+'.bed')):
+    raise IOError("Failed to link fam file with unrelated individuals (%r)" % str(args.unrel_bfile+'.fam'))
+if not os.path.isfile(str(args.target_bfile+'.bed')):
+    raise IOError("Failed to link bed file with target individuals (%r)" % str(args.target_bfile+'.bed'))
+if not os.path.isfile(str(args.target_bfile+'.bim')):
+    raise IOError("Failed to link bim file with target individuals (%r)" % str(args.target_bfile+'.bim'))
+if not os.path.isfile(str(args.target_bfile+'.bed')):
+    raise IOError("Failed to link fam file with target individuals (%r)" % str(args.target_bfile+'.fam'))
+
 # link pca file, if provided
 if not (args.plot_admix_pca==None or args.plot_admix_pca=="None"):
+
     os.symlink(str(wd+'/'+args.plot_admix_pca), str(args.plot_admix_pca))
+    
+    if not os.path.isfile(str(args.plot_admix_pca)):
+        raise IOError("Failed to link PCA file (%r)" % str(args.plot_admix_pca))
 
 
 
@@ -287,10 +306,58 @@ admix_unrel_log.close()
 #############
 print '\n...Selecting exemplars for each ancestral population...'
 #############
+# - identify population assignment (including "-") for each input individual
+# - confirm whether there are enough IDs assigned to each populations
+# - match population assignments to 
+
+# label for populations are popA, popB, popC, ...
+popnames = [str('pop'+ascii_uppercase[i]) for i in range(args.npops)]
+
+# define function returning popname or '-' based on largest proportion
+# Note: ties broken in favor of first pop listed in names (possible if th <= 0.5)
+def maxpop(props, names, th):
+    whichmax = props.index(max(props))
+    if props[whichmax] > th:
+        outpop = names[whichmax]
+    else:
+        outpop = '-'
+    return outpop
+
+# get list of selected pop for each individual in admixture results
+ind_pops = []
+admix_pops_file = str(args.unrel_bfile+'.'+str(args.npops)+'.Q')
+with open(admix_pops_file, 'r') as f:
+    # map() required to read probs as float instead of string
+    ind_pops = [maxpop(props=map(float,line.split()), names=popnames, th=args.prop_th) for line in f]
+
+# sanity check parsing
+nfam = file_len(str(args.unrel_bfile+'.fam'))
+if len(ind_pops) != nfam:
+    raise ValueError('Number of individuals parsed from admixture results (%d in %s) ' + \
+                     'and fam file of unrelateds (%d in %s) do not match.' % (len(ind_pops), admix_pops_file, int(nfam), str(args.unrel_bfile+'.fam')))
+
+# check have sufficient exemplars
+popcounts = [ind_pops.count(popnames[i]) for i in range(args.npops)]
+lackingpops = [popcounts[i] < args.min_exemplar for i in range(args.npops)]
+
+print 'Exemplars per population:'
+for i in range(args.npops):
+    print str(popnames[i] + ': ' + str(popcounts[i]))
+print 'Unassigned: '+str(ind_pops.count('-'))
+
+if any(lackingpops):
+    print '\n###########\n'
+    print 'ERROR: One or more populations with insufficient number of exemplars (<'+str(args.min_exemplar)+').'
+    print '\nConsider rerunning with fewer ancestral populations (here: '+str(args.npops)+'), \n' + \
+          'a looser threshold for selecting population exemplars (here: '+str(args.prop_th)+'), \n' + \
+          'or fewer required exemplars per ancestral population in the unrelated set ' + \
+          '(here :'+str(args.min_exemplar)+').\n'
+    exit(1)
+
+# match exemplar pop status with FID/IIDs
 
 
 
-# select exemplars in admix output (error out if a pop has < 10 exemplars)
 
 # run supervised admix
 
