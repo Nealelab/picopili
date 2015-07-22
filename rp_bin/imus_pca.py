@@ -80,7 +80,7 @@ other_pch = "4"
 print 'Using settings:'
 print '--bfile '+args.bfile
 print '--out '+args.out
-print '--rel-deg '+str(args.rel_deg)
+print '--rel-th '+str(args.rel_th)
 print '--npcs '+str(args.npcs)
 
 
@@ -155,7 +155,7 @@ primelog = open(str('primus_' + args.out + '_imus.log'), 'w')
 subprocess.check_call([args.primus_ex,
                        "--file", args.bfile,
                        "--genome",
-                       "--degree_rel_cutoff", str(args.rel_deg),
+                       "--rel_threshold", str(args.rel_th),
                        "--no_PR",
                        "--plink_ex", plinkx,
                        "--smartpca_ex", smartpcax,

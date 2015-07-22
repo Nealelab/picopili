@@ -147,12 +147,13 @@ arg_imus = parserpca.add_argument_group('Unrelated Set')
 arg_pca = parserpca.add_argument_group('Principal Components')
 arg_exloc = parserpca.add_argument_group('Software Executable Locations')
 
-arg_imus.add_argument('--rel-deg',
-                    type=int,
-                    metavar='INT',
-                    help='relatedness degree threshold for defining \"unrelated\" set',
+arg_imus.add_argument('--rel-th',
+                    type=float,
+                    metavar='FLOAT',
+                    help='relatedness threshold for defining \"unrelated\" set. ' + \
+                         'Default is halfway between 3rd and 4th degree relatives.',
                     required=False,
-                    default=3)
+                    default=.09375)
 arg_pca.add_argument('--npcs',
                     type=int,
                     metavar='INT',
