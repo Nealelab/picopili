@@ -1,7 +1,7 @@
 #! /usr/bin/env python
 
 ####################################
-# pca_unrel.py
+# pca_rel.py
 # written by Raymond Walters, July 2015
 """
 Runs PCA for GWAS data with related individuals
