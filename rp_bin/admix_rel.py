@@ -83,7 +83,8 @@ arg_base.add_argument('--outdir',
                     metavar='DIRNAME',
                     help='Directory for output files. Will create if needed. ' + \
                          'Uses ./OUTNAME_admix_rel if unspecified',
-                    required=False)
+                    required=False,
+                    default=None)
 arg_base.add_argument('--no-cleanup',
                     action='store_true',
                     help='skip cleanup of interim files')
