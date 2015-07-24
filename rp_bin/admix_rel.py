@@ -224,7 +224,7 @@ print "ADMIXTURE found: %s" % args.admixture_ex
 # reap
 assert os.path.isfile(args.reap_ex), "REAP not found at %r" % args.reap_ex
 assert os.access(args.reap_ex, os.X_OK), "REAP not executable (%r)" % args.reap_ex
-print "REAP found: %s" % args.admixture_ex
+print "REAP found: %s" % args.reap_ex
 
 # pca file
 if not (args.plot_admix_pca==None or args.plot_admix_pca=="None"):
@@ -298,7 +298,7 @@ admix_call = [args.admixture_ex,
 admix_unrel_log = open(str('admix_'+args.out+'_unrel.log'), 'w')
 
 print str(' '.join(admix_call))
-print '\nLogging to ' + admix_unrel_log.name + '\n'
+print 'Logging to ' + admix_unrel_log.name + '\n'
 subprocess.check_call(admix_call, stdout=admix_unrel_log)
 
 admix_unrel_log.close()
@@ -380,8 +380,8 @@ ref_fam.close()
 
 ### create pop file to match target fam file, pop info file
 target_fam = open(str(args.target_bfile+'.fam'), 'r')
-target_pops = open(str(args.target_bfile+'.pops'), 'w')
-target_popinfo = open(str(args.target_bfile+'.pops.info'), 'w')
+target_pop = open(str(args.target_bfile+'.pop'), 'w')
+target_popinfo = open(str(args.target_bfile+'.pop.info'), 'w')
 
 for line in target_fam:
     
@@ -391,15 +391,15 @@ for line in target_fam:
     
     # check dict
     if target_id in pop_dict:
-        target_pops.write(pop_dict[target_id] + '\n')
+        target_pop.write(pop_dict[target_id] + '\n')
         target_popinfo.write(targetfid + ' ' + targetiid + ' ' + target_id + ' unrel ' + pop_dict[target_id] + '\n')
     else:
-        target_pops.write('-' + '\n')
+        target_pop.write('-' + '\n')
         target_popinfo.write(targetfid + ' ' + targetiid + ' ' + target_id + ' target ' + '-' + '\n')
 
 
 target_fam.close()
-target_pops.close()
+target_pop.close()
 target_popinfo.close()
 
 
@@ -416,7 +416,7 @@ admix_super_call = [args.admixture_ex,
 admix_target_log = open(str('admix_'+args.out+'_target.log'), 'w')
 
 print str(' '.join(admix_super_call))
-print '\nLogging to ' + admix_target_log.name + '\n'
+print 'Logging to ' + admix_target_log.name + '\n'
 subprocess.check_call(admix_super_call, stdout=admix_target_log)
 
 admix_target_log.close()
