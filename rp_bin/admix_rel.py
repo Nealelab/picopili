@@ -298,6 +298,7 @@ admix_call = [args.admixture_ex,
 admix_unrel_log = open(str('admix_'+args.out+'_unrel.log'), 'w')
 
 print str(' '.join(admix_call))
+print '\nLogging to ' + admix_unrel_log.name + '\n'
 subprocess.check_call(admix_call, stdout=admix_unrel_log)
 
 admix_unrel_log.close()
@@ -309,7 +310,8 @@ print '\n...Selecting exemplars for each ancestral population...'
 #############
 # - identify population assignment (including "-") for each input individual
 # - confirm whether there are enough IDs assigned to each populations
-# - match population assignments to 
+# - match population assignments to FID/IIDs
+# - write .pops file for target bfile, .pops.info file 
 
 # label for populations are popA, popB, popC, ...
 popnames = [str('pop'+ascii_uppercase[i]) for i in range(args.npops)]
@@ -355,20 +357,83 @@ if any(lackingpops):
           '(here :'+str(args.min_exemplar)+').\n'
     exit(1)
 
-# match exemplar pop status with FID/IIDs
+
+### match exemplar pop status with FID/IIDs, record in dict
+pop_dict = {}
+
+# process fam file by line
+ref_fam = open(str(args.unrel_bfile+'.fam'), 'r')
+idnum=0
+for line in ref_fam:
+    # iterate line counter, used to get elements from ind_pops[]
+    idnum += 1
+    
+    # read
+    (fid, iid, pat, mat, sex, phen) = line.split()
+
+    # use FID:IID identifier as key to record pop status
+    bfile_id = fid +':'+ iid
+    pop_dict[bfile_id] = ind_pops[idnum-1]
+
+ref_fam.close()
+
+
+### create pop file to match target fam file, pop info file
+target_fam = open(str(args.target_bfile+'.fam'), 'r')
+target_pops = open(str(args.target_bfile+'.pops'), 'w')
+target_popinfo = open(str(args.target_bfile+'.pops.info'), 'w')
+
+for line in target_fam:
+    
+    # read
+    (targetfid, targetiid, pat, mat, sex, phen) = line.split()
+    target_id = targetfid +':'+ targetiid
+    
+    # check dict
+    if target_id in pop_dict:
+        target_pops.write(pop_dict[target_id] + '\n')
+        target_popinfo.write(targetfid + ' ' + targetiid + ' ' + target_id + ' unrel ' + pop_dict[target_id] + '\n')
+    else:
+        target_pops.write('-' + '\n')
+        target_popinfo.write(targetfid + ' ' + targetiid + ' ' + target_id + ' target ' + '-' + '\n')
+
+
+target_fam.close()
+target_pops.close()
+target_popinfo.close()
 
 
 
+#############
+print '\n...Running supervised admixture analysis in target data...'
+#############
 
-# run supervised admix
+admix_super_call = [args.admixture_ex,
+                    str(args.target_bfile+'.bed'),
+                    str(args.npops),
+                    '-j'+str(args.multithread_cores),
+                    '--supervised']
+admix_target_log = open(str('admix_'+args.out+'_target.log'), 'w')
+
+print str(' '.join(admix_super_call))
+print '\nLogging to ' + admix_target_log.name + '\n'
+subprocess.check_call(admix_super_call, stdout=admix_target_log)
+
+admix_target_log.close()
+
+
+
+#############
+print '\n...Preparing admixture results for relatedness analysis...'
+#############
 
 # prep files for reap
-# - tped
-# ./plink --file mydata --recode12 --output-missing-genotype 0 --transpose --out newfile
+# ./plink --bfile mydata --recode12 --output-missing-genotype 0 --transpose --out newfile
+# ./paste myID.txt admixturedata.3.Q > admixturedata.proportions
 
-# run reap using admix results
-# use -m to reduce output
-# see sec. 6 of reap documentation
+# run reap
+# ./REAP -g newfile.tped -p newfile.tfam -a admixturedata.proportions -f admixturedata.3.P -r 1 -k 3 -m
+# using -m to reduce output; rest following sec. 6 of reap documentation
 
 
 # Generate diagnostic plots
