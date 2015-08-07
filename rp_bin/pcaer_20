@@ -175,6 +175,7 @@ use Getopt::Long;
 GetOptions( "out=s"=> \$outname,
 	    "help"=> \my $help,
             "serial"=> \my $serial,
+            "sleep=i"=> \my $sleep_sw,
 
 	    "trio"=> \my $trio,
 #   "clean"=> \my $clean,
@@ -202,7 +203,10 @@ GetOptions( "out=s"=> \$outname,
 
 
 
-
+if ($sleep_sw) {
+  print "sleeping for $sleep_sw seconds (only use if suspect of race condition)\n";
+  sleep ($sleep_sw);
+}
 
 
 ############################################################
@@ -541,6 +545,15 @@ sub send_jobarray {
 	$wt_file = "$sjadir/j.$sjaname.$outname.id";
     }
 
+    if ($qloc eq "qsub_c") {
+	$wt_file = "$sjadir/j.$sjaname.$outname.id";
+    }
+    if ($qloc eq "qsub_b") {
+	$wt_file = "$sjadir/j.$sjaname.$outname.id";
+    }
+
+
+    
     if ($serial) {
 	my $sys_re = "$command_line";
 	&mysystem ($sys_re);
@@ -636,6 +649,10 @@ version: $version
         --dfile STRING  file containing datasetnames, one per line, replaces commmand line
 
         --force1        do not exit if same fail, but do this only once        
+
+        --sleep INT     sleep for INT seconds, try this if you think there is a race condition
+                           (hints: stops a different steps, --serial works)
+                           try using 5 seconds first.
 
         --serial          no sending jobs to queue all in one run
                                -> usually only used for testing 
@@ -2043,7 +2060,12 @@ unless (-e "$bfile_menv.mds") {
 		if ($n_bim > 40000 && $n_noov > 5000) {
 		    $sjaweek = 1;
 		}
-		$sjamem = 6000;
+		if ($n_noov > 60000) {
+		    $sjamem = 8000;
+		} else {
+		    $sjamem = 6000;
+		}
+
 	    }
 
 	    
