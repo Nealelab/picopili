@@ -246,19 +246,6 @@ while (my $line = <IF>){
 close IF;
 close OF;
 
-# preprocess dosages to ensure probabilities sum to 1
-my $twodos_tmp = "$haps_file1.combined.tmp2dos.gz";
-my $imp_proc = "impprob_to_2dos $haps_file_gz $twodos_tmp";
-print "$imp_proc\n";
-&mysystem ($imp_proc);
-
-# check success
-# if successful, remove $haps_file_gz now to save space
-if (-e $twodos_tmp) {
-    &mysystem ("rm $haps_file_gz") 
-} else {
-    die "Failed to create $twodos_tmp from $haps_file_gz";
-}
 
 # preprocess dosages to ensure probabilities sum to 1
 my $twodos_tmp = "$haps_file1.combined.tmp2dos.gz";
@@ -271,7 +258,9 @@ unless (-e $twodos_tmp_success) {
 
 # check success
 # if successful, remove $haps_file_gz now to save space
-unless (-e $twodos_tmp_success) {
+if (-e $twodos_tmp_success) {
+    &mysystem("rm $haps_file_gz")
+} else {
     die "Failed to create $twodos_tmp from $haps_file_gz";
 }
 
