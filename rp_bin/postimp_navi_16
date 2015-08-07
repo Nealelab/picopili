@@ -450,8 +450,6 @@ my $replicmeta_script = "replicator_meta11";   ### my.pipeline_tar
 
 my $damecat_script = "dameta_cat";          ### my.pipeline_tar
 
-my $damecat_script = "my.dameta_cat";          ### my.pipeline_tar
-
 my $mutt_script = "mutt";
 
 push @test_scripts, $pdflatex_script ;
