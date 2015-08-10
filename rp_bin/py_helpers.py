@@ -43,6 +43,16 @@ def read_conf(fname):
     
 
 
+# test executable exists and can be run, prints error or success
+def test_exec(fname, name):
+    
+    import os
+    assert os.path.isfile(str(fname)), "%s not found at %s" % (str(name),str(fname))
+    assert os.access(str(fname), os.X_OK), "%s not executable (%s)" % (str(name),str(fname))
+    print "%s found: %s" % (str(name),str(fname))
+
+
+
 # find mail program
 def pp_find_mail():
     # init

@@ -41,7 +41,7 @@ import subprocess
 from distutils import spawn
 import argparse
 from string import ascii_uppercase
-from py_helpers import read_conf, file_len, unbuffer_stdout
+from py_helpers import read_conf, test_exec, file_len, unbuffer_stdout
 unbuffer_stdout()
 
 
@@ -200,9 +200,9 @@ if args.rscript_ex == None or args.rscript_ex == "None":
 # if still not found
 if args.rscript_ex == None or args.rscript_ex == "None":
     raise AssertionError('Unable to find Rscript in search path')
-assert os.path.isfile(args.rscript_ex), "Rscript not found at %r" % args.rscript_ex
-assert os.access(args.rscript_ex, os.X_OK), "Rscript not executable (%r)" % args.rscript_ex
-print "Rscript found: %s" % args.rscript_ex
+# verify exec
+test_exec(args.rscript_ex, 'Rscript')
+
 
 # PCA plot script, if needed
 if not (args.plot_admix_pca == None or args.plot_admix_pca == "None"):
@@ -212,19 +212,13 @@ if not (args.plot_admix_pca == None or args.plot_admix_pca == "None"):
     print "PCA plotting script found: %s" % Rplotpcax
 
 # plink
-assert os.path.isfile(plinkx), "Plink not found at %r" % plinkx
-assert os.access(plinkx, os.X_OK), "Plink not executable (%r)" % plinkx
-print "Plink found: %s" % plinkx
+test_exec(plinkx, 'Plink')
 
 # admixture
-assert os.path.isfile(args.admixture_ex), "ADMIXTURE not found at %r" % args.admixture_ex
-assert os.access(args.admixture_ex, os.X_OK), "ADMIXTURE not executable (%r)" % args.admixture_ex
-print "ADMIXTURE found: %s" % args.admixture_ex
+test_exec(args.admixture_ex, 'ADMIXTURE')
 
 # reap
-assert os.path.isfile(args.reap_ex), "REAP not found at %r" % args.reap_ex
-assert os.access(args.reap_ex, os.X_OK), "REAP not executable (%r)" % args.reap_ex
-print "REAP found: %s" % args.reap_ex
+test_exec(args.reap_ex, 'REAP')
 
 # pca file
 if not (args.plot_admix_pca==None or args.plot_admix_pca=="None"):
