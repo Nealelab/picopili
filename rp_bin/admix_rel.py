@@ -427,13 +427,71 @@ admix_target_log.close()
 print '\n...Preparing admixture results for relatedness analysis...'
 #############
 
-# prep files for reap
-# ./plink --bfile mydata --recode12 --output-missing-genotype 0 --transpose --out newfile
-# ./paste myID.txt admixturedata.3.Q > admixturedata.proportions
+### get tped genotypes of target dataset
+reap_tped = str(args.target_bfile + '.tmp_recode')
+subprocess.check_call([plinkx,
+                       '--silent',
+                       '--bfile', str(args.target_bfile),
+                       '--recode12',
+                       '--output-missing-genotype', '0',
+                       '--transpose',
+                       '--out', reap_tped])
+                       
+### attach FID/IIDs to mixture proportions
 
-# run reap
-# ./REAP -g newfile.tped -p newfile.tfam -a admixturedata.proportions -f admixturedata.3.P -r 1 -k 3 -m
-# using -m to reduce output; rest following sec. 6 of reap documentation
+# verify files are same length
+target_Qfile_nam = str(args.target_bfile + '.' + str(args.npops) + '.Q')                     
+target_fam_nam = str(args.target_bfile + '.fam')
+
+if not (file_len(target_Qfile_nam) == file_len(target_fam_nam)):
+    raise ValueError('Length of admixture proportions ouput (%s) does not match fam file (%s). ' + \
+                     'Error during output?' % (target_Qfile_nam, target_fam_nam))
+
+# paste together columns, should be in same order (based on ADMIXTURE's ouptut format)
+target_Q_file = open(target_Qfile_nam, 'r')
+target_fam = open(target_fam_nam, 'r')
+reap_mix_props = open(str(args.target_bfile + '.props.tmp.txt'), 'w')
+
+
+for line in target_Q_file:
+    qprops = line.split()
+    (fid, iid, pat, mat, sex, phen) = target_fam.readline().split()
+    
+    reap_mix_props.write(str(fid) + ' ' + str(iid) + ' ' + ' '.join(qprops) + '\n')
+
+reap_mix_props.close()
+
+# verify hit end of fam file (readline should return false)
+if target_fam.readline():
+    raise IOError('Reached end of admixture proportions (%s) before end of fam file (%s). ' + \
+                  'Problems with parsing?' % (target_Qfile_nam, target_fam_nam))
+
+target_Q_file.close()
+target_fam.close()
+
+
+#############
+print '\n...Estimating relatedness...'
+#############
+
+# note: REAP docs claim '-r 1' needed when using ADMIXTURE files
+# but testing gives gives correct estimates with '-r 2', not '-r 1'
+reap_call = [str(args.reap_ex),
+             '-g', str(reap_tped + '.tped'),
+             '-p', str(reap_tped + '.tfam'),
+             '-a', str(args.target_bfile + '.props.tmp.txt'),
+             '-f', str(args.target_bfile + '.' + str(args.npops) + '.P'),
+             '-r', str(2),
+             '-k', str(args.npops),
+             '-m',
+             '-t', str(args.min_rel)]
+reap_log = open(str('reap_' + args.out + '.log'), 'w')
+
+print str(' '.join(reap_call))
+print 'Logging to ' + reap_log.name + '\n'
+subprocess.check_call(reap_call, stdout=reap_log)
+
+reap_log.close()
 
 
 # Generate diagnostic plots
