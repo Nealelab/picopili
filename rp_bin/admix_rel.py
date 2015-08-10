@@ -203,6 +203,11 @@ if args.rscript_ex == None or args.rscript_ex == "None":
 # verify exec
 test_exec(args.rscript_ex, 'Rscript')
 
+# IBD plot script
+Rplotibdx = spawn.find_executable("plot_reap_ibd.Rscript")
+if(Rplotibdx) == None:
+    raise AssertionError('Unable to find plot_reap_ibd.Rscript in search path')
+print "IBD plotting script found: %s" % Rplotibdx
 
 # PCA plot script, if needed
 if not (args.plot_admix_pca == None or args.plot_admix_pca == "None"):
@@ -487,6 +492,28 @@ subprocess.check_call(reap_call, stdout=reap_log)
 
 reap_log.close()
 
+
+
+#############
+print '\n...Generating diagnostic plots...'
+#############
+
+### IBD0/IBD1 points and density
+# plot_reap_ibd.Rscript has args <input_file> <outname> <minimum relatedness>
+r_ibd_log = open(str(args.out) + '.plot_ibd.log', 'w')
+subprocess.check_call([Rplotibdx,
+                       str('REAP_pairs_relatedness.txt'),
+                       str(args.out),
+                       str(args.min_rel)],
+                       stderr=subprocess.STDOUT,
+                       stdout=r_ibd_log)
+
+r_ibd_log.close()
+print 'IBD plots: %s.IBD.png, %s.IBD_density.png' % (args.out, args.out)
+
+### exemplars on PCA
+
+### admixture on PCA
 
 # Generate diagnostic plots
 # - exemplars on PCA (if PCA available)

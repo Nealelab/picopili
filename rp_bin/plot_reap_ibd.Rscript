@@ -1,0 +1,43 @@
+#!/usr/bin/env Rscript
+
+# parse arguments
+infile <- commandArgs(TRUE)[1]
+outname <- commandArgs(TRUE)[2]
+if(length(commandArgs(TRUE)) > 2){
+	minrel <- as.numeric(commandArgs(TRUE)[3])
+}else{
+	minrel <- 0
+}
+
+
+# load packages
+require(ggplot2)
+
+# unplotted region
+tri = data.frame(x=c(1-minrel,1-((2/3)*minrel),1), y=c(0,(2/3)*minrel,0))
+
+# read data
+infile <- read.table(infile, header=TRUE, stringsAsFactors=F)
+
+# plot IBD pairs
+png(paste(outname,".IBD.png",sep=""), height=800,width=800,type="cairo")
+plot(infile$IBD0_PROB, infile$IBD1_PROB,
+     xlab="IBD0", ylab="IBD1", xlim=c(0,1), ylim=c(0,1),
+     main=outname)
+polygon(tri$x,tri$y,col=rgb(.4,.4,.4,alpha=.5))
+abline(1,-1,lty=2)
+dev.off()
+
+# plot IBD density
+png(paste(outname,".IBD_density.png",sep=""), height=800,width=800,type="cairo")
+ggplot(data=infile[,c("IBD0_PROB","IBD1_PROB")], 
+      aes(x=IBD0_PROB, y=IBD1_PROB))+
+      xlim(0,1)+ylim(0,1)+
+      xlab("IBD0")+ylab("IBD1")+
+      geom_polygon(data=tri,aes(x=x,y=y),fill="gray40",linetype="blank",alpha=0.5)+
+      geom_abline(intercept=1,slope=-1,linetype="dashed")+
+      stat_binhex(bins=100)+
+      ggtitle(outname)
+dev.off()
+
+# eof
