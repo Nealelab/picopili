@@ -20,7 +20,7 @@ tri = data.frame(x=c(1-minrel,1-((2/3)*minrel),1), y=c(0,(2/3)*minrel,0))
 infile <- read.table(infile, header=TRUE, stringsAsFactors=F)
 
 # plot IBD pairs
-png(paste(outname,".IBD.png",sep=""), height=800,width=800,type="cairo")
+png(paste("./plots/",outname,".IBD.png",sep=""), height=800,width=800,type="cairo")
 plot(infile$IBD0_PROB, infile$IBD1_PROB,
      xlab="IBD0", ylab="IBD1", xlim=c(0,1), ylim=c(0,1),
      main=outname)
@@ -29,7 +29,7 @@ abline(1,-1,lty=2)
 dev.off()
 
 # plot IBD density
-png(paste(outname,".IBD_density.png",sep=""), height=800,width=800,type="cairo")
+png(paste("./plots/",outname,".IBD_density.png",sep=""), height=800,width=800,type="cairo")
 ggplot(data=infile[,c("IBD0_PROB","IBD1_PROB")], 
       aes(x=IBD0_PROB, y=IBD1_PROB))+
       xlim(0,1)+ylim(0,1)+
