@@ -33,10 +33,9 @@ if not (('-h' in sys.argv) or ('--help' in sys.argv)):
 ### load requirements
 import os
 import subprocess
-from distutils import spawn
 import argparse
 from glob import glob
-from py_helpers import read_conf, unbuffer_stdout
+from py_helpers import read_conf, unbuffer_stdout, test_exec, find_from_path
 from args_pca import *
 unbuffer_stdout()
 
@@ -103,36 +102,18 @@ print '\n...Checking dependencies...'
 # check exists, executable
 #############
 
-# R from path
+# find required files
 if args.rscript_ex == None or args.rscript_ex == "None":
-    args.rscript_ex = spawn.find_executable("Rscript")
-# if still not found
-if args.rscript_ex == None or args.rscript_ex == "None":
-    raise AssertionError('Unable to find Rscript in search path')
-assert os.path.isfile(args.rscript_ex), "Rscript not found at %r" % args.rscript_ex
-assert os.access(args.rscript_ex, os.X_OK), "Rscript not executable (%r)" % args.rscript_ex
-print "Rscript found: %s" % args.rscript_ex
+    args.rscript_ex = find_from_path("Rscript", 'Rscript')
 
-# primus
-assert os.path.isfile(args.primus_ex), "PRIMUS not found at %r" % args.primus_ex
-assert os.access(args.primus_ex, os.X_OK), "PRIMUS not executable (%r)" % args.primus_ex
-print "PRIMUS found: %s" % args.primus_ex
+Rplotpcax = find_from_path("plot_pca.Rscript", 'PCA plotting script')
 
-# plink
-assert os.path.isfile(plinkx), "Plink not found at %r" % plinkx
-assert os.access(plinkx, os.X_OK), "Plink not executable (%r)" % plinkx
-print "Plink found: %s" % plinkx
-    
-# smartpca
-assert os.path.isfile(smartpcax), "Eigensoft smartpca not found at %r" % smartpcax
-assert os.access(smartpcax, os.X_OK), "Eigensoft smartpca not executable (%r)" % smartpcax
-print "Smartpca found: %s" % smartpcax
 
-# plotting script
-Rplotpcax = spawn.find_executable("plot_pca.Rscript")
-if Rplotpcax == None:
-    raise AssertionError('Unable to find plot_pca.Rscript in search path')
-print "PCA plotting script found: %s" % Rplotpcax
+# test executables
+test_exec(args.primus_ex, 'PRIMUS')
+test_exec(plinkx, 'Plink')
+test_exec(smartpcax, 'Eigensoft smartpca')
+test_exec(args.rscript_ex, 'Rscript')
 
 
 

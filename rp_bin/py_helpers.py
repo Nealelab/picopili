@@ -53,6 +53,19 @@ def test_exec(fname, name):
 
 
 
+# find and verify executables on environment path
+def find_from_path(fname, name):
+    
+    from distutils import spawn
+    file_ex = spawn.find_executable(str(fname))
+    if file_ex == None:
+        raise IOError('Unable to find %s (%s) in search path' % (str(name), str(fname)))
+    else:
+        print "%s found: %s" % (str(name), str(file_ex))
+        return file_ex
+
+
+
 # find mail program
 def pp_find_mail():
     # init
