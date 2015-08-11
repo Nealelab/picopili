@@ -102,9 +102,7 @@ print '\n...Checking dependencies...'
 #############
 
 # plink
-assert os.path.isfile(plinkx), "Plink not found at %r" % plinkx
-assert os.access(plinkx, os.X_OK), "Plink not executable (%r)" % plinkx
-print "Plink found: %s" % plinkx
+test_exec(plinkx, 'Plink')
 
 # ld region file, if needed
 # try in rp_bin/lib/ in addition to cwd
