@@ -9,8 +9,8 @@ out_name = commandArgs(TRUE)[5]
 
 # load files
 pcval.M <- read.table(pca_file, header=T, stringsAsFactors=F)
-plotval.M <- read.table(plot_file, header=T, stringsAsFactors=F)
-legend.M <- read.table(leg_file, header=T, stringsAsFactors=F)
+plotval.M <- read.table(plot_file, header=T, stringsAsFactors=F, comment.char="")
+legend.M <- read.table(leg_file, header=T, stringsAsFactors=F, comment.char="")
 
 # sort plot info on layer order
 plotval.M <- plotval.M[order(plotval.M$layer),]

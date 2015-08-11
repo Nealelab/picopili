@@ -38,10 +38,10 @@ if not (('-h' in sys.argv) or ('--help' in sys.argv)):
 ### load requirements
 import os
 import subprocess
-from distutils import spawn
 import argparse
 from string import ascii_uppercase
-from py_helpers import read_conf, test_exec, file_len, unbuffer_stdout
+from numpy import digitize
+from py_helpers import *
 unbuffer_stdout()
 
 
@@ -151,16 +151,29 @@ arg_exloc.add_argument('--reap-ex',
                     required=False,
                     default="/humgen/atgu1/fs03/shared_resources/shared_software/bin/REAP")
 
-#parser.add_argument('--test-sub',
-#                    action='store_true',
-#                    help='Test run without submitting tasks',
-#                    required=False)
-
 args = parser.parse_args()
 
 # set dependent defaults
 if args.outdir == None or args.outdir == "None":
     args.outdir = str(args.out)+'_admix_rel'
+
+if not (args.plot_admix_pca == None or args.plot_admix_pca == "None"):
+    plot_pca = True
+else:
+    plot_pca = False
+
+
+# plot settings
+exemplar_pch = "20"
+ref_pch = "1"
+other_pch = "3"
+
+exemplar_color = "orange"
+ref_color = "black"
+other_color = "gray30"
+
+# Taken from RColorBrewer YlGnBu, n=8 
+col_gradient = ["#FFFFD9","#EDF8B1","#C7E9B4","#7FCDBB","#41B6C4","#1D91C0","#225EA8","#0C2C84"]
 
 
 # print settings
@@ -194,39 +207,26 @@ print '\n...Checking dependencies...'
 # check exists, executable
 #############
 
-# get R from path
+# get variables from path as needed
+# - Rscript (if unspecified)
+# - IBD plotting script
+# - PCA plotting script (optional)
 if args.rscript_ex == None or args.rscript_ex == "None":
-    args.rscript_ex = spawn.find_executable("Rscript")
-# if still not found
-if args.rscript_ex == None or args.rscript_ex == "None":
-    raise AssertionError('Unable to find Rscript in search path')
-# verify exec
-test_exec(args.rscript_ex, 'Rscript')
+    args.rscript_ex = find_from_path('Rscript', 'Rscript')
 
-# IBD plot script
-Rplotibdx = spawn.find_executable("plot_reap_ibd.Rscript")
-if(Rplotibdx) == None:
-    raise AssertionError('Unable to find plot_reap_ibd.Rscript in search path')
-print "IBD plotting script found: %s" % Rplotibdx
+Rplotibdx = find_from_path('plot_reap_ibd.Rscript', 'IBD plotting script')
 
-# PCA plot script, if needed
-if not (args.plot_admix_pca == None or args.plot_admix_pca == "None"):
-    Rplotpcax = spawn.find_executable("plot_pca.Rscript")
-    if Rplotpcax == None:
-        raise AssertionError('Unable to find plot_pca.Rscript in search path')
-    print "PCA plotting script found: %s" % Rplotpcax
+if plot_pca:
+    Rplotpcax = find_from_path('plot_pca.Rscript', 'PCA plotting script')
 
-# plink
+# verify executables
 test_exec(plinkx, 'Plink')
-
-# admixture
+test_exec(args.rscript_ex, 'Rscript')
 test_exec(args.admixture_ex, 'ADMIXTURE')
-
-# reap
 test_exec(args.reap_ex, 'REAP')
 
 # pca file
-if not (args.plot_admix_pca==None or args.plot_admix_pca=="None"):
+if plot_pca:
     assert os.path.isfile(args.plot_admix_pca), "PCA file does not exist (%r)" % args.plot_admix_pca
     assert '/' not in args.target_bfile, "--plot-admix-pca must specify only a file, not a path"
 
@@ -252,37 +252,19 @@ if not os.path.isdir(str(args.outdir)):
 
 os.chdir(args.outdir)
 
-# link ref plink files
-os.symlink(str(wd+'/'+args.unrel_bfile+'.bed'), str(args.unrel_bfile+'.bed'))
-os.symlink(str(wd+'/'+args.unrel_bfile+'.bim'), str(args.unrel_bfile+'.bim'))
-os.symlink(str(wd+'/'+args.unrel_bfile+'.fam'), str(args.unrel_bfile+'.fam'))
+# link plink files (with verification)
+link(str(wd+'/'+args.unrel_bfile+'.bed'), str(args.unrel_bfile+'.bed'), 'bed file for unrelated individuals')
+link(str(wd+'/'+args.unrel_bfile+'.bim'), str(args.unrel_bfile+'.bim'), 'bim file for unrelated individuals')
+link(str(wd+'/'+args.unrel_bfile+'.fam'), str(args.unrel_bfile+'.fam'), 'fam file for unrelated individuals')
 
-# link target plink files
-os.symlink(str(wd+'/'+args.target_bfile+'.bed'), str(args.target_bfile+'.bed'))
-os.symlink(str(wd+'/'+args.target_bfile+'.bim'), str(args.target_bfile+'.bim'))
-os.symlink(str(wd+'/'+args.target_bfile+'.fam'), str(args.target_bfile+'.fam'))
-
-# verify links
-if not os.path.isfile(str(args.unrel_bfile+'.bed')):
-    raise IOError("Failed to link bed file with unrelated individuals (%r)" % str(args.unrel_bfile+'.bed'))
-if not os.path.isfile(str(args.unrel_bfile+'.bim')):
-    raise IOError("Failed to link bim file with unrelated individuals (%r)" % str(args.unrel_bfile+'.bim'))
-if not os.path.isfile(str(args.unrel_bfile+'.bed')):
-    raise IOError("Failed to link fam file with unrelated individuals (%r)" % str(args.unrel_bfile+'.fam'))
-if not os.path.isfile(str(args.target_bfile+'.bed')):
-    raise IOError("Failed to link bed file with target individuals (%r)" % str(args.target_bfile+'.bed'))
-if not os.path.isfile(str(args.target_bfile+'.bim')):
-    raise IOError("Failed to link bim file with target individuals (%r)" % str(args.target_bfile+'.bim'))
-if not os.path.isfile(str(args.target_bfile+'.bed')):
-    raise IOError("Failed to link fam file with target individuals (%r)" % str(args.target_bfile+'.fam'))
+link(str(wd+'/'+args.target_bfile+'.bed'), str(args.target_bfile+'.bed'), 'bed file for target individuals')
+link(str(wd+'/'+args.target_bfile+'.bim'), str(args.target_bfile+'.bim'), 'bim file for target individuals')
+link(str(wd+'/'+args.target_bfile+'.fam'), str(args.target_bfile+'.fam'), 'fam file for target individuals')
 
 # link pca file, if provided
 if not (args.plot_admix_pca==None or args.plot_admix_pca=="None"):
 
-    os.symlink(str(wd+'/'+args.plot_admix_pca), str(args.plot_admix_pca))
-    
-    if not os.path.isfile(str(args.plot_admix_pca)):
-        raise IOError("Failed to link PCA file (%r)" % str(args.plot_admix_pca))
+    link(str(wd+'/'+args.plot_admix_pca), str(args.plot_admix_pca), 'PCA file')
 
 
 
@@ -498,6 +480,9 @@ reap_log.close()
 print '\n...Generating diagnostic plots...'
 #############
 
+# create plot directory
+os.makedirs("plots")
+
 ### IBD0/IBD1 points and density
 # plot_reap_ibd.Rscript has args <input_file> <outname> <minimum relatedness>
 r_ibd_log = open(str(args.out) + '.plot_ibd.log', 'w')
@@ -511,14 +496,104 @@ subprocess.check_call([Rplotibdx,
 r_ibd_log.close()
 print 'IBD plots: %s.IBD.png, %s.IBD_density.png' % (args.out, args.out)
 
-### exemplars on PCA
 
-### admixture on PCA
+### Optional plots on PCA  
+if plot_pca:
+    ###
+    # - create plotinfo files for each ancestry population
+    #    - parse admixture results
+    #    - get population proportion
+    #    - check if exemplar, in (imus) reference set
+    # - create legend files
+    # - loop 1-npops ancestries for plotting
+    #    - plot admixture proportion on pcs 1-3
+    #       - split to 8 bins for color gradient
+    #    - plot exemplar status on pcs 1-3
+    ###
 
-# Generate diagnostic plots
-# - exemplars on PCA (if PCA available)
-# - final admixture on PCA (if PCA available)
-# - IBD0/IBD1 for REAP
+    # setup file streams for plotinfo files
+    pop_info_files = []
+    exemp_info_files = []
+    for i in xrange(args.npops):
+        pop_info_files.append( open(str(args.target_bfile) + '.' + popnames[i] + '.admixture.plotinfo.txt', 'w') )
+        pop_info_files[i].write('FID IID col pch layer\n')
+        exemp_info_files.append( open(str(args.target_bfile) + '.' + popnames[i] + '.exemplar.plotinfo.txt', 'w') )
+        exemp_info_files[i].write('FID IID col pch layer\n')
+        
+    # parse admixture proportions
+    reap_mix_props = open(str(args.target_bfile + '.props.tmp.txt'), 'r')
+    for line in reap_mix_props:
+        splitline = line.split()
+        
+        # pull off fid/iid in first 2 columns
+        fid = str(splitline.pop(0))
+        iid = str(splitline.pop(0))
+        joinid = fid + ':' + iid
+        
+        # loop populations
+        for i in xrange(args.npops):
+            # bin the population proportion
+            # Note: .tolist()[0] need to get back from np.array to scalar
+            prop_bins = [float(x) / 8.0 for x in range(0,9)]
+            in_bin = digitize([splitline[i]], prop_bins).tolist()[0]
+            bin_col = col_gradient[in_bin-1]
+            
+            # admix proportion info file: FID, IID, col, pch, layer
+            pop_info_files[i].write(' '.join([fid, iid, bin_col, str(1), str(in_bin)])+'\n')
+            
+            # exemplar info file: FID, IID, col, pch, layer
+            if joinid in pop_dict:
+                if pop_dict[joinid] == popnames[i]:
+                    exemp_info_files[i].write(' '.join([fid, iid, '\"'+str(exemplar_color)+'\"', str(exemplar_pch), str(3)]) + '\n')
+                else:
+                    exemp_info_files[i].write(' '.join([fid, iid, '\"'+str(ref_color)+'\"', str(ref_pch), str(2)]) + '\n')
+            else:
+                exemp_info_files[i].write(' '.join([fid, iid, '\"'+str(other_color)+'\"', str(other_pch), str(1)]) + '\n')
+
+    # close plotinfo files
+    for i in xrange(args.npops):
+        pop_info_files[i].close()
+        exemp_info_files[i].close()
+    
+    # create legend files: col, pch, fill, text (either col/pch or fill should be NA)
+    exem_legend = open(str(args.target_bfile) + '.exemplar.legend.txt', 'w')
+    exem_legend.write('col pch fill text\n')
+    exem_legend.write(str(exemplar_color) + ' ' + str(exemplar_pch) + ' NA ' + '\"Population exemplar\"\n')
+    exem_legend.write(str(ref_color) + ' ' + str(ref_pch) + ' NA ' + '\"Reference set\"\n')
+    exem_legend.write(str(other_color) + ' ' + str(other_pch) + ' NA ' + '\"Non-reference set\"\n')        
+    exem_legend.close()
+    
+    prop_legend = open(str(args.target_bfile) + '.admixture.legend.txt', 'w')
+    prop_legend.write('col pch fill text\n')
+    for i in xrange(len(col_gradient)):    
+        prop_legend.write('NA NA ' + str(col_gradient[i]) + ' ' + str(prop_bins[i])+'-'+str(prop_bins[i+1])+ '\n')       
+    prop_legend.close()
+
+    ### generate plots
+    for i in xrange(args.npops):
+        r_pca_ex_log = open(str(args.out) + '.' + popnames[i] + '.plot_exemplars.log', 'w')
+        subprocess.check_call([Rplotpcax,
+                               str(args.plot_admix_pca),
+                               str(args.target_bfile) + '.' + popnames[i] + '.exemplar.plotinfo.txt',
+                               str(args.target_bfile) + '.exemplar.legend.txt',
+                               str(3),
+                               str(args.out) + '.' + popnames[i] + '.exemplars'],
+                               stderr=subprocess.STDOUT,
+                               stdout=r_pca_ex_log)    
+        r_pca_ex_log.close()
+
+        r_pca_admix_log = open(str(args.out) + '.' + popnames[i] + '.plot_admixture.log', 'w')
+        subprocess.check_call([Rplotpcax,
+                               str(args.plot_admix_pca),
+                               str(args.target_bfile) + '.' + popnames[i] + '.admixture.plotinfo.txt',
+                               str(args.target_bfile) + '.admixture.legend.txt',
+                               str(3),
+                               str(args.out) + '.' + popnames[i] + '.admixture'],
+                               stderr=subprocess.STDOUT,
+                               stdout=r_pca_admix_log)    
+        r_pca_admix_log.close()
+        print 'Finished plotting population %s (%d/%d)' % (popnames[i], i+1, args.npops)
+
 
 # final cleanup
 
