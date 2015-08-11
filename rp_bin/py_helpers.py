@@ -66,6 +66,15 @@ def find_from_path(fname, name):
 
 
 
+def link(fromfile, tofile, name):
+    
+    import os
+    os.symlink(str(fromfile), str(tofile))
+    if not os.path.isfile(str(tofile)):
+        raise IOError("Failed to link %s (%s)" % (str(name), str(tofile)) )
+
+
+
 # find mail program
 def pp_find_mail():
     # init
