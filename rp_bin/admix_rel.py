@@ -170,7 +170,7 @@ other_pch = "3"
 
 exemplar_color = "orange"
 ref_color = "black"
-other_color = "gray30"
+other_color = "gray50"
 
 # Taken from RColorBrewer YlGnBu, n=8 
 col_gradient = ["#FFFFD9","#EDF8B1","#C7E9B4","#7FCDBB","#41B6C4","#1D91C0","#225EA8","#0C2C84"]
