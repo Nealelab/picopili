@@ -616,7 +616,7 @@ if not args.no_cleanup:
         print '\nZipping PCA plot files to ' + args.out + '.pca_plot_files.tar.gz:'
         ###        
         subprocess.check_call(["tar", "-zcvf", 
-                               str(args.out+'.pca_plot_files.tar.gz')] + \
+                               str(args.out+'.plot_pca_files.tar.gz')] + \
                                glob(args.target_bfile+".*.admixture.plotinfo.txt") + \
                                [str(args.target_bfile)+".admixture.legend.txt"] + \
                                glob(args.out+".*.plot_admixture.log") + \
