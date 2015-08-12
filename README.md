@@ -6,8 +6,12 @@
 
 ### Changelog
 
-* Improve handling of impute2's output format with 3 probabilities (see [impprob_to_2dos](https://github.com/Nealelab/picopili/blob/dev/rp_bin/impprob_to_2dos))
-* Avoid (rarely) losing SNPs when merging chunk results (see [dameta_cat](https://github.com/Nealelab/picopili/blob/dev/rp_bin/dameta_cat)) 
+* Ricopili bugfix: avoid (rarely) losing SNPs when merging chunk results (see [dameta_cat](https://github.com/Nealelab/picopili/blob/dev/rp_bin/dameta_cat))
+* Ricopili bugfix: cleanup interim files from impprob_to_2dos (see pull request 7 in ricopili)
+* New task `strict_qc.py`: runs the stricter QC used for PCA/relatedness. Compared to QC included in `pcaer_20`, includes additional options for how long LD regions, indels, and strand ambiguous SNPs are handled.
+* New task `imus_pca.py`: extracts a set of unrelated individuals (without relying on pedigrees and partially controlling for ancestry-based confounding), runs PCA, and projects the computed PCs back to the remaining (related) individuals. Assumes appropriate QC has already been run.
+* **New workflow module** `pca_rel.py`: main driver script to run PCA on family GWAS data (i.e. `strict_qc.py` followed by `imus_pca.py`). Jobs are submitted via UGER, and ricopili-like success/failure emails are sent on completion.
+* **New minor workflow** `admix_rel.py`: estimates relatedness for admixed samples. Relatedness is estimated by starting with a subset of individuals who are unrelated, running an Admixture analysis, selecting "exemplar" individuals for each ancestry component, using those individuals to anchor a supervised Admixture analysis fo the full data, and using those Admixture results as the basis for ancestry-adjusted relatedness estimation using REAP. 
 
 ### Install alongside Ricopili
 
