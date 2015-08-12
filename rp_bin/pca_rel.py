@@ -30,11 +30,16 @@ if not (('-h' in sys.argv) or ('--help' in sys.argv)):
 ### load requirements
 import argparse
 import subprocess
+import os
 from math import ceil
 from args_pca import *
 from py_helpers import file_len, unbuffer_stdout
 unbuffer_stdout()
 
+
+# get directory containing current script
+# (to get absolute path for uger wrapper)
+rp_bin = os.path.dirname(os.path.realpath(__file__))
 
 #############
 if not (('-h' in sys.argv) or ('--help' in sys.argv)):
@@ -161,19 +166,32 @@ strictqc_call = ' '.join(['strict_qc.py',
                          strandambi_txt,
                          allchr_txt])
 
-strictqc_lsf = ' '.join(["bsub",
-                         "-q", 'hour',
-                         "-R", str('\"rusage[mem=2]\"'),
-                         "-J", str('strictqc_'+args.out),
-                         "-P", str('pico_'+args.out),
-                         "-o", str('strictqc_'+args.out+'.bsub.log'),
-                         "-r",
-                         str('\"'+strictqc_call+'\"')])
+#strictqc_lsf = ' '.join(["bsub",
+#                         "-q", 'hour',
+#                         "-R", str('\"rusage[mem=2]\"'),
+#                         "-J", str('strictqc_'+args.out),
+#                         "-P", str('pico_'+args.out),
+#                         "-o", str('strictqc_'+args.out+'.bsub.log'),
+#                         "-r",
+#                         str('\"'+strictqc_call+'\"')])
+#
+#print strictqc_lsf
+#if not args.test_sub:
+#    subprocess.check_call(strictqc_lsf, shell=True)
 
-print strictqc_lsf
+
+strictqc_uger = ' '.join(['qsub',
+                          '-q', 'short',
+                          '-l', 'm_mem_free=2g',
+                          '-N', str('strictqc_'+args.out),
+                          '-o', str('strictqc_'+args.out+'.bsub.log'),
+                          str(rp_bin)+'/uger.sub.sh',
+                          str(0),
+                          str(strictqc_call)])
+
+print strictqc_uger
 if not args.test_sub:
-    subprocess.check_call(strictqc_lsf, shell=True)
-
+    subprocess.check_call(strictqc_uger, shell=True)
 
 #####
 # submit imus pca
@@ -192,21 +210,34 @@ imuspca_call = ' '.join(['imus_pca.py',
                          '--primus-ex', str(args.primus_ex)
                          ])
 
-imuspca_lsf = ' '.join(["bsub",
-                        "-w", str('\'ended(\"'+str('strictqc_'+args.out)+'\")\''),
-                        "-E", str('\"sleep '+str(args.sleep)+'\"'),
-                        "-q", 'week',
-                        "-R", str('\"rusage[mem='+str(imus_mem)+']\"'),
-                        "-J", str('imuspca_'+args.out),
-                        "-P", str('pico_'+args.out),
-                        "-o", str('imuspca_'+args.out+'.bsub.log'),
-                        "-r",
-                        str('\"'+imuspca_call+'\"')])
+#imuspca_lsf = ' '.join(["bsub",
+#                        "-w", str('\'ended(\"'+str('strictqc_'+args.out)+'\")\''),
+#                        "-E", str('\"sleep '+str(args.sleep)+'\"'),
+#                        "-q", 'week',
+#                        "-R", str('\"rusage[mem='+str(imus_mem)+']\"'),
+#                        "-J", str('imuspca_'+args.out),
+#                        "-P", str('pico_'+args.out),
+#                        "-o", str('imuspca_'+args.out+'.bsub.log'),
+#                        "-r",
+#                        str('\"'+imuspca_call+'\"')])
+#
+#print imuspca_lsf
+#if not args.test_sub:
+#    subprocess.check_call(imuspca_lsf, shell=True)
 
-print imuspca_lsf
+imuspca_uger = ' '.join(['qsub',
+                         '-hold_jid', str('strictqc_'+args.out),
+                         '-q', 'long',
+                         '-l', 'm_mem_free='+str(imus_mem)+'g',
+                         '-N', str('imuspca_'+args.out),
+                         '-o', str('imuspca_'+args.out+'.bsub.log'),
+                         str(rp_bin)+'/uger.sub.sh',
+                         str(args.sleep),
+                         str(imuspca_call)])
+
+print imuspca_uger
 if not args.test_sub:
-    subprocess.check_call(imuspca_lsf, shell=True)
-
+    subprocess.check_call(imuspca_uger, shell=True)
 
 #####
 # submitting final file check
@@ -223,20 +254,33 @@ final_call = ' '.join(['final_file_check.py',
                        '--filename', str(wd+'/'+pcaout+'/plots/'+args.out+'.pca.pairs.png'),
                        '--taskname', str('pca_rel_'+args.out)])
 
-final_lsf = ' '.join(["bsub",
-                        "-w", str('\'ended(\"'+str('imuspca_'+args.out)+'\")\''),
-                        "-E", str('\"sleep '+str(args.sleep)+'\"'),
-                        "-q", 'hour',
-                        "-J", str('checkfinal_'+args.out),
-                        "-P", str('pico_'+args.out),
-                        "-o", str('checkfinal_'+args.out+'.bsub.log'),
-                        "-r",
-                        str('\"'+final_call+'\"')])
+#final_lsf = ' '.join(["bsub",
+#                        "-w", str('\'ended(\"'+str('imuspca_'+args.out)+'\")\''),
+#                        "-E", str('\"sleep '+str(args.sleep)+'\"'),
+#                        "-q", 'hour',
+#                        "-J", str('checkfinal_'+args.out),
+#                        "-P", str('pico_'+args.out),
+#                        "-o", str('checkfinal_'+args.out+'.bsub.log'),
+#                        "-r",
+#                        str('\"'+final_call+'\"')])
+#
+#print final_lsf
+#if not args.test_sub:
+#    subprocess.check_call(final_lsf, shell=True)
 
-print final_lsf
+
+final_uger = ' '.join(['qsub',
+                        '-hold_jid', str('imuspca_'+args.out),
+                        '-q', 'short',
+                        '-N', str('checkfinal_'+args.out),
+                        '-o', str('checkfinal_'+args.out+'.bsub.log'),
+                        str(rp_bin)+'/uger.sub.sh',
+                        str(args.sleep),
+                        str(final_call)])
+
+print final_uger
 if not args.test_sub:
-    subprocess.check_call(final_lsf, shell=True)
-
+    subprocess.check_call(final_uger, shell=True)
 
 #######
 # Print completion message
