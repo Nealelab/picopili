@@ -214,7 +214,7 @@ arg_grid.add_argument('--sleep',
                     metavar='INT',
                     help='Pre-execution sleep time for each job',
                     required=False,
-                    default=10)
+                    default=30)
 arg_grid.add_argument('--test-sub',
                        action='store_true',
                        help='Test run without submitting jobs',
