@@ -65,13 +65,29 @@ def find_from_path(fname, name):
         return file_ex
 
 
-
+# symlink fromfile to tofile and verify
 def link(fromfile, tofile, name):
     
     import os
     os.symlink(str(fromfile), str(tofile))
     if not os.path.isfile(str(tofile)):
         raise IOError("Failed to link %s (%s)" % (str(name), str(tofile)) )
+
+
+
+
+# gzip file, wait for success before removing original
+def gz_confirm(fname, outname, force):
+    
+    import subprocess
+    outfile = open(str(outname), 'w')
+    if force:
+        subprocess.check_call(['gzip', '-vfc', str(fname)], stdout=outfile)
+    else:
+        subprocess.check_call(['gzip', '-vc', str(fname)], stdout=outfile)
+
+    outfile.close()
+    subprocess.check_call(['rm', str(fname)])    
 
 
 
