@@ -668,8 +668,8 @@ if not args.no_cleanup:
     ###
     print '\nRemove if exist:'
     ###
-    subprocess.check_call(['rm', '-v', str(args.target_bfile)+'.tmp_recode.nosex'])
-    subprocess.check_call(['rm', '-v', str(args.target_bfile)+'.tmp_recode.hh'])
+    subprocess.call(['rm', '-v', str(args.target_bfile)+'.tmp_recode.nosex'])
+    subprocess.call(['rm', '-v', str(args.target_bfile)+'.tmp_recode.hh'])
     
 
 # finish
