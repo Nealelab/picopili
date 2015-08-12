@@ -42,7 +42,7 @@ import os
 import subprocess
 import argparse
 from glob import glob
-from py_helpers import file_len, read_conf, unbuffer_stdout
+from py_helpers import file_len, read_conf, unbuffer_stdout, test_exec
 from args_pca import *
 unbuffer_stdout()
 
