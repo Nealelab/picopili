@@ -419,6 +419,7 @@ reap_tped = str(args.target_bfile + '.tmp_recode')
 subprocess.check_call([plinkx,
                        '--silent',
                        '--bfile', str(args.target_bfile),
+                       '--allow-no-sex',
                        '--recode12',
                        '--output-missing-genotype', '0',
                        '--transpose',
@@ -598,9 +599,97 @@ if plot_pca:
                                stderr=subprocess.STDOUT,
                                stdout=r_pca_admix_log)    
         r_pca_admix_log.close()
-        print 'Finished plotting population %s (%d/%d)' % (popnames[i], i+1, args.npops)
+        print 'PCA plots for %s: %s, %s (completed %d/%d populations)' % (popnames[i], str(args.out)+'.'+popnames[i]+'.exemplars.pca.pairs.png', str(args.out)+'.'+popnames[i]+'.exemplars.pca.pc##_pc##.png', i+1, args.npops)
+
 
 
 # final cleanup
+if not args.no_cleanup:
+    
+    #############
+    print '\n...Cleaning up output files...'
+    #############
+    
+    if plot_pca:
+        ###
+        print '\nZipping PCA plot files to ' + args.out + '.pca_plot_files.tar.gz:'
+        ###        
+        subprocess.check_call(["tar", "-zcvf", 
+                               str(args.out+'.pca_plot_files.tar.gz')] + \
+                               glob(args.target_bfile+".*.admixture.plotinfo.txt") + \
+                               [str(args.target_bfile)+".admixture.legend.txt"] + \
+                               glob(args.out+".*.plot_admixture.log") + \
+                               glob(args.target_bfile+".*.exemplar.plotinfo.txt") + \
+                               [str(args.target_bfile)+".exemplar.legend.txt"] + \
+                               glob(args.out+".*.plot_exemplars.log")  )
+        
+        # remove files after successfully compressed
+        subprocess.check_call(['rm'] + glob(args.target_bfile+".*.admixture.plotinfo.txt"))
+        subprocess.check_call(['rm'] + glob(args.target_bfile+".admixture.legend.txt"))
+        subprocess.check_call(['rm'] + glob(args.out+".*.plot_admixture.log"))
+        subprocess.check_call(['rm'] + glob(args.target_bfile+".*.exemplar.plotinfo.txt"))
+        subprocess.check_call(['rm'] + glob(args.target_bfile+".exemplar.legend.txt"))
+        subprocess.check_call(['rm'] + glob(args.out+".*.plot_exemplars.log"))
+
+
+    ###
+    print '\nZipping Admixture output files:'
+    ###
+    subprocess.check_call(['gzip', '-vc',
+                           str(args.target_bfile)+'.'+str(args.npops)+'.P',
+                           '>', str(args.target_bfile)+'.'+str(args.npops)+'.P.gz'])
+    subprocess.check_call(['gzip', '-vc',
+                           str(args.target_bfile)+'.'+str(args.npops)+'.Q',
+                           '>', str(args.target_bfile)+'.'+str(args.npops)+'.Q.gz'])
+    subprocess.check_call(['gzip', '-vc',
+                           str(args.unrel_bfile)+'.'+str(args.npops)+'.P',
+                           '>', str(args.unrel_bfile)+'.'+str(args.npops)+'.P.gz'])
+    subprocess.check_call(['gzip', '-vc',
+                           str(args.unrel_bfile)+'.'+str(args.npops)+'.Q',
+                           '>', str(args.unrel_bfile)+'.'+str(args.npops)+'.Q.gz'])
+
+    # remove files after compressed
+    subprocess.check_call(['rm', str(args.target_bfile)+'.'+str(args.npops)+'.P'])
+    subprocess.check_call(['rm', str(args.target_bfile)+'.'+str(args.npops)+'.Q'])    
+    subprocess.check_call(['rm', str(args.unrel_bfile)+'.'+str(args.npops)+'.P'])
+    subprocess.check_call(['rm', str(args.unrel_bfile)+'.'+str(args.npops)+'.Q'])  
+
+    
+    ###
+    print '\nZipping REAP output files:'
+    ###
+    subprocess.check_call(['gzip', '-vc',
+                           'REAP_Inbreed.txt',
+                           '>', str(args.out)+'.REAP_Inbreed.txt.tar.gz'])
+    subprocess.check_call(['gzip', '-vc',
+                           'REAP_Individual_Index.txt',
+                           '>', str(args.out)+'.REAP_Individual_Index.txt.gz'])
+    subprocess.check_call(['gzip', '-vc',
+                           'REAP_pairs_relatedness.txt',
+                           '>', str(args.out)+'.REAP_pairs_relatedness.txt.gz'])
+    
+    # remove files after successfully compressed
+    subprocess.check_call(['rm', 'REAP_Inbreed.txt'])
+    subprocess.check_call(['rm', 'REAP_Individual_Index.txt'])
+    subprocess.check_call(['rm', 'REAP_pairs_relatedness.txt'])                       
+    
+    ###
+    print '\nRemoving temporary files:'
+    ###
+    subprocess.check_call(['rm', '-v',
+                           str(args.target_bfile)+'.tmp_recode.tped',
+                           str(args.target_bfile)+'.tmp_recode.tfam',
+                           str(args.target_bfile)+'.props.tmp.txt'])
+
+    ###
+    print '\nRemove if exist:'
+    ###
+    subprocess.check_call(['rm', '-v', str(args.target_bfile)+'.tmp_recode.nosex'])
+    subprocess.check_call(['rm', '-v', str(args.target_bfile)+'.tmp_recode.hh'])
+    
 
 # finish
+print '\n############'
+print '\n'
+print 'SUCCESS!\n'
+exit(0)
