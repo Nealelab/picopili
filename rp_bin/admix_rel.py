@@ -40,8 +40,9 @@ import os
 import subprocess
 import argparse
 from string import ascii_uppercase
+from glob import glob
 from numpy import digitize
-from py_helpers import *
+from py_helpers import unbuffer_stdout, file_len, test_exec, read_conf, find_from_path, link, gz_confirm
 unbuffer_stdout()
 
 
@@ -635,43 +636,26 @@ if not args.no_cleanup:
     ###
     print '\nZipping Admixture output files:'
     ###
-    subprocess.check_call(['gzip', '-vc',
-                           str(args.target_bfile)+'.'+str(args.npops)+'.P',
-                           '>', str(args.target_bfile)+'.'+str(args.npops)+'.P.gz'])
-    subprocess.check_call(['gzip', '-vc',
-                           str(args.target_bfile)+'.'+str(args.npops)+'.Q',
-                           '>', str(args.target_bfile)+'.'+str(args.npops)+'.Q.gz'])
-    subprocess.check_call(['gzip', '-vc',
-                           str(args.unrel_bfile)+'.'+str(args.npops)+'.P',
-                           '>', str(args.unrel_bfile)+'.'+str(args.npops)+'.P.gz'])
-    subprocess.check_call(['gzip', '-vc',
-                           str(args.unrel_bfile)+'.'+str(args.npops)+'.Q',
-                           '>', str(args.unrel_bfile)+'.'+str(args.npops)+'.Q.gz'])
-
-    # remove files after compressed
-    subprocess.check_call(['rm', str(args.target_bfile)+'.'+str(args.npops)+'.P'])
-    subprocess.check_call(['rm', str(args.target_bfile)+'.'+str(args.npops)+'.Q'])    
-    subprocess.check_call(['rm', str(args.unrel_bfile)+'.'+str(args.npops)+'.P'])
-    subprocess.check_call(['rm', str(args.unrel_bfile)+'.'+str(args.npops)+'.Q'])  
+    gz_confirm(str(args.target_bfile)+'.'+str(args.npops)+'.P', 
+               str(args.target_bfile)+'.'+str(args.npops)+'.P.gz', force=False)
+    gz_confirm(str(args.target_bfile)+'.'+str(args.npops)+'.Q', 
+               str(args.target_bfile)+'.'+str(args.npops)+'.Q.gz', force=False)
+    gz_confirm(str(args.unrel_bfile)+'.'+str(args.npops)+'.P', 
+               str(args.unrel_bfile)+'.'+str(args.npops)+'.P.gz', force=False)
+    gz_confirm(str(args.unrel_bfile)+'.'+str(args.npops)+'.Q', 
+               str(args.unrel_bfile)+'.'+str(args.npops)+'.Q.gz', force=False)
 
     
     ###
     print '\nZipping REAP output files:'
     ###
-    subprocess.check_call(['gzip', '-vc',
-                           'REAP_Inbreed.txt',
-                           '>', str(args.out)+'.REAP_Inbreed.txt.tar.gz'])
-    subprocess.check_call(['gzip', '-vc',
-                           'REAP_Individual_Index.txt',
-                           '>', str(args.out)+'.REAP_Individual_Index.txt.gz'])
-    subprocess.check_call(['gzip', '-vc',
-                           'REAP_pairs_relatedness.txt',
-                           '>', str(args.out)+'.REAP_pairs_relatedness.txt.gz'])
-    
-    # remove files after successfully compressed
-    subprocess.check_call(['rm', 'REAP_Inbreed.txt'])
-    subprocess.check_call(['rm', 'REAP_Individual_Index.txt'])
-    subprocess.check_call(['rm', 'REAP_pairs_relatedness.txt'])                       
+    gz_confirm('REAP_Inbreed.txt', 
+               str(args.out)+'.REAP_Inbreed.txt.gz', force=False)
+    gz_confirm('REAP_Individual_Index.txt', 
+               str(args.out)+'.REAP_Individual_Index.txt.gz', force=False)
+    gz_confirm('REAP_pairs_relatedness.txt', 
+               str(args.out)+'.REAP_pairs_relatedness.txt.gz', force=False)
+                     
     
     ###
     print '\nRemoving temporary files:'
