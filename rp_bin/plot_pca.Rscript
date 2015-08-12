@@ -1,0 +1,55 @@
+#!/usr/bin/env Rscript
+
+# read args
+pca_file = commandArgs(TRUE)[1]
+plot_file = commandArgs(TRUE)[2]
+leg_file = commandArgs(TRUE)[3]
+npcs = as.numeric(commandArgs(TRUE)[4])
+out_name = commandArgs(TRUE)[5]
+
+# load files
+pcval.M <- read.table(pca_file, header=T, stringsAsFactors=F)
+plotval.M <- read.table(plot_file, header=T, stringsAsFactors=F, comment.char="")
+legend.M <- read.table(leg_file, header=T, stringsAsFactors=F, comment.char="")
+
+# sort plot info on layer order
+plotval.M <- plotval.M[order(plotval.M$layer),]
+
+# match ids for info, pca
+pca_id <- paste(pcval.M$FID,pcval.M$IID,sep=":")
+plot_id <- paste(plotval.M$FID, plotval.M$IID,sep=":")
+idtmp <- match(plot_id, pca_id)
+idna <- is.na(idtmp)
+idx <- idtmp[!idna]
+
+# pairs plot
+png(file=paste("./plots/",out_name,".pca.pairs.png",sep=""), width=800, height=800, type="cairo")
+pairs(pcval.M[idx,3:(npcs+2)], col=plotval.M$col[!idna], pch=plotval.M$pch[!idna])
+dev.off()
+
+# loop pairs of PCs for 2D plots
+for(i in 1:(npcs-1)){
+	for(j in (i+1):npcs){
+
+		png(file=paste("./plots/",out_name,".pca.pc",i,"_pc",j,".png",sep=""),height=800,width=800,type="cairo")
+		plot(pcval.M[idx,i+2], pcval.M[idx,j+2],
+			xlab=paste("PC",i), ylab=paste("PC",j),
+			main=out_name,
+			col=plotval.M$col[!idna],
+			pch=plotval.M$pch[!idna],
+			xlim=c(min(pcval.M[,i+2]),max(pcval.M[,i+2])+sd(pcval.M[,i+2])),
+			ylim=c(min(pcval.M[,j+2]),max(pcval.M[,j+2])+sd(pcval.M[,j+2]))
+		)
+
+		legend("topright",
+			legend=legend.M$text,
+			col=legend.M$col,
+			pch=legend.M$pch,
+			fill=legend.M$fill,
+			border=c(NA,"black")[1+as.numeric(!is.na(legend.M$fill))])
+
+		dev.off()
+	}
+}
+
+# eof
