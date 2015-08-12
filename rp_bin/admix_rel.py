@@ -172,8 +172,14 @@ exemplar_color = "orange"
 ref_color = "black"
 other_color = "gray50"
 
-# Taken from RColorBrewer YlGnBu, n=8 
-col_gradient = ["#FFFFD9","#EDF8B1","#C7E9B4","#7FCDBB","#41B6C4","#1D91C0","#225EA8","#0C2C84"]
+# Adapted from RColorBrewer YlGnBu to trim lighter colors, increase resolution
+# t(
+#   apply(
+#       colorRamp(brewer.pal(9,"YlGnBu")[3:9],space="rgb")(1:10/10),
+#       1, function(a) as.character(as.hexmode(round(a))
+#   )
+# )
+col_gradient = ["#9CD8B8","#73C8BD","#4DBBC2","#33A7C2","#1D91C0","#2072B2","#2356A4","#243C98","#192B7C","#081D58"]
 
 
 # print settings
@@ -534,7 +540,7 @@ if plot_pca:
         for i in xrange(args.npops):
             # bin the population proportion
             # Note: .tolist()[0] need to get back from np.array to scalar
-            prop_bins = [float(x) / 8.0 for x in range(0,9)]
+            prop_bins = [float(x) / 10.0 for x in range(0,11)]
             in_bin = digitize([splitline[i]], prop_bins).tolist()[0]
             bin_col = col_gradient[in_bin-1]
             
