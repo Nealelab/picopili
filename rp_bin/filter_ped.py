@@ -36,6 +36,7 @@ import argparse
 # from string import ascii_uppercase
 # from glob import glob
 # from numpy import digitize
+import random
 from py_helpers import unbuffer_stdout
 # file_len, test_exec, read_conf, find_from_path, link, gz_confirm
 unbuffer_stdout()
@@ -52,7 +53,7 @@ parser = argparse.ArgumentParser(prog='filter_ped.py',
 
 arg_base = parser.add_argument_group('Basic Arguments')
 arg_ibd = parser.add_argument_group('Relatedness File Settings')
-arg_prefwt = parser.add_argument_group('Filtering Preferences')
+arg_prefWt = parser.add_argument_group('Filtering Preferences')
 
 arg_base.add_argument('--input-ibd', 
                       type=str,
@@ -87,15 +88,105 @@ arg_ibd.add_argument('--min-rel',
                     required=False,
                     default=.09375)
 
-# arg_prefwt.add_argument()
+arg_prefWt.add_argument('--case-weight',
+                        type=float,
+                        metavar='FLOAT',
+                        help='Value of case status when selecting individuals to ' + \
+                             'keep among cryptically related pairs',
+                        required=False,
+                        default=5.0)
+arg_prefWt.add_argument('--con-weight',
+                        type=float,
+                        metavar='FLOAT',
+                        help='Value of control status when selecting individuals to ' + \
+                             'keep among cryptically related pairs',
+                        required=False,
+                        default=2.0)
+arg_prefWt.add_argument('--miss-weight',
+                        type=float,
+                        metavar='FLOAT',
+                        help='Value of missing phenotype when selecting individuals to ' + \
+                             'keep among cryptically related pairs',
+                        required=False,
+                        default=1.0)
+arg_prefWt.add_argument('--fam-case-weight',
+                        type=float,
+                        metavar='FLOAT',
+                        help='Value of a related case in pedigree when selecting ' + \
+                             'individuals to keep among cryptically related pairs',
+                        required=False,
+                        default=5.0)
+arg_prefWt.add_argument('--fam-con-weight',
+                        type=float,
+                        metavar='FLOAT',
+                        help='Value of a related control in pedigree when selecting ' + \
+                             'individuals to keep among cryptically related pairs',
+                        required=False,
+                        default=2.0)
+arg_prefWt.add_argument('--fam-miss-weight',
+                        type=float,
+                        metavar='FLOAT',
+                        help='Value of a related individual in pedigree with a ' + \
+                             'missing phenotype when selecting individuals to keep ' + \
+                             'among cryptically related pairs',
+                        required=False,
+                        default=1.0)
+arg_prefWt.add_argument('--cross-fid-weight',
+                        type=float,
+                        metavar='FLOAT',
+                        help='Value of relationship to individuals in a different ' + \
+                             'pedigree when selecting individuals to keep among ' + \
+                             'cryptically related pairs',
+                        required=False,
+                        default=-10.0)
+arg_prefWt.add_argument('--geno-weight',
+                        type=float,
+                        metavar='FLOAT',
+                        help='Value of genotyping rate when selecting individuals ' + \
+                             'to keep among cryptically related pairs. NOT CURRENTLY USED.',
+                        required=False,
+                        default=0.1)
+arg_prefWt.add_argument('--rand-weight',
+                        type=float,
+                        metavar='FLOAT',
+                        help='When selecting individuals to keep among cryptically ' + \
+                             'related pairs, the range of the random value used to ' + \
+                             'break ties. NOTE: a large value here can override the ' + \
+                             'preference from the case/control/pedigree weights.',
+                        required=False,
+                        default=1e-5)
+arg_prefWt.add_argument('--seed',
+                        type=int,
+                        metavar='INT',
+                        help='Random seed. Applies to random values for breaking ties ' + \
+                             'among cryptically related individuals',
+                        required=False,
+                        default=123)
 
 args = parser.parse_args()
 
+# removing tie-breaker would likely cause problems 
+assert args.rand_weight != 0.0, 'To prevent unexpected behavior with tied preferences, --rand-weight must be non-zero.'
+
+# make dict of weights for easier use
+pref_weights = {
+        'case' : float(args.case_weight),
+        'control' : float(args.con_weight),
+        'missing': float(args.miss_weight),
+        'fam_case' : float(args.fam_case_weight),
+        'fam_control' : float(args.fam_con_weight),
+        'fam_missing' : float(args.fam_miss_weight),
+        'rel_cross' : float(args.cross_fid_weight),
+        'geno_rate' : float(args.geno_weight),
+        'rand_range' : float(args.rand_weight),
+}
+
+# set random seed
+random.seed(int(args.seed))
 
 
 
 # TODO: add dependency checks, args printing, reading config files, etc
-
 
 
 
@@ -191,14 +282,14 @@ if str(args.format) == 'reap':
         
         # record relationship for the individuals
         if jointid1 in iid_relatives:
-            iid_relatives[jointid1].append(pair)
+            iid_relatives[jointid1].append(jointid2)
         else:
-            iid_relatives[jointid1] = [pair]
+            iid_relatives[jointid1] = [jointid2]
         
         if jointid2 in iid_relatives:
-            iid_relatives[jointid2].append(pair)
+            iid_relatives[jointid2].append(jointid1)
         else:
-            iid_relatives[jointid2] = [pair]
+            iid_relatives[jointid2] = [jointid1]
         
     ibd_file.close()
             
@@ -208,8 +299,92 @@ else:
     raise ValueError('Unsupported format for IBD file: %s' % str(args.format))
 
 
-# print cross-fid relatives
-print [(info['joint1'],info['joint2']) for rel,info in rel_info.iteritems() if info['cross_fid'] == True ]
+
+#############
+print '\n...Flagging IDs to remove for cross-FID cryptic relatedness...'
+#############
+
+# get IDs with cross-FID relationships
+cross_ids = [(info['joint1'],info['joint2']) for rel,info in rel_info.iteritems() if info['cross_fid'] == True ]
+
+# if any...
+if cross_ids:
+    
+    # get list of unique IDs in cross-FID list
+    cross_id_list = list(set(list(sum(cross_ids, ()))))
+    
+    # log
+    print 'Found '+str(len(cross_ids))+' cross-FID relationships involving '+str(len(cross_id_list))+' IDs.'
+
+    # define function to score preference for keeping each individual
+    # lowest score will get deleted
+    def pref_score(ind_id, fam_dict, rel_dict, weight_dict):
+        # init
+        pref = 0.0
+        ind_id = str(ind_id)
+        
+        # score self phenotype
+        phen = fam_dict[ind_id][5]
+        if int(phen) == 2:
+            pref += weight_dict['case']
+        elif int(phen) == 1:
+            pref += weight_dict['control']
+        elif int(phen) == 0 or int(phen) == -9:
+            pref += weight_dict['missing']
+        else:
+            raise ValueError('Unexpected phenotype value %r for %s. Not case/control?' % (phen, ind_id))
+    
+        # score relationships
+        for rel_id in rel_dict[ind_id]:
+            rel_phen = int(fam_dict[rel_id][5])
+            if fam_dict[rel_id][0] != fam_dict[ind_id][0]:
+                pref += weight_dict['rel_cross']
+            elif rel_phen == 2:
+                pref += weight_dict['fam_case']
+            elif rel_phen == 1:
+                pref += weight_dict['fam_control']
+            elif rel_phen == 0 or rel_phen == -9:
+                pref += weight_dict['fam_missing']                
+
+        # TODO: score geno rate
+
+        return pref
+    
+    # loop removal until no cross-fid relationship left
+    cryptex_file = open(str(args.out) + '.remove.crossFID.txt', 'w')
+    while len(cross_id_list) > 0:
+    
+        # score each cross-FID related IID's prority for keep/remove
+        prefs = [pref_score(indiv, fam_info, iid_relatives, pref_weights) for indiv in cross_id_list]
+        
+        # breaks ties randomly
+        if len(prefs) != len(set(prefs)):
+            prefs = [x + random.uniform(-1.0*pref_weights['rand_range'], 0) for x in prefs]
+            
+        # select individual with lowest preference to remove
+        fail_id = cross_id_list[prefs.index(min(prefs))]
+        fail_fid = fam_info[fail_id][0]
+        fail_iid = fam_info[fail_id][1]
+        
+        # write selected individual to file
+        cryptex_file.write(' '.join([str(fail_fid), str(fail_iid), 'pref='+str(min(prefs)), 'related='+';'.join(iid_relatives[fail_id])]) + '\n')
+        
+        ### update relationship info for next iteration
+        # remove dict entries
+        iid_relatives.pop(fail_id)
+        fam_info.pop(fail_id)
+        fid_members[fail_fid] = fid_members[fail_fid].remove(fail_iid)
+        iid_relatives = {key: value.remove(fail_id) if fail_id in value else value for key, value in iid_relatives.iteritems()}    
+        rel_info = {key: value for key, value in rel_info.iteritems() if (value['joint1'] != fail_id and value['joint2'] != fail_id)}
+    
+        # update cross-FID relatedness list
+        cross_ids = [(info['joint1'],info['joint2']) for rel,info in rel_info.iteritems() if info['cross_fid'] == True ]
+        cross_id_list = list(set(list(sum(cross_ids, ()))))
+        
+        print 'Flagged %s. Now %d cross-FID related pairs remaining.' % (fail_id, len(cross_ids))
+
+    cryptex_file.close()
+    print '\n'
 
 
 exit(0)
