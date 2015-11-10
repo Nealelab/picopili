@@ -306,6 +306,81 @@ else:
     raise ValueError('Unsupported format for IBD file: %s' % str(args.format))
 
 
+#############
+print '\n...Flagging possible unmarked parent/offspring pairs...'
+#############
+
+def isPossiblePO(pair_info, 
+                 PO_PI_MIN=PO_PI_MIN, 
+                 PO_PI_MAX=PO_PI_MAX, 
+                 PO_IBD0_MAX=PO_IBD0_MAX, 
+                 PO_IBD1_MIN=PO_IBD1_MIN, 
+                 PO_IBD2_MAX=PO_IBD2_MAX):
+
+    assert 'pihat' in pair_info, 'Invalid argument for pair_info (missing entry \'pihat\')'
+    assert 'ibds' in pair_info, 'Invalid argument for pair_info (missing entry \'ibds\')'
+
+    if float(pair_info['ibds'][0]) <= PO_IBD0_MAX and \
+       float(pair_info['ibds'][1]) >= PO_IBD1_MIN and \
+       float(pair_info['ibds'][2]) <= PO_IBD2_MAX:
+           return True
+    else:
+           return False
+
+# print 'info --- %s' % str(rel_info['QC1025302436:QC1025302436:::QC1025302407:QC1025302407'])
+# print 'trying QC1025302436:QC1025302436:::QC1025302407:QC1025302407 --- %s' % str(isPossiblePO(rel_info['QC1025302436:QC1025302436:::QC1025302407:QC1025302407']))
+
+possibleParents = [rel for rel,info in rel_info.iteritems() if isPossiblePO(info)]
+
+def isFamPO(pair_info, fam_info):
+    if pair_info['fam1'] == pair_info['fam2']:
+        if fam_info[pair_info['joint1']][2] == pair_info['id2']:
+            return True # iid2 is father of iid1
+        elif fam_info[pair_info['joint1']][3] == pair_info['id2']:
+            return True # iid2 is mother of iid1
+        elif fam_info[pair_info['joint2']][2] == pair_info['id1']:
+            return True # iid1 is father of iid2
+        elif fam_info[pair_info['joint2']][3] == pair_info['id1']:
+            return True # iid1 is mother of iid2
+        else:
+            return False
+    else:
+        return False
+
+# if any...
+if possibleParents: 
+    
+    parents_file = open(str(args.out) + '.unmarkedparents.txt', 'w')
+    parents_file.write(' '.join(["FID1","IID1","SEX1","FID2","IID2","SEX2","pihat","ibd0","ibd1","ibd2"]) + '\n')
+
+    n_po = 0
+    n_new_po = 0
+
+    for po_pair in possibleParents:
+        n_po += 1
+        if isFamPO(rel_info[po_pair], fam_info):
+            next
+        else:
+            n_new_po += 1
+            po_joint1 = rel_info[po_pair]['joint1']
+            po_joint2 = rel_info[po_pair]['joint2']
+            parents_file.write(' '.join([
+                                        str(fam_info[po_joint1][0]),
+                                        str(fam_info[po_joint1][1]),
+                                        str(fam_info[po_joint1][4]),
+                                        str(fam_info[po_joint2][0]),
+                                        str(fam_info[po_joint2][1]),
+                                        str(fam_info[po_joint2][4]),
+                                        str(rel_info[po_pair]['pihat']),
+                                        str(rel_info[po_pair]['ibds'][0]),
+                                        str(rel_info[po_pair]['ibds'][1]),
+                                        str(rel_info[po_pair]['ibds'][2])
+                                    ]) + '\n')
+    
+    parents_file.close()
+    print 'Found %d putative parent-offspring pairs (%d not indicated in fam file).' % (n_po, n_new_po)
+
+
 
 #############
 print '\n...Flagging IDs to remove for cross-FID cryptic relatedness...'
@@ -439,74 +514,6 @@ if n_nonrelex > 0:
     print 'List of flagged IIDs written to %s.' % str(nonrelex_file.name)
 
 
-#############
-print '\n...Flagging possible unmarked parent/offspring pairs...'
-#############
-
-def isPossiblePO(pair_info, 
-                 PO_PI_MIN=PO_PI_MIN, 
-                 PO_PI_MAX=PO_PI_MAX, 
-                 PO_IBD0_MAX=PO_IBD0_MAX, 
-                 PO_IBD1_MIN=PO_IBD1_MIN, 
-                 PO_IBD2_MAX=PO_IBD2_MAX):
-
-    assert 'pihat' in pair_info, 'Invalid argument for pair_info (missing entry \'pihat\')'
-    assert 'ibds' in pair_info, 'Invalid argument for pair_info (missing entry \'ibds\')'
-
-    if pair_info['pihat'] >= PO_PI_MIN and \
-       pair_info['pihat'] <= PO_PI_MAX and \
-       pair_info['ibds'][0] <= PO_IBD0_MAX and \
-       pair_info['ibds'][1] >= PO_IBD1_MIN and \
-       pair_info['ibds'][2] <= PO_IBD2_MAX:
-           return True
-    else:
-           return False
-
-possibleParents = [rel for rel,info in rel_info.iteritems() if isPossiblePO(info)]
-
-def isFamPO(pair_info, fam_info):
-    if pair_info['fid1'] == pair_info['fid2']:
-        if fam_info[pair_info['joint1']][2] == pair_info['iid2']:
-            return True # iid2 is father of iid1
-        elif fam_info[pair_info['joint1']][3] == pair_info['iid2']:
-            return True # iid2 is mother of iid1
-        elif fam_info[pair_info['joint2']][2] == pair_info['iid1']:
-            return True # iid1 is father of iid2
-        elif fam_info[pair_info['joint2']][3] == pair_info['iid1']:
-            return True # iid1 is mother of iid2
-        else:
-            return False
-    else:
-        return False
-
-# if any...
-if possibleParents: 
-    
-    parents_file = open(str(args.out) + '.unmarkedparents.txt', 'w')
-    parents_file.write(' '.join(["FID1","IID1","SEX1","FID2","IID2","SEX2","pihat","ibd0","ibd1","ibd2"]) + '\n')
-
-    for po_pair in possibleParents:
-        if isFamPO(rel_info[po_pair], fam_info):
-            next
-        else:
-            po_joint1 = rel_info[po_pair]['joint1']
-            po_joint2 = rel_info[po_pair]['joint2']
-            parents_file.write(' '.join([
-                                        str(fam_info[po_joint1][0]),
-                                        str(fam_info[po_joint1][1]),
-                                        str(fam_info[po_joint1][4]),
-                                        str(fam_info[po_joint2][0]),
-                                        str(fam_info[po_joint2][1]),
-                                        str(fam_info[po_joint2][4]),
-                                        rel_info[po_pair]['pihat'],
-                                        rel_info[po_pair]['ibds'][0],
-                                        rel_info[po_pair]['ibds'][1],
-                                        rel_info[po_pair]['ibds'][2]
-                                    ]) + '\n')
-    
-    parents_file.close()
-
-print '\n'
 
 
 exit(0)
