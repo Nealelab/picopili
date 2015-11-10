@@ -10,9 +10,10 @@ Filter family-based GWAS data based on cryptic relatedness
 # 1) Input relatedness estimates
 #    - allow REAP formats
 # TODO: add plink, king formats, allow running new estimates
-# 2) Filter cross-FID relatedness
-# 3) Filter within-FID unrelateds
-# 4) Return exclusion lists with reason, flags for followup
+# 2) Flag possible parent/offspring pairs not already in fam file
+# 3) Filter cross-FID relatedness
+# 4) Filter within-FID unrelateds
+# 5) Return exclusion lists with reason, flags for followup
 #
 ####################################
 
@@ -30,7 +31,7 @@ if not (('-h' in sys.argv) or ('--help' in sys.argv)):
 #############
 
 ### load requirements
-# import os
+import os
 # import subprocess
 import argparse
 # from string import ascii_uppercase
@@ -186,15 +187,38 @@ random.seed(int(args.seed))
 
 
 # magic numbers for parent/offspring tagging
-PO_PI_MAX = 0.6
-PO_PI_MIN = 0.4
-PO_IBD0_MAX = 0.25
-PO_IBD2_MAX = 0.25
-PO_IBD1_MIN = 0.75
-
+PO_IBD0_MAX = 0.2
+PO_IBD1_MIN = 0.8
+PO_IBD2_MAX = 0.2
 
 # TODO: add dependency checks, args printing, reading config files, etc
 
+# print settings
+print 'Using settings:'
+print '--input-ibd '+args.input_ibd
+print '--bfile '+args.bfile
+print '--out '+args.out
+print '--format '+args.format
+print '--min-rel '+str(args.min_rel)
+print '--case-weight '+str(args.case_weight)
+print '--con-weight '+str(args.con_weight)
+print '--miss-weight '+str(args.miss_weight)
+print '--fam-case-weight '+str(args.fam_case_weight)
+print '--fam-con-weight '+str(args.fam_con_weight)
+print '--fam-miss-weight '+str(args.fam_miss_weight)
+print '--cross-fid-weight '+str(args.cross_fid_weight)
+print '--geno-weight '+str(args.geno_weight)
+print '--rand-weight '+str(args.rand_weight)
+print '--seed '+str(args.seed)
+
+
+#############
+print '\n...Checking dependencies...'
+#############
+
+# verify input files exist
+assert os.path.isfile(args.input_ibd), "IBD/relatedness file does not exist (%r)" % args.input_ibd
+assert os.path.isfile(str(args.bfile)+'.fam'), "Plink fam file does not exist (%s)" % str(args.bfile)+'.fam'
 
 
 
@@ -310,9 +334,7 @@ else:
 print '\n...Flagging possible unmarked parent/offspring pairs...'
 #############
 
-def isPossiblePO(pair_info, 
-                 PO_PI_MIN=PO_PI_MIN, 
-                 PO_PI_MAX=PO_PI_MAX, 
+def isPossiblePO(pair_info,
                  PO_IBD0_MAX=PO_IBD0_MAX, 
                  PO_IBD1_MIN=PO_IBD1_MIN, 
                  PO_IBD2_MAX=PO_IBD2_MAX):
@@ -379,6 +401,9 @@ if possibleParents:
     
     parents_file.close()
     print 'Found %d putative parent-offspring pairs (%d not indicated in fam file).' % (n_po, n_new_po)
+    
+    if n_new_po > 0:
+        print 'Pairs not in fam file written to %s.' % str(parents_file.name)
 
 
 
@@ -466,15 +491,15 @@ if cross_ids:
         print 'Flagged %s. Now %d cross-FID related pairs remaining.' % (fail_id, len(cross_ids))
 
     cryptex_file.close()
+    print 'Task finished. Results written to %s.' % str(cryptex_file.name) 
 
+else:
+    print 'None found.'
 
 
 #############
 print '\n...Flagging IIDs unrelated to reported FIDs...'
 #############
-
-nonrelex_file = open(str(args.out) + '.remove.nonFID.txt', 'w')
-nonrelex_file.write(' '.join(["FID","IID"]) + '\n')
 
 n_nonrelex = 0
 
@@ -504,16 +529,28 @@ for indiv in fam_info:
             continue
     
     # if here, are other IIDs in FID but not related to any of them
-    nonrelex_file.write(' '.join([str(fam_info[indiv][0]), str(fam_info[indiv][1])]) + '\n') 
     n_nonrelex += 1
 
-nonrelex_file.close()
-
+    # only create output file, write header if needed
+    if n_nonrelex == 1:
+        nonrelex_file = open(str(args.out) + '.remove.nonFID.txt', 'w')
+        nonrelex_file.write(' '.join(["FID","IID"]) + '\n')
+    
+    nonrelex_file.write(' '.join([str(fam_info[indiv][0]), str(fam_info[indiv][1])]) + '\n') 
+    
+# close at end and report
 if n_nonrelex > 0:
+    nonrelex_file.close()
+
     print 'Found %d IIDs not related to other individuals with same FID.' % n_nonrelex
     print 'List of flagged IIDs written to %s.' % str(nonrelex_file.name)
+else:
+    print 'None found.'
 
 
-
-
+print '\n\n'
+print '############'
+print 'Finished!'
+print '############'
+print '\n'
 exit(0)
