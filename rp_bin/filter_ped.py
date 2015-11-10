@@ -38,6 +38,7 @@ import argparse
 # from glob import glob
 # from numpy import digitize
 import random
+import warnings
 from py_helpers import unbuffer_stdout
 # file_len, test_exec, read_conf, find_from_path, link, gz_confirm
 unbuffer_stdout()
@@ -66,6 +67,13 @@ arg_base.add_argument('--bfile',
                       metavar='FILESTEM',
                       help='file stem for plink bed/bim/fam files',
                       required=True)
+arg_base.add_argument('--geno', 
+                      type=str,
+                      metavar='FILE',
+                      help='file with genotype missingness rate per individual ' + \
+                           '(i.e. the .imiss file from plink --missing)',
+                      required=False,
+                      default='NONE')                   
 arg_base.add_argument('--out',
                       type=str,
                       metavar='OUTNAME',
@@ -144,7 +152,7 @@ arg_prefWt.add_argument('--geno-weight',
                         type=float,
                         metavar='FLOAT',
                         help='Value of genotyping rate when selecting individuals ' + \
-                             'to keep among cryptically related pairs. NOT CURRENTLY USED.',
+                             'to keep among cryptically related pairs.',
                         required=False,
                         default=0.1)
 arg_prefWt.add_argument('--rand-weight',
@@ -195,10 +203,11 @@ PO_IBD2_MAX = 0.2
 
 # print settings
 print 'Using settings:'
-print '--input-ibd '+args.input_ibd
-print '--bfile '+args.bfile
-print '--out '+args.out
-print '--format '+args.format
+print '--input-ibd '+str(args.input_ibd)
+print '--bfile '+str(args.bfile)
+print '--geno '+str(args.geno)
+print '--out '+str(args.out)
+print '--format '+str(args.format)
 print '--min-rel '+str(args.min_rel)
 print '--case-weight '+str(args.case_weight)
 print '--con-weight '+str(args.con_weight)
@@ -220,6 +229,8 @@ print '\n...Checking dependencies...'
 assert os.path.isfile(args.input_ibd), "IBD/relatedness file does not exist (%r)" % args.input_ibd
 assert os.path.isfile(str(args.bfile)+'.fam'), "Plink fam file does not exist (%s)" % str(args.bfile)+'.fam'
 
+if str(args.geno) != 'NONE':
+    assert os.path.isfile(args.geno), "Missingness rate file does not exist (%r)" % args.geno
 
 
 print '\n'
@@ -259,8 +270,52 @@ with open(str(args.bfile) + '.fam', 'r') as fam_file:
             fam_info[joint_id] = [fid, iid, pat, mat, sex, phen]
 
 
-
 # TODO: add option to compute IBD on the fly here?
+
+
+
+#############
+print '\n...Loading genotyping rate information...'
+# Assume plink imiss format
+# if no file, load dummy values with no missingness
+#############
+
+genorate = {}
+
+if str(args.geno) == 'NONE':
+    print 'Skipping (no file provided).'    
+    for indiv in fam_info:
+        genorate[indiv] = 1.0
+
+else:
+    genofile = open(str(args.geno), 'r')
+
+    # verify expected header
+    head = genofile.readline().split()
+    if not head == ['FID','IID','MISS_PHENO','N_MISS','N_GENO','F_MISS']:
+        raise IOError('First line of %s does not match expected header format for plink imiss file' % str(args.geno))
+    
+    # read per individual, indexed by FID:IID
+    for line in genofile:
+        (fid, iid, miss_phen, nmiss, ngeno, fmiss) = line.split()
+        
+        # id key
+        ind_id = str(fid) + ':' + str(iid)
+        
+        # record
+        genorate[ind_id] = 1.0 - float(fmiss)
+    
+    genofile.close()
+    
+    # check values present for all IDs
+    for indiv in fam_info:
+        if indiv in genorate:
+            continue
+        else:
+            warnings.warn('Genotyping rate not loaded for %s. Setting to zero.' % str(indiv))
+            genofile[indiv] = 1.0
+
+
 
 #############
 print '\n...Parsing relatedness estimates...'
@@ -425,7 +480,7 @@ if cross_ids:
 
     # define function to score preference for keeping each individual
     # lowest score will get deleted
-    def pref_score(ind_id, fam_dict, rel_dict, weight_dict):
+    def pref_score(ind_id, fam_dict, rel_dict, geno_dict, weight_dict):
         # init
         pref = 0.0
         ind_id = str(ind_id)
@@ -453,7 +508,8 @@ if cross_ids:
             elif rel_phen == 0 or rel_phen == -9:
                 pref += weight_dict['fam_missing']                
 
-        # TODO: score geno rate
+        # score geno rate
+        pref += weight_dict['geno_rate'] * float(geno_dict[ind_id])
 
         return pref
     
@@ -462,7 +518,7 @@ if cross_ids:
     while len(cross_id_list) > 0:
     
         # score each cross-FID related IID's prority for keep/remove
-        prefs = [pref_score(indiv, fam_info, iid_relatives, pref_weights) for indiv in cross_id_list]
+        prefs = [pref_score(indiv, fam_info, iid_relatives, genorate, pref_weights) for indiv in cross_id_list]
         
         # breaks ties randomly
         if len(prefs) != len(set(prefs)):
