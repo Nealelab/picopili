@@ -391,9 +391,6 @@ if cross_ids:
         print 'Flagged %s. Now %d cross-FID related pairs remaining.' % (fail_id, len(cross_ids))
 
     cryptex_file.close()
-    print '\n'
-
-
 
 
 
@@ -409,35 +406,37 @@ n_nonrelex = 0
 # loop individuals in fam file
 for indiv in fam_info:
     
+    # print 'indiv = %s' % str(indiv)    
+    
     # ok if IID is only member of FID
-    if fid_members[indiv[0]].count() < 2:
-        next
+    if len(fid_members[fam_info[indiv][0]]) < 2:
+        # print '    Found no others in FID'
+        continue
     
     # if is related to at least 1 person...
     elif indiv in iid_relatives:
+        # print '    Found some relatives'
 
         # check if at least one of them is in same FID
         num_in_fam = 0 
         for id2 in iid_relatives[indiv]:
             if fam_info[id2][0] == fam_info[indiv][0]:
                 num_in_fam += 1
+                # print '    Found a related family member'
                 break
         
         if num_in_fam > 0:
-            next
+            continue
     
     # if here, are other IIDs in FID but not related to any of them
-    nonrelex_file.write(' '.join([str(fam_info[indiv][0]), str(fam_info[indiv][1]])) + '\n') 
+    nonrelex_file.write(' '.join([str(fam_info[indiv][0]), str(fam_info[indiv][1])]) + '\n') 
     n_nonrelex += 1
 
 nonrelex_file.close()
 
 if n_nonrelex > 0:
-    print 'Found %d IIDs not related to other individuals with same FID. \n' % (n_nonrelex)
-    print 'List of flagged IIDs written to %s.' % (str(nonrelex_file.name()))
-
-
-print '\n'
+    print 'Found %d IIDs not related to other individuals with same FID.' % n_nonrelex
+    print 'List of flagged IIDs written to %s.' % str(nonrelex_file.name)
 
 
 #############
