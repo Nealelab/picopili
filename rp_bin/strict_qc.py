@@ -236,9 +236,12 @@ dumphead = frqs.readline()
 
 for line in frqs:
     (chrom, snp, a1, a2, maf, nobs) = line.split()
+    
+    if str(maf) == "NA":
+        snp_out.write(str(snp) + ' no_MAF\n')
 
-    if float(maf) < args.maf_th or (1.0-float(maf)) < args.maf_th:
-        snp_out.write(snp + ' low_MAF\n')
+    elif float(maf) < args.maf_th or (1.0-float(maf)) < args.maf_th:
+        snp_out.write(str(snp) + ' low_MAF\n')
 
 frqs.close()
 

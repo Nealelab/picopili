@@ -297,7 +297,7 @@ elif args.test_sub:
     print 'Completed script. See dummy submit commands above.\n' 
 else:
     print 'Finished submitting jobs.'
-    print 'See bjobs to track job status.'
+    print 'See qstat to track job status.'
     print 'Email will be sent when workflow completes.\n'
 
 exit(0)
