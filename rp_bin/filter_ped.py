@@ -239,7 +239,7 @@ if str(args.format) == 'reap':
 
         # skip relationships that don't hit minimum relatedness threshold
         if pi < float(args.min_rel):
-            next
+            continue
 
         # record info on the related pair
         # mark cross-fid relatedness
@@ -317,7 +317,7 @@ if possibleParents:
     for po_pair in possibleParents:
         n_po += 1
         if isFamPO(rel_info[po_pair], fam_info):
-            next
+            continue
         else:
             n_new_po += 1
             po_joint1 = rel_info[po_pair]['joint1']
