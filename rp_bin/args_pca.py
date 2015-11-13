@@ -4,7 +4,7 @@
 # By Raymond Walters, Jul 2015
 #
 # Shared argparse arguments for PCA tasks. Extracted here
-# to centrslize arguments for the tasks and the top-level 
+# to centralize arguments for the tasks and the top-level 
 # driver script.
 #
 # Also define groups within parsers for nicer help print format.
@@ -182,7 +182,7 @@ arg_exloc.add_argument('--rscript-ex',
 arg_exloc.add_argument('--primus-ex',
                     type=str,
                     metavar='PATH',
-                    help='path to PRIMUS executable',
+                    help='path to main PRIMUS executable',
                     required=False,
                     default=os.environ['HOME']+"/PRIMUS_v1.8.0/bin/run_PRIMUS.pl")
 # arg_exloc.add_argument('--smartpca-ex',

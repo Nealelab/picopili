@@ -33,12 +33,13 @@ if not (('-h' in sys.argv) or ('--help' in sys.argv)):
 ### load requirements
 # import os
 # import subprocess
-# import argparse
+import argparse
 # from string import ascii_uppercase
 # from glob import glob
 # from numpy import digitize
 # import random
 # import warnings
+from args_ped import *
 from py_helpers import unbuffer_stdout
 # file_len, test_exec, read_conf, find_from_path, link, gz_confirm
 unbuffer_stdout()
@@ -49,27 +50,13 @@ if not (('-h' in sys.argv) or ('--help' in sys.argv)):
     print '\n...Parsing arguments...' 
 #############
 
+parser = argparse.ArgumentParser(prog='ped_confirm.py',
+                                 formatter_class=lambda prog:
+                                 argparse.ArgumentDefaultsHelpFormatter(prog, max_help_position=40),
+                                 parents=[parserbase,parseribd,parserexloc])
 
-#######################
-# 
-#
-# BUGS ELSEWHERE:
-# imus_pca final print should indicate "qstat" not "bsub"
-# strict_qc MAF filter needs to handle NAs (see:
-#       /psych/genetics_data/rwalters/pgc_addict/alcdata/qc_rel/ped_checks/fgwa_pico/strictqc_coga.bsub.log
-#
-#
+args = parser.parse_args()
 
-
-
-
-# needed args:
-# relatedness file
-# fam file
-# output
-
-# relatedness format (default reap)
-# rel threshold
 
 
 
