@@ -39,6 +39,7 @@ import argparse
 # from numpy import digitize
 import random
 import warnings
+from args_ped import *
 from py_helpers import unbuffer_stdout
 # file_len, test_exec, read_conf, find_from_path, link, gz_confirm
 unbuffer_stdout()
@@ -51,126 +52,8 @@ if not (('-h' in sys.argv) or ('--help' in sys.argv)):
 
 parser = argparse.ArgumentParser(prog='filter_ped.py',
                                  formatter_class=lambda prog:
-                                 argparse.ArgumentDefaultsHelpFormatter(prog, max_help_position=40))
-
-arg_base = parser.add_argument_group('Basic Arguments')
-arg_ibd = parser.add_argument_group('Relatedness File Settings')
-arg_prefWt = parser.add_argument_group('Filtering Preferences')
-
-arg_base.add_argument('--input-ibd', 
-                      type=str,
-                      metavar='FILE',
-                      help='file containing IBD relatedness estimates',
-                      required=True)           
-arg_base.add_argument('--bfile', 
-                      type=str,
-                      metavar='FILESTEM',
-                      help='file stem for plink bed/bim/fam files',
-                      required=True)
-arg_base.add_argument('--geno', 
-                      type=str,
-                      metavar='FILE',
-                      help='file with genotype missingness rate per individual ' + \
-                           '(i.e. the .imiss file from plink --missing)',
-                      required=False,
-                      default='NONE')                   
-arg_base.add_argument('--out',
-                      type=str,
-                      metavar='OUTNAME',
-                      help='base name for output files; recommend 4 character stem to match ricopili',
-                      required=True)
-#arg_base.add_argument('--no-cleanup',
-#                      action='store_true',
-#                      help='skip cleanup of interim files')
-
-arg_ibd.add_argument('--format',
-                      type=str.lower,
-                      choices=['reap'],
-                      help='format of the input IBD file',
-                      required=False,
-                      default='reap') 
-arg_ibd.add_argument('--min-rel',
-                    type=float,
-                    metavar='FLOAT',
-                    help='Minimum pi-hat relatedness level to treat as related. ' + \
-                         'Default is halfway between 3rd and 4th degree relatives.',
-                    required=False,
-                    default=.09375)
-
-arg_prefWt.add_argument('--case-weight',
-                        type=float,
-                        metavar='FLOAT',
-                        help='Value of case status when selecting individuals to ' + \
-                             'keep among cryptically related pairs',
-                        required=False,
-                        default=5.0)
-arg_prefWt.add_argument('--con-weight',
-                        type=float,
-                        metavar='FLOAT',
-                        help='Value of control status when selecting individuals to ' + \
-                             'keep among cryptically related pairs',
-                        required=False,
-                        default=2.0)
-arg_prefWt.add_argument('--miss-weight',
-                        type=float,
-                        metavar='FLOAT',
-                        help='Value of missing phenotype when selecting individuals to ' + \
-                             'keep among cryptically related pairs',
-                        required=False,
-                        default=1.0)
-arg_prefWt.add_argument('--fam-case-weight',
-                        type=float,
-                        metavar='FLOAT',
-                        help='Value of a related case in pedigree when selecting ' + \
-                             'individuals to keep among cryptically related pairs',
-                        required=False,
-                        default=5.0)
-arg_prefWt.add_argument('--fam-con-weight',
-                        type=float,
-                        metavar='FLOAT',
-                        help='Value of a related control in pedigree when selecting ' + \
-                             'individuals to keep among cryptically related pairs',
-                        required=False,
-                        default=2.0)
-arg_prefWt.add_argument('--fam-miss-weight',
-                        type=float,
-                        metavar='FLOAT',
-                        help='Value of a related individual in pedigree with a ' + \
-                             'missing phenotype when selecting individuals to keep ' + \
-                             'among cryptically related pairs',
-                        required=False,
-                        default=1.0)
-arg_prefWt.add_argument('--cross-fid-weight',
-                        type=float,
-                        metavar='FLOAT',
-                        help='Value of relationship to individuals in a different ' + \
-                             'pedigree when selecting individuals to keep among ' + \
-                             'cryptically related pairs',
-                        required=False,
-                        default=-10.0)
-arg_prefWt.add_argument('--geno-weight',
-                        type=float,
-                        metavar='FLOAT',
-                        help='Value of genotyping rate when selecting individuals ' + \
-                             'to keep among cryptically related pairs.',
-                        required=False,
-                        default=0.1)
-arg_prefWt.add_argument('--rand-weight',
-                        type=float,
-                        metavar='FLOAT',
-                        help='When selecting individuals to keep among cryptically ' + \
-                             'related pairs, the range of the random value used to ' + \
-                             'break ties. NOTE: a large value here can override the ' + \
-                             'preference from the case/control/pedigree weights.',
-                        required=False,
-                        default=1e-5)
-arg_prefWt.add_argument('--seed',
-                        type=int,
-                        metavar='INT',
-                        help='Random seed. Applies to random values for breaking ties ' + \
-                             'among cryptically related individuals',
-                        required=False,
-                        default=123)
+                                 argparse.ArgumentDefaultsHelpFormatter(prog, max_help_position=40),
+                                 parents=[parserbase,parsergeno,parseribd,parserweights])
 
 args = parser.parse_args()
 
@@ -198,8 +81,6 @@ random.seed(int(args.seed))
 PO_IBD0_MAX = 0.2
 PO_IBD1_MIN = 0.8
 PO_IBD2_MAX = 0.2
-
-# TODO: add dependency checks, args printing, reading config files, etc
 
 # print settings
 print 'Using settings:'
@@ -358,7 +239,7 @@ if str(args.format) == 'reap':
 
         # skip relationships that don't hit minimum relatedness threshold
         if pi < float(args.min_rel):
-            next
+            continue
 
         # record info on the related pair
         # mark cross-fid relatedness
@@ -436,7 +317,7 @@ if possibleParents:
     for po_pair in possibleParents:
         n_po += 1
         if isFamPO(rel_info[po_pair], fam_info):
-            next
+            continue
         else:
             n_new_po += 1
             po_joint1 = rel_info[po_pair]['joint1']
