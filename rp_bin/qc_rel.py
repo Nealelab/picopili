@@ -51,10 +51,10 @@ if not (('-h' in sys.argv) or ('--help' in sys.argv)):
 import os
 import subprocess
 import argparse
+import warnings
 # from glob import glob
 from args_qc import *
-from py_helpers import unbuffer_stdout, read_conf, test_exec, link
-# file_len
+from py_helpers import unbuffer_stdout, read_conf, test_exec, link, file_len
 unbuffer_stdout()
 
 #############
@@ -119,10 +119,11 @@ plinkx = configs['p2loc']+"plink"
 
 analyst = configs['init']
 
-# get directory containing current script
-# (hack to get plague script)
-rp_bin = os.path.dirname(os.path.realpath(__file__))
-plague_ex = rp_bin + '/plague.pl'
+if not args.skip_platform:
+    # get directory containing current script
+    # (hack to get plague script location)
+    rp_bin = os.path.dirname(os.path.realpath(__file__))
+    plague_ex = rp_bin + '/plague.pl'
 
 
 #############
@@ -132,7 +133,8 @@ print '\n...Checking dependencies...'
 
 # verify executables
 test_exec(plinkx, 'Plink')
-test_exec(plague_ex, 'Platform guessing script')
+if not args.skip_platform:
+    test_exec(plague_ex, 'Platform guessing script')
 
 # verify bfiles are files, not paths
 assert '/' not in args.bfile, "--bfile must specify only a file stem, not a path"
@@ -236,16 +238,16 @@ print '\n...Pre-filtering SNPs on call rate...'
 # plus allele freqs for individual QC
 prefilter_stats = str(args.out) + ".prefilter_stats"
 
-prefilter_stats_str = ' '.join([str(plinkx), 
+prefilter_stats_str = [str(plinkx), 
                                "--bfile", args.bfile,
                                "--missing",
                                "--make-founders","require-2-missing",
                                "--freqx",
                                "--silent",
                                "--allow-no-sex",
-                               "--out", prefilter_stats])
+                               "--out", prefilter_stats]
 
-print prefilter_stats_str
+print 'Running: ' + ' '.join(prefilter_stats_str)
 subprocess.check_call(prefilter_stats_str)
 
 # get failing SNPs from plink lmiss file
@@ -263,7 +265,7 @@ for line in prefilter_lmiss:
         snp_out.write(snp + ' prefilter_high_missing\n')
         nex += 1
 
-lmiss.close()
+prefilter_lmiss.close()
 snp_out.close()
 print 'Excluding %d SNPs failing pre-filter' % nex
 
@@ -271,15 +273,16 @@ print 'Excluding %d SNPs failing pre-filter' % nex
 
 prefilter_out = args.out+".prefiltered"
 
-prefilter_out_str = ' '.join([str(plinkx), 
+prefilter_out_str = [str(plinkx), 
                                "--bfile", args.bfile,
                                "--exclude", snpout_nam,
                                "--silent",
                                "--allow-no-sex",
                                "--make-bed",
-                               "--out", prefilter_out])
+                               "--out", prefilter_out]
 
-print prefilter_out_str
+print ''
+print 'Running: ' + ' '.join(prefilter_out_str)
 subprocess.check_call(prefilter_out_str)
 
 
@@ -299,21 +302,40 @@ ind_stats = str(args.out) + '.ind_stats'
 
 # setup sex check, if desired
 if args.skip_sex_check:
-    sexcheck_txt = '--check-sex'
-else:
     sexcheck_txt = ''
+else:
+    # TODO: split PAR region    
+
+    # check number of chr X snps
+    bim_prefilter = open(str(prefilter_out)+'.bim', 'r')
+    n_chrx = 0
+    
+    for line in bim_prefilter:
+        (chrom, snp, cm, bp, a1, a2) = line.split()
+        if chrom == 23 or str(chrom) == 'X':
+            n_chrx += 1
+    
+    bim_prefilter.close()
+    
+    if n_chrx < args.min_chrx_snps:
+        warnings.warn('Insufficent chrX SNPs for sex check (%d). Sex check filter will be omitted.' % n_chrx)
+        args.skip_sex_check = True
+        sexcheck_txt = ''
+    else:
+        sexcheck_txt = '--check-sex'
+
 
 # setup mendel error check, if desired
-if args.mendel is 'none':
+if args.mendel == 'none':
     mendel_txt = ''
     
-elif args.mendel is 'trios':
+elif args.mendel == 'trios':
     mendel_txt = '--mendel'
     
-elif args.mendel is 'duos':
+elif args.mendel == 'duos':
     mendel_txt = '--mendel-duos'
     
-elif args.mendel is 'multigen':
+elif args.mendel == 'multigen':
     mendel_txt = '--mendel-multigen'
     
 else:
@@ -322,7 +344,7 @@ else:
 
 
 # get plink sum stats
-ind_stat_str = ' '.join([str(plinkx), 
+ind_stats_str = [str(plinkx), 
                          "--bfile", prefilter_out,
                          "--missing",
                          "--het",
@@ -331,9 +353,12 @@ ind_stat_str = ' '.join([str(plinkx),
                          "--read-freq",str(prefilter_stats)+'.frqx',
                          "--silent",
                          "--allow-no-sex",
-                         "--out", ind_stats])
+                         "--out", ind_stats]
 
-print ind_stat_str
+# remove empty elements
+ind_stats_str = filter(None, ind_stats_str)
+
+print 'Running: ' + ' '.join(ind_stats_str)
 subprocess.check_call(ind_stats_str)
 
 
@@ -382,7 +407,7 @@ print 'Found %d individuals to exclude for failing Fhet homozygosity rate' % nex
 
 
 # filter mendel errors
-if args.mendel is not 'none':
+if args.mendel != 'none':
 
     imendel_nam = ind_stats + '.imendel'
     imendel = open(imendel_nam, 'r')
@@ -402,9 +427,6 @@ if args.mendel is not 'none':
 
 # filter sex check
 if not args.skip_sex_check:
-    
-    # TODO: split PAR region
-    # TODO: verify enough SNPs on chrX for sex checks
     
     sexcheck_nam = ind_stats + '.sexcheck'
     sexcheck_res = open(sexcheck_nam, 'r')
@@ -453,15 +475,15 @@ id_out.close()
 # remove QC failure IDs
 idfilter_out = args.out+".qcind"
 
-idfilter_out_str = ' '.join([str(plinkx), 
+idfilter_out_str = [str(plinkx), 
                                "--bfile", prefilter_out,
                                "--remove", idout_nam,
                                "--silent",
                                "--allow-no-sex",
                                "--make-bed",
-                               "--out", idfilter_out])
-
-print idfilter_out_str
+                               "--out", idfilter_out]
+print ''
+print 'Running: ' + ' '.join(idfilter_out_str)
 subprocess.check_call(idfilter_out_str)
 
 
