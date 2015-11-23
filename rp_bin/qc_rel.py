@@ -91,7 +91,8 @@ print '--skip-sex-check '+str(args.skip_sex_check)
 print '\nSNP QC Thresholds:'
 print '--pre-miss '+str(args.pre_miss)
 print '--miss-th '+str(args.miss_th)
-print '--diff_miss '+str(args.diff_miss)
+print '--diff-miss-abs '+str(args.diff_miss_abs)
+print '--diff-miss-p '+str(args.diff_miss_p)
 print '--hwe-th-cas '+str(args.hwe_th_cas)
 print '--hwe-th-con '+str(args.hwe_th_cas)
 print '--hwe-th-all '+str(args.hwe_th_cas)
@@ -362,9 +363,6 @@ print 'Running: ' + ' '.join(ind_stats_str)
 subprocess.check_call(ind_stats_str)
 
 
-# get number of SNPs as denominator for mendel error rate
-nsnp = file_len(str(prefilter_out) + '.fam')
-
 # ouput exclusions
 id_out = open(idout_nam, 'w')
 
@@ -408,6 +406,9 @@ print 'Found %d individuals to exclude for failing Fhet homozygosity rate' % nex
 
 # filter mendel errors
 if args.mendel != 'none':
+    
+    # get number of SNPs as denominator for mendel error rate
+    nsnp = file_len(str(prefilter_out) + '.bim')
 
     imendel_nam = ind_stats + '.imendel'
     imendel = open(imendel_nam, 'r')
@@ -417,7 +418,7 @@ if args.mendel != 'none':
     for line in imendel:
         (fid, iid, nmendel) = line.spilt()
         
-        if float(nmendal) / float(nsnp) > args.id_mendal_th:
+        if float(nmendel) / float(nsnp) > args.id_mendel_th:
             id_out.write(str(fid) + ' ' + str(iid) + ' excessive_mendel_errors\n')
             nex += 1
 
@@ -495,9 +496,101 @@ print '\n...QCing SNPs...'
 # - find differential missingness failures 
 # - find mendel error rate failures
 # - find hwe failures
+# - find maf failures
 # 
 #############
 
+snp_stats = str(args.out) + '.snp_stats'
+
+# get metrics
+snp_stats_str = [str(plinkx), 
+                         "--bfile", str(idfilter_out),
+                         "--missing",
+                         "--test-missing",
+                         mendel_txt,
+                         "--make-founders","require-2-missing",
+                         "--freqx",
+                         "--hardy",
+                         "--silent",
+                         "--allow-no-sex",
+                         "--out", snp_stats]
+
+# remove empty elements
+snp_stats_str = filter(None, snp_stats_str)
+
+print 'Running: ' + ' '.join(snp_stats_str)
+subprocess.check_call(snp_stats_str)
+
+
+snp_out = open(snpout_nam, 'a')
+
+
+# filter missingness
+lmiss_nam = snp_stats + '.lmiss'
+lmiss = open(lmiss_nam, 'r')
+dumphead = lmiss.readline()
+nex = 0
+
+for line in lmiss:
+    (chrom, snp, nmiss, ngeno, fmiss) = line.split()
+    
+    if float(fmiss) > args.miss_th:
+        snp_out.write(snp + ' high_missing\n')
+        nex += 1
+
+lmiss.close()
+print 'Found %d SNPs to exclude based on missingness rate' % nex
+
+
+# filter differential missingness
+diffmiss_nam = snp_stats + '.missing'
+diffmiss = open(diffmiss_nam, 'r')
+dumphead = diffmiss.readline()
+nex_abs = 0
+nex_p = 0
+
+for line in diffmiss:
+    (chrom, snp, miss_cas, miss_con, miss_p) = line.split()
+
+    diff = float(miss_cas) - float(miss_con)
+
+    if float(miss_p) < args.diff_miss_p:
+        snp_out.write(snp + ' differential_missing_pval\n')
+        nex_p += 1
+        
+    if abs(float(diff)) > args.diff_miss_abs:
+        snp_out.write(snp + ' absolute_differential_missing\n')
+        nex_abs += 1
+        
+diffmiss.close()
+print 'Found %d SNPs to exclude based on absolute differential missingness' % nex_abs
+print 'Found %d SNPs to exclude based on differential missingness p-value' % nex_p
+
+
+# filter mendel errors
+if args.mendel != 'none':
+
+    # get number of families as denominator for mendel error rate
+    nind = file_len(str(idfilter_out) + '.fmendel')
+
+    lmendel_nam = snp_stats + '.lmendel'
+    lmendel = open(lmendel_nam, 'r')
+    nex = 0
+    
+    dumphead = lmendel.readline()
+    for line in lmendel:
+        (chrom, snp, nmendel) = line.spilt()
+        
+        if float(nmendel) / float(nind) > args.snp_mendel_th:
+            id_out.write(str(snp) + ' excessive_mendel_errors\n')
+            nex += 1
+
+    lmendel.close()
+    print 'Found %d SNPs to exclude for excessive mendel errors' % nex
+
+
+
+# 
 # 6) QC SNPs
 #     - missings
 #     - differential call rate
