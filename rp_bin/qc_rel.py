@@ -119,6 +119,11 @@ plinkx = configs['p2loc']+"plink"
 
 analyst = configs['init']
 
+# get directory containing current script
+# (hack to get plague script)
+rp_bin = os.path.dirname(os.path.realpath(__file__))
+plague_ex = rp_bin + '/plague.pl'
+
 
 #############
 print '\n...Checking dependencies...'
@@ -127,6 +132,7 @@ print '\n...Checking dependencies...'
 
 # verify executables
 test_exec(plinkx, 'Plink')
+test_exec(plague_ex, 'Platform guessing script')
 
 # verify bfiles are files, not paths
 assert '/' not in args.bfile, "--bfile must specify only a file stem, not a path"
@@ -173,9 +179,40 @@ if not args.skip_fid_tags:
         plat = "NONE"
     
     else:
-        # TODO: run plague from ricopili
-        # parse plague results
+        # run plague script from ricopili
+        plague_file = open(str(args.out)+'.plague.out', 'w')
+        subprocess.check_call([plague_ex,
+                              str(args.bfile+'.bim')],
+                              stdout = plague_file)
+        
+        plague_file.close()
+
+        # initialize
         plat = '?'
+        sum_percent_max = 0.0
+        
+        # parse plague results
+        # using same criteria as ricopili (from preimp_dir)
+        # - add plague percentages for platform, take highest
+        plague = open(str(args.out)+'.plague.out', 'r')
+        
+        with plague as f:
+            # dump first 3 lines
+            for _ in xrange(3):
+                dump = f.next()
+            # loop plague results
+            for line in f:
+                fields = line.split()
+                print 'try ' + str(fields[2])
+                sum_percent = float(fields[7]) + float(fields[14])
+                print 'sum percent: ' + str(sum_percent)
+                if sum_percent > sum_percent_max:
+                    plat_full = str(fields[2]).split('_')
+                    plat = plat_full[-1]
+                    sum_percent_max = sum_percent
+        
+        plague.close()
+
 
     fidtag = 'fam_'+str(args.disname)+'_'+str(args.out)+'_'+str(args.popname)+'_'+str(analyst)+'_'+plat
     print 'Using tag: %s' % fidtag
@@ -196,16 +233,19 @@ print '\n...Pre-filtering SNPs on call rate...'
 #############
 
 # get SNP call rates
+# plus allele freqs for individual QC
 prefilter_stats = str(args.out) + ".prefilter_stats"
 
-prefilter_stat_str = ' '.join([str(plinkx), 
+prefilter_stats_str = ' '.join([str(plinkx), 
                                "--bfile", args.bfile,
                                "--missing",
+                               "--make-founders","require-2-missing",
+                               "--freqx",
                                "--silent",
                                "--allow-no-sex",
                                "--out", prefilter_stats])
 
-print prefilter_stat_str
+print prefilter_stats_str
 subprocess.check_call(prefilter_stats_str)
 
 # get failing SNPs from plink lmiss file
@@ -228,6 +268,7 @@ snp_out.close()
 print 'Excluding %d SNPs failing pre-filter' % nex
 
 # remove SNPs
+
 prefilter_out = args.out+".prefiltered"
 
 prefilter_out_str = ' '.join([str(plinkx), 
@@ -242,8 +283,16 @@ print prefilter_out_str
 subprocess.check_call(prefilter_out_str)
 
 
+
 #############
 print '\n...QCing individuals...'
+# - get QC metrics
+# - find missing rate failures
+# - find F_het heterozygosity failures
+# - find mendel failures
+# -- as proportion of total snps
+# - find sex check failures
+# - remove all failing individuals
 #############
 
 ind_stats = str(args.out) + '.ind_stats'
@@ -279,6 +328,7 @@ ind_stat_str = ' '.join([str(plinkx),
                          "--het",
                          sexcheck_txt,
                          mendel_txt,
+                         "--read-freq",str(prefilter_stats)+'.frqx',
                          "--silent",
                          "--allow-no-sex",
                          "--out", ind_stats])
@@ -308,7 +358,7 @@ for line in imiss:
         nex += 1
 
 imiss.close()
-print 'Excluding %d individuals failing missingness rate' % nex
+print 'Found %d individuals to exclude for failing missingness rate' % nex
 
 
 # filter heterozygosity
@@ -328,7 +378,7 @@ for line in het:
         nex += 1
 
 het.close()
-print 'Excluding %d individuals failing Fhet homozygosity rate' % nex
+print 'Found %d individuals to exclude for failing Fhet homozygosity rate' % nex
 
 
 # filter mendel errors
@@ -347,11 +397,14 @@ if args.mendel is not 'none':
             nex += 1
 
     imendel.close()
-    print 'Excluding %d individuals for excessive mendel errors' % nex
+    print 'Found %d individuals to exclude for excessive mendel errors' % nex
 
 
 # filter sex check
 if not args.skip_sex_check:
+    
+    # TODO: split PAR region
+    # TODO: verify enough SNPs on chrX for sex checks
     
     sexcheck_nam = ind_stats + '.sexcheck'
     sexcheck_res = open(sexcheck_nam, 'r')
@@ -390,7 +443,7 @@ if not args.skip_sex_check:
     
     sexcheck_res.close()
     sex_warn_out.close()
-    print 'Excluding %d individuals for sex check errors' % nex
+    print 'Found %d individuals to exclude for sex check errors' % nex
     print 'Sex check warnings for %d additional individuals. See %s' % (nwarn, str(args.out)+'.sexcheck_warnings.txt')
 
 
@@ -412,6 +465,16 @@ print idfilter_out_str
 subprocess.check_call(idfilter_out_str)
 
 
+
+#############
+print '\n...QCing SNPs...'
+# - get QC metrics
+# - find missingness failures
+# - find differential missingness failures 
+# - find mendel error rate failures
+# - find hwe failures
+# 
+#############
 
 # 6) QC SNPs
 #     - missings
