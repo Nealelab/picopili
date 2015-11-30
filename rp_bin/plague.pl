@@ -1,5 +1,6 @@
 #!/usr/bin/env perl
 use strict;
+BEGIN { push @INC, $ENV{rp_perlpackages}.'/Compress-Raw-Zlib-2.065/blib/lib' }
 
 my $version = "1.0.0";
 my $progname = $0;
@@ -93,6 +94,7 @@ unless ($bim_file =~ /.bim$/) {
 
 my %bsnps=();
 
+# use lib $ENV{rp_perlpackages}.'/Compress-Raw-Zlib-2.065/blib/lib';
 use Compress::Zlib ;
 
 ## read bim-file

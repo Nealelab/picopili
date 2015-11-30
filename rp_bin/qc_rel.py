@@ -52,6 +52,8 @@ import os
 import subprocess
 import argparse
 import warnings
+from time import strftime
+start_time = strftime("%H:%M:%S %d-%B-%Y")
 # from glob import glob
 from args_qc import *
 from py_helpers import unbuffer_stdout, read_conf, test_exec, link, file_len
@@ -136,6 +138,7 @@ print '\n...Checking dependencies...'
 test_exec(plinkx, 'Plink')
 if not args.skip_platform:
     test_exec(plague_ex, 'Platform guessing script')
+# TODO: verify plague works properly across platforms (primary concern is Compress::Zlib loading)
 
 # verify bfiles are files, not paths
 assert '/' not in args.bfile, "--bfile must specify only a file stem, not a path"
@@ -257,10 +260,12 @@ snp_out = open(snpout_nam, 'w')
 prefilter_lmiss_nam = prefilter_stats + '.lmiss'
 prefilter_lmiss = open(prefilter_lmiss_nam, 'r')
 nex = 0
+nsnp_pre = 0 # total number of SNPs pre-QC
 
 dumphead = prefilter_lmiss.readline()
 for line in prefilter_lmiss:
     (chrom, snp, nmiss, ngeno, fmiss) = line.split()
+    nsnp_pre += 1
     
     if float(fmiss) > args.pre_miss:
         snp_out.write(snp + ' prefilter_high_missing\n')
@@ -268,7 +273,7 @@ for line in prefilter_lmiss:
 
 prefilter_lmiss.close()
 snp_out.close()
-print 'Excluding %d SNPs failing pre-filter' % nex
+print 'Found %d SNPs to exclude for failing pre-filter on missingness rate > %r' % (nex, args.pre_miss)
 
 # remove SNPs
 
@@ -328,16 +333,16 @@ else:
 
 # setup mendel error check, if desired
 if args.mendel == 'none':
-    mendel_txt = ''
+    mendel_txt = ['','']
     
 elif args.mendel == 'trios':
-    mendel_txt = '--mendel'
+    mendel_txt = ['--mendel','']
     
 elif args.mendel == 'duos':
-    mendel_txt = '--mendel-duos'
+    mendel_txt = ['--mendel','--mendel-duos']
     
 elif args.mendel == 'multigen':
-    mendel_txt = '--mendel-multigen'
+    mendel_txt = ['--mendel','--mendel-multigen']
     
 else:
     # shouldn't be possible from argparse
@@ -350,7 +355,7 @@ ind_stats_str = [str(plinkx),
                          "--missing",
                          "--het",
                          sexcheck_txt,
-                         mendel_txt,
+                         mendel_txt[0], mendel_txt[1],
                          "--read-freq",str(prefilter_stats)+'.frqx',
                          "--silent",
                          "--allow-no-sex",
@@ -416,7 +421,7 @@ if args.mendel != 'none':
     
     dumphead = imendel.readline()
     for line in imendel:
-        (fid, iid, nmendel) = line.spilt()
+        (fid, iid, nmendel) = line.split()
         
         if float(nmendel) / float(nsnp) > args.id_mendel_th:
             id_out.write(str(fid) + ' ' + str(iid) + ' excessive_mendel_errors\n')
@@ -507,7 +512,7 @@ snp_stats_str = [str(plinkx),
                          "--bfile", str(idfilter_out),
                          "--missing",
                          "--test-missing",
-                         mendel_txt,
+                         mendel_txt[0], mendel_txt[1],
                          "--make-founders","require-2-missing",
                          "--freq",
                          "--hardy",
@@ -571,7 +576,7 @@ print 'Found %d SNPs to exclude based on differential missingness p-value < %r' 
 if args.mendel != 'none':
 
     # get number of families as denominator for mendel error rate
-    nind = file_len(str(idfilter_out) + '.fmendel')
+    nind = file_len(str(snp_stats) + '.fmendel')
 
     lmendel_nam = str(snp_stats) + '.lmendel'
     lmendel = open(lmendel_nam, 'r')
@@ -579,7 +584,7 @@ if args.mendel != 'none':
     
     dumphead = lmendel.readline()
     for line in lmendel:
-        (chrom, snp, nmendel) = line.spilt()
+        (chrom, snp, nmendel) = line.split()
         
         if float(nmendel) / float(nind) > args.snp_mendel_th:
             snp_out.write(str(snp) + ' excessive_mendel_errors\n')
@@ -598,7 +603,7 @@ nex_cas = 0
 nex_con = 0
 
 for line in hwe:
-        (chrom, snp, test, a1, a2, geno, ohet, ehet, hwe_p) = line.splitline()
+        (chrom, snp, test, a1, a2, geno, ohet, ehet, hwe_p) = line.split()
         
         if test == 'ALL' or test == 'ALL(QT)' or test == 'ALL(NP)':
             if hwe_p < args.hwe_th_all:
@@ -680,7 +685,7 @@ if (args.mendel != 'none') and (not args.keep_mendel):
     
     drop_mendel_str = [str(plinkx),
                            '--bfile', snpfilter_out,
-                           mendel_txt,
+                           mendel_txt[1],
                            '--set-me-missing',
                            '--silent',
                            '--allow-no-sex',
@@ -716,14 +721,107 @@ print 'Output files: %s.bed (bim, fam)' % rp_outname
 
 #############
 print '\n...Generating summary information...'
+# Summary file
+# - input file
+# - output file
+# - time
+# - args
 # - N, cas/con, m/f, Nfam pre/post
 # - num SNPs pre/post
 # - Lambda, Lambda1000 pre/post
-# - QQ plot pre/post 
+# QQ plot pre/post 
 #############
 
+# TODO: GWAS
+# TODO: compute lambda
+# TODO: QQ plot
 
 
-# 9) Clean up files
+### TODO: parse final fam file for summary info
+# n_post
+# n_post_cas
+# n_post_con
+# n_post_male
+# n_post_female
+# n_post_fam
+
+### print file of summary info
+sum_file_nam = str(args.out)+'.summary.txt'
+sum_file = open(sum_file_nam, 'w')
+
+sum_file.write('### Files:\n')
+sum_file.write('Input bed:  %s' % str(wd)+'/'+args.bfile+'.bed\n')
+sum_file.write('Output bed:  %s' % rp_outname+'.bed\n')
+sum_file.write('ID exclusions:  %s\n' % idout_nam)
+sum_file.write('SNP exclusions:  %s\n' % snpout_nam)
+sum_file.write('\n')
+
+# sum_file.write('Individual QC:\n')
+# sum_file.write('Pre QC:   %d individuals (%d cases, %d controls, %d male, %d female, %d families)\n' % (n, cas, con, nmale, nfemale, nfam))
+# sum_file.write('Post QC:  %d individuals (%d cases, %d controls, %d male, %d female, %d families)\n' % (n, cas, con, nmale, nfemale, nfam))
+# sum_file.write('\n')
+
+sum_file.write('### SNP QC:\n')
+sum_file.write('Pre QC:  %d SNPs\n' % nsnp_pre)
+nsnp_post = file_len(rp_outname+'.bim')
+sum_file.write('Post QC: %d SNPs\n' % nsnp_post)
+sum_file.write('\n')
+
+# sum_file.write('Genomic Control:\n')
+# sum_file.write('Pre QC:  lambda %r, Lambda1000 %r\n' % (lam, lam1k))
+# sum_file.write('Post QC: lambda %r, Lambda1000 %r\n' % (lam, lam1k))
+# sum_file.write('\n')
+
+sum_file.write('### Arguments:\n')
+sum_file.write('Basic Settings:'+'\n')
+sum_file.write('--bfile '+args.bfile+'\n')
+sum_file.write('--out '+args.out+'\n')
+
+sum_file.write('\nID Tagging Information:'+'\n')
+sum_file.write('--skip-fid-tags '+str(args.skip_fid_tags)+'\n')
+if not args.skip_fid_tags:
+   sum_file.write('--disname '+str(args.disname)+'\n')
+   sum_file.write('--popname '+str(args.popname)+'\n')
+   sum_file.write('--skip-platform '+str(args.skip_platform)+'\n')
+
+sum_file.write('\nIndividual QC Thresholds:'+'\n')
+sum_file.write('--mind-th '+str(args.mind_th)+'\n')
+sum_file.write('--het-th '+str(args.het_th)+'\n')
+sum_file.write('--skip-sex-check '+str(args.skip_sex_check)+'\n')
+
+sum_file.write('\nSNP QC Thresholds:'+'\n')
+sum_file.write('--pre-miss '+str(args.pre_miss)+'\n')
+sum_file.write('--miss-th '+str(args.miss_th)+'\n')
+sum_file.write('--diff-miss-abs '+str(args.diff_miss_abs)+'\n')
+sum_file.write('--diff-miss-p '+str(args.diff_miss_p)+'\n')
+sum_file.write('--hwe-th-cas '+str(args.hwe_th_cas)+'\n')
+sum_file.write('--hwe-th-con '+str(args.hwe_th_con)+'\n')
+sum_file.write('--hwe-th-all '+str(args.hwe_th_all)+'\n')
+if args.maf_th >= 0.0:
+   sum_file.write('--maf-th '+str(args.maf_th)+'\n')
+
+sum_file.write('\nMendelian Error Checks:'+'\n')
+sum_file.write('--mendel '+str(args.mendel)+'\n')
+if args.mendel is not 'none':
+    sum_file.write('--id-mendel-th '+str(args.id_mendel_th)+'\n')
+    sum_file.write('--snp-mendel-th '+str(args.snp_mendel_th)+'\n')
+    sum_file.write('--keep-mendel '+str(args.keep_mendel)+'\n')
+sum_file.write('\n')
+
+sum_file.write('### Time:\n')
+sum_file.write('Start: %s\n' % start_time)
+end_time = strftime("%H:%M:%S %d-%B-%Y")
+sum_file.write('Finish: %s\n' % end_time)
+sum_file.write('\n')
+
+sum_file.close()
+print 'QC summary written to: %s' % sum_file_nam
 
 
+# 9) Clean up files?
+
+
+print '\n############'
+print '\n'
+print 'SUCCESS!\n'
+exit(0)

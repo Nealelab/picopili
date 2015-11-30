@@ -161,7 +161,7 @@ arg_snpqc.add_argument('--hwe-th-all',
                        metavar='FLOAT',
                        help='Hardy-Weinberg p-value threshold for HWE in all founders, including missing phenotypes',
                        required=False,
-                       default=1e-6)
+                       default=1e-10)
 arg_snpqc.add_argument('--maf-th',
                        type=float,
                        metavar='FLOAT',
