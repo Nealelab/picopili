@@ -165,7 +165,7 @@ arg_snpqc.add_argument('--hwe-th-all',
 arg_snpqc.add_argument('--maf-th',
                        type=float,
                        metavar='FLOAT',
-                       help='minor allele frequency threshold. Default is no filter',
+                       help='minor allele frequency threshold. Default is no filter. Set to zero to exclude invariant SNPs.',
                        required=False,
                        default=-1.0)
 

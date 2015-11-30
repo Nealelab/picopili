@@ -94,8 +94,8 @@ print '--miss-th '+str(args.miss_th)
 print '--diff-miss-abs '+str(args.diff_miss_abs)
 print '--diff-miss-p '+str(args.diff_miss_p)
 print '--hwe-th-cas '+str(args.hwe_th_cas)
-print '--hwe-th-con '+str(args.hwe_th_cas)
-print '--hwe-th-all '+str(args.hwe_th_cas)
+print '--hwe-th-con '+str(args.hwe_th_con)
+print '--hwe-th-all '+str(args.hwe_th_all)
 if args.maf_th >= 0.0:
     print '--maf-th '+str(args.maf_th)
 
@@ -381,7 +381,7 @@ for line in imiss:
         nex += 1
 
 imiss.close()
-print 'Found %d individuals to exclude for failing missingness rate' % nex
+print 'Found %d individuals to exclude for failing missingness rate > %r' % (nex, args.id_mendel_th)
 
 
 # filter heterozygosity
@@ -401,7 +401,7 @@ for line in het:
         nex += 1
 
 het.close()
-print 'Found %d individuals to exclude for failing Fhet homozygosity rate' % nex
+print 'Found %d individuals to exclude for failing absolute Fhet homozygosity rate > %r' % (nex, args.het_th)
 
 
 # filter mendel errors
@@ -423,7 +423,7 @@ if args.mendel != 'none':
             nex += 1
 
     imendel.close()
-    print 'Found %d individuals to exclude for excessive mendel errors' % nex
+    print 'Found %d individuals to exclude for excessive mendel errors > %r of SNPs' % (nex, args.id_mendel_th)
 
 
 # filter sex check
@@ -509,7 +509,7 @@ snp_stats_str = [str(plinkx),
                          "--test-missing",
                          mendel_txt,
                          "--make-founders","require-2-missing",
-                         "--freqx",
+                         "--freq",
                          "--hardy",
                          "--silent",
                          "--allow-no-sex",
@@ -539,11 +539,11 @@ for line in lmiss:
         nex += 1
 
 lmiss.close()
-print 'Found %d SNPs to exclude based on missingness rate' % nex
+print 'Found %d SNPs to exclude based on missingness rate > %r' % (nex, args.miss_th) 
 
 
 # filter differential missingness
-diffmiss_nam = snp_stats + '.missing'
+diffmiss_nam = str(snp_stats) + '.missing'
 diffmiss = open(diffmiss_nam, 'r')
 dumphead = diffmiss.readline()
 nex_abs = 0
@@ -563,8 +563,8 @@ for line in diffmiss:
         nex_abs += 1
         
 diffmiss.close()
-print 'Found %d SNPs to exclude based on absolute differential missingness' % nex_abs
-print 'Found %d SNPs to exclude based on differential missingness p-value' % nex_p
+print 'Found %d SNPs to exclude based on absolute differential missingness > %r' % (nex_abs, args.diff_miss_abs)
+print 'Found %d SNPs to exclude based on differential missingness p-value < %r' % (nex_p, args.diff_miss_p)
 
 
 # filter mendel errors
@@ -573,7 +573,7 @@ if args.mendel != 'none':
     # get number of families as denominator for mendel error rate
     nind = file_len(str(idfilter_out) + '.fmendel')
 
-    lmendel_nam = snp_stats + '.lmendel'
+    lmendel_nam = str(snp_stats) + '.lmendel'
     lmendel = open(lmendel_nam, 'r')
     nex = 0
     
@@ -582,22 +582,148 @@ if args.mendel != 'none':
         (chrom, snp, nmendel) = line.spilt()
         
         if float(nmendel) / float(nind) > args.snp_mendel_th:
-            id_out.write(str(snp) + ' excessive_mendel_errors\n')
+            snp_out.write(str(snp) + ' excessive_mendel_errors\n')
             nex += 1
 
     lmendel.close()
-    print 'Found %d SNPs to exclude for excessive mendel errors' % nex
+    print 'Found %d SNPs to exclude for excessive mendel errors > %r of SNPs' % (nex, args.snp_mendel_th)
+
+
+# filter HWE
+hwe_nam = str(snp_stats) + '.hwe'
+hwe = open(hwe_nam, 'r')
+dumphead = hwe.readline()
+nex_all = 0
+nex_cas = 0
+nex_con = 0
+
+for line in hwe:
+        (chrom, snp, test, a1, a2, geno, ohet, ehet, hwe_p) = line.splitline()
+        
+        if test == 'ALL' or test == 'ALL(QT)' or test == 'ALL(NP)':
+            if hwe_p < args.hwe_th_all:
+                snp_out.write(str(snp) + ' hardy-weinberg_all\n')
+                nex_all += 1
+                
+        elif test == 'AFF':
+            if hwe_p < args.hwe_th_cas:
+                snp_out.write(str(snp) + ' hardy-weinberg_cases\n')
+                nex_cas += 1
+                
+        elif test == 'UNAFF':
+            if hwe_p < args.hwe_th_con:
+                snp_out.write(str(snp) + ' hardy-weinberg_controls\n')
+                nex_con += 1
+            
+        else:
+            raise IOError('Failed to parse Hardy-Weinberg results for SNP %s in %s' % (str(snp), str(hwe_nam)))
+
+hwe.close()
+print 'Found %d SNPs to exclude for Hardy-Weinberg p-value in cases > %r' % (nex_cas, args.hwe_th_cas)
+print 'Found %d SNPs to exclude for Hardy-Weinberg p-value in controls > %r' % (nex_con, args.hwe_th_con)
+print 'Found %d SNPs to exclude for Hardy-Weinberg p-value in all IDs > %r' % (nex_all, args.hwe_th_all)
+
+
+# filter MAF
+if float(args.maf_th) >= 0.0:
+
+    maf_nam = str(snp_stats) + '.frq'
+    maf = open(maf_nam, 'r')
+    dumphead = maf.readline()
+    nex_maf = 0
+    nex_mis = 0
+    
+    for line in maf:
+        (chrom, snp, a1, a2, a1_freq, nchrobs) = line.split()
+    
+        if str(a1_freq) is 'NA':
+            snp_out.write(str(snp) + ' maf_missing\n')
+            nex_mis += 1
+            
+        else:
+            min_freq = min(float(a1_freq), 1.0 - float(a1_freq))
+            if min_freq <= float(args.maf_th):
+                snp_out.write(str(snp) + ' low_maf\n')
+                nex_maf += 1
+        
+    maf.close()
+    print 'Found %d SNPs to exclude for missing MAF' % nex_mis
+    print 'Found %d SNPs to exclude for low/invariant MAF <= %r' % (nex_maf, args.maf_th)
+    
+
+
+# remove QC failure SNPs
+snp_out.close()
+snpfilter_out = args.out+".qcsnp"
+
+snpfilter_out_str = [str(plinkx), 
+                               "--bfile", str(idfilter_out),
+                               "--exclude", snpout_nam,
+                               "--silent",
+                               "--allow-no-sex",
+                               "--make-bed",
+                               "--out", snpfilter_out]
+print ''
+print 'Running: ' + ' '.join(snpfilter_out_str)
+subprocess.check_call(snpfilter_out_str)
 
 
 
-# 
-# 6) QC SNPs
-#     - missings
-#     - differential call rate
-#     - mendel errors
-#     - hwe (case, control)
-# 7) Resolve remaining mendel errors
-# 8) Generate basic summary info
+#############
+# Resolve remaining mendel errors
+#############
+
+if (args.mendel != 'none') and (not args.keep_mendel):
+    print '\n...Zeroing out remaining mendelian errors...'
+
+    mendel_out = args.out + '.nomendel'
+    
+    drop_mendel_str = [str(plinkx),
+                           '--bfile', snpfilter_out,
+                           mendel_txt,
+                           '--set-me-missing',
+                           '--silent',
+                           '--allow-no-sex',
+                           '--make-bed',
+                           '--out', mendel_out]
+    
+    print ''
+    print 'Running: ' + ' '.join(drop_mendel_str)
+    subprocess.check_call(drop_mendel_str)
+
+
+#############
+print '\n...Creating final QCed files...'
+# - link final file to standardized output name ala ricopili
+# - different final file if did mendel error removal  
+#############
+
+rp_outname = str(args.disname)+'_'+str(args.out)+'_'+str(args.popname)+'_'+str(analyst)+'-qc'
+
+if (args.mendel != 'none') and (not args.keep_mendel):
+    link(str(mendel_out)+'.bed', rp_outname+'.bed', 'final QCed .bed file')
+    link(str(mendel_out)+'.bim', rp_outname+'.bim', 'final QCed .bim file')
+    link(str(mendel_out)+'.fam', rp_outname+'.fam', 'final QCed .fam file')
+    
+else:
+    link(str(snpfilter_out)+'.bed', rp_outname+'.bed', 'final QCed .bed file')
+    link(str(snpfilter_out)+'.bim', rp_outname+'.bim', 'final QCed .bim file')
+    link(str(snpfilter_out)+'.fam', rp_outname+'.fam', 'final QCed .fam file')  
+    
+print 'Output files: %s.bed (bim, fam)' % rp_outname
+
+
+
+#############
+print '\n...Generating summary information...'
+# - N, cas/con, m/f, Nfam pre/post
+# - num SNPs pre/post
+# - Lambda, Lambda1000 pre/post
+# - QQ plot pre/post 
+#############
+
+
+
 # 9) Clean up files
 
 
