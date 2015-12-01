@@ -77,6 +77,8 @@ args = parser.parse_args()
 print 'Basic Settings:'
 print '--bfile '+args.bfile
 print '--out '+args.out
+if args.no_cleanup:
+    print '--no-cleanup '+str(args.no_cleanup)
 
 print '\nID Tagging Information:'
 print '--skip-fid-tags '+str(args.skip_fid_tags)
@@ -275,8 +277,8 @@ prefilter_lmiss.close()
 snp_out.close()
 print 'Found %d SNPs to exclude for failing pre-filter on missingness rate > %r' % (nex, args.pre_miss)
 
-# remove SNPs
 
+# remove SNPs
 prefilter_out = args.out+".prefiltered"
 
 prefilter_out_str = [str(plinkx), 
@@ -318,7 +320,7 @@ else:
     
     for line in bim_prefilter:
         (chrom, snp, cm, bp, a1, a2) = line.split()
-        if chrom == 23 or str(chrom) == 'X':
+        if str(chrom) == '23' or str(chrom) == 'X':
             n_chrx += 1
     
     bim_prefilter.close()
@@ -479,7 +481,7 @@ id_out.close()
 
 
 # remove QC failure IDs
-idfilter_out = args.out+".qcind"
+idfilter_out = args.out+".qc_ind"
 
 idfilter_out_str = [str(plinkx), 
                                "--bfile", prefilter_out,
@@ -544,7 +546,7 @@ for line in lmiss:
         nex += 1
 
 lmiss.close()
-print 'Found %d SNPs to exclude based on missingness rate > %r' % (nex, args.miss_th) 
+print 'Found %d SNPs to exclude for missingness rate > %r' % (nex, args.miss_th) 
 
 
 # filter differential missingness
@@ -568,8 +570,8 @@ for line in diffmiss:
         nex_abs += 1
         
 diffmiss.close()
-print 'Found %d SNPs to exclude based on absolute differential missingness > %r' % (nex_abs, args.diff_miss_abs)
-print 'Found %d SNPs to exclude based on differential missingness p-value < %r' % (nex_p, args.diff_miss_p)
+print 'Found %d SNPs to exclude for absolute differential missingness > %r' % (nex_abs, args.diff_miss_abs)
+print 'Found %d SNPs to exclude for differential missingness p-value < %r' % (nex_p, args.diff_miss_p)
 
 
 # filter mendel errors
@@ -659,7 +661,7 @@ if float(args.maf_th) >= 0.0:
 
 # remove QC failure SNPs
 snp_out.close()
-snpfilter_out = args.out+".qcsnp"
+snpfilter_out = args.out+".qc_snp"
 
 snpfilter_out_str = [str(plinkx), 
                                "--bfile", str(idfilter_out),
@@ -692,31 +694,36 @@ if (args.mendel != 'none') and (not args.keep_mendel):
                            '--make-bed',
                            '--out', mendel_out]
     
-    print ''
     print 'Running: ' + ' '.join(drop_mendel_str)
     subprocess.check_call(drop_mendel_str)
 
 
 #############
-print '\n...Creating final QCed files...'
+print '\n...Linking final QCed files...'
 # - link final file to standardized output name ala ricopili
 # - different final file if did mendel error removal  
 #############
 
-rp_outname = str(args.disname)+'_'+str(args.out)+'_'+str(args.popname)+'_'+str(analyst)+'-qc'
+if args.skip_fid_tags:
+    rp_outname = str(args.out)+'-qc'
+else:
+    rp_outname = str(args.disname)+'_'+str(args.out)+'_'+str(args.popname)+'_'+str(analyst)+'-qc'
+
+os.chdir(wd)
 
 if (args.mendel != 'none') and (not args.keep_mendel):
-    link(str(mendel_out)+'.bed', rp_outname+'.bed', 'final QCed .bed file')
-    link(str(mendel_out)+'.bim', rp_outname+'.bim', 'final QCed .bim file')
-    link(str(mendel_out)+'.fam', rp_outname+'.fam', 'final QCed .fam file')
+    link('./'+qcdir+'/'+str(mendel_out)+'.bed', rp_outname+'.bed', 'final QCed .bed file')
+    link('./'+qcdir+'/'+str(mendel_out)+'.bim', rp_outname+'.bim', 'final QCed .bim file')
+    link('./'+qcdir+'/'+str(mendel_out)+'.fam', rp_outname+'.fam', 'final QCed .fam file')
     
 else:
-    link(str(snpfilter_out)+'.bed', rp_outname+'.bed', 'final QCed .bed file')
-    link(str(snpfilter_out)+'.bim', rp_outname+'.bim', 'final QCed .bim file')
-    link(str(snpfilter_out)+'.fam', rp_outname+'.fam', 'final QCed .fam file')  
+    link('./'+qcdir+'/'+str(snpfilter_out)+'.bed', rp_outname+'.bed', 'final QCed .bed file')
+    link('./'+qcdir+'/'+str(snpfilter_out)+'.bim', rp_outname+'.bim', 'final QCed .bim file')
+    link('./'+qcdir+'/'+str(snpfilter_out)+'.fam', rp_outname+'.fam', 'final QCed .fam file')  
     
 print 'Output files: %s.bed (bim, fam)' % rp_outname
 
+os.chdir(qcdir)
 
 
 #############
@@ -737,33 +744,94 @@ print '\n...Generating summary information...'
 # TODO: QQ plot
 
 
-### TODO: parse final fam file for summary info
-# n_post
-# n_post_cas
-# n_post_con
-# n_post_male
-# n_post_female
-# n_post_fam
+
+# parse initial fam file for summary info
+n_pre = 0
+n_pre_cas = 0
+n_pre_con = 0
+n_pre_male = 0
+n_pre_female = 0
+n_pre_fam = 0
+pre_fids = []
+
+if args.skip_fid_tags:
+    pre_fam = open(str(args.bfile)+'.fam', 'r')
+else:
+    pre_fam = open(str(args.bfile)+'.fam.original', 'r')
+
+for line in pre_fam:
+    (fid, iid, pat, mat, sex, phen) = line.split()
+    
+    n_pre += 1
+
+    if str(sex) == '2':
+        n_pre_female += 1
+    elif str(sex) == '1':
+        n_pre_male += 1
+    
+    if str(phen) == '2':
+        n_pre_cas += 1
+    elif str(phen) == '1':
+        n_pre_con += 1
+    
+    if fid not in pre_fids:
+        pre_fids.append(fid)
+
+pre_fam.close()
+n_pre_fam = len(pre_fids)
+
+
+# parse final fam file for summary info
+n_post = 0
+n_post_cas = 0
+n_post_con = 0
+n_post_male = 0
+n_post_female = 0
+n_post_fam = 0
+post_fids = []
+
+post_fam = open(wd+'/'+str(rp_outname)+'.fam', 'r')
+for line in post_fam:
+    (fid, iid, pat, mat, sex, phen) = line.split()
+    
+    n_post += 1
+
+    if str(sex) == '2':
+        n_post_female += 1
+    elif str(sex) == '1':
+        n_post_male += 1
+    
+    if str(phen) == '2':
+        n_post_cas += 1
+    elif str(phen) == '1':
+        n_post_con += 1
+    
+    if fid not in post_fids:
+        post_fids.append(fid)
+
+post_fam.close()
+n_post_fam = len(post_fids)
+
 
 ### print file of summary info
-sum_file_nam = str(args.out)+'.summary.txt'
-sum_file = open(sum_file_nam, 'w')
+sum_file_nam = str(args.out)+'.qc_summary.txt'
+sum_file = open(wd+'/'+sum_file_nam, 'w')
 
 sum_file.write('### Files:\n')
-sum_file.write('Input bed:  %s' % str(wd)+'/'+args.bfile+'.bed\n')
-sum_file.write('Output bed:  %s' % rp_outname+'.bed\n')
-sum_file.write('ID exclusions:  %s\n' % idout_nam)
-sum_file.write('SNP exclusions:  %s\n' % snpout_nam)
+sum_file.write('Input bed: %s' % str(wd)+'/'+args.bfile+'.bed\n')
+sum_file.write('Output bed: %s' % rp_outname+'.bed\n')
+sum_file.write('ID exclusions: %s\n' % idout_nam)
+sum_file.write('SNP exclusions: %s\n' % snpout_nam)
 sum_file.write('\n')
 
-# sum_file.write('Individual QC:\n')
-# sum_file.write('Pre QC:   %d individuals (%d cases, %d controls, %d male, %d female, %d families)\n' % (n, cas, con, nmale, nfemale, nfam))
-# sum_file.write('Post QC:  %d individuals (%d cases, %d controls, %d male, %d female, %d families)\n' % (n, cas, con, nmale, nfemale, nfam))
-# sum_file.write('\n')
+sum_file.write('Individual QC:\n')
+sum_file.write('Pre QC:  %d individuals (%d cases, %d controls, %d male, %d female, %d families)\n' % (n_pre, n_pre_cas, n_pre_con, n_pre_male, n_pre_female, n_pre_fam))
+sum_file.write('Post QC: %d individuals (%d cases, %d controls, %d male, %d female, %d families)\n' % (n_post, n_post_cas, n_post_con, n_post_male, n_post_female, n_post_fam))
+sum_file.write('\n')
 
 sum_file.write('### SNP QC:\n')
 sum_file.write('Pre QC:  %d SNPs\n' % nsnp_pre)
-nsnp_post = file_len(rp_outname+'.bim')
+nsnp_post = file_len(wd+'/'+rp_outname+'.bim')
 sum_file.write('Post QC: %d SNPs\n' % nsnp_post)
 sum_file.write('\n')
 
@@ -776,6 +844,8 @@ sum_file.write('### Arguments:\n')
 sum_file.write('Basic Settings:'+'\n')
 sum_file.write('--bfile '+args.bfile+'\n')
 sum_file.write('--out '+args.out+'\n')
+if args.no_cleanup:
+    sum_file.write('--no-cleanup '+str(args.no_cleanup)+'\n')
 
 sum_file.write('\nID Tagging Information:'+'\n')
 sum_file.write('--skip-fid-tags '+str(args.skip_fid_tags)+'\n')
@@ -797,12 +867,12 @@ sum_file.write('--diff-miss-p '+str(args.diff_miss_p)+'\n')
 sum_file.write('--hwe-th-cas '+str(args.hwe_th_cas)+'\n')
 sum_file.write('--hwe-th-con '+str(args.hwe_th_con)+'\n')
 sum_file.write('--hwe-th-all '+str(args.hwe_th_all)+'\n')
-if args.maf_th >= 0.0:
+if float(args.maf_th) >= 0.0:
    sum_file.write('--maf-th '+str(args.maf_th)+'\n')
 
 sum_file.write('\nMendelian Error Checks:'+'\n')
 sum_file.write('--mendel '+str(args.mendel)+'\n')
-if args.mendel is not 'none':
+if str(args.mendel) != 'none':
     sum_file.write('--id-mendel-th '+str(args.id_mendel_th)+'\n')
     sum_file.write('--snp-mendel-th '+str(args.snp_mendel_th)+'\n')
     sum_file.write('--keep-mendel '+str(args.keep_mendel)+'\n')
@@ -818,7 +888,141 @@ sum_file.close()
 print 'QC summary written to: %s' % sum_file_nam
 
 
-# 9) Clean up files?
+####################################
+# Clean up files
+# - tar.gz the plink QC metrics, logs, and final LD pruning
+# - zip SNP exclusion list with reasons
+# - remove interim bed/bim/fam (QC+ pre-pruning), unused metrics, tar-ed files
+# - remove interim pruning results
+# - remove extraneuous .hh and .nosex files if present 
+####################################
+
+if not args.no_cleanup:
+    
+    #############
+    print '\n...Cleaning up files...'
+    #############
+    
+    #############
+    print 'Zipping interim plink files:'
+    #############
+    
+    # pre-filtered plink files
+    subprocess.check_call(["tar", "-zcvf",
+                           args.out + '.prefiltered.plink.tar.gz',
+                           args.out + '.prefiltered.bed',
+                           args.out + '.prefiltered.bim',
+                           args.out + '.prefiltered.fam'])   
+    # remove files once successfully zipped
+    subprocess.check_call(['rm',
+                           args.out + '.prefiltered.bed',
+                           args.out + '.prefiltered.bim',
+                           args.out + '.prefiltered.fam'])
+
+    # ID QC plink files
+    subprocess.check_call(["tar", "-zcvf",
+                           args.out + '.qc_ind.plink.tar.gz',
+                           args.out + '.qc_ind.bed',
+                           args.out + '.qc_ind.bim',
+                           args.out + '.qc_ind.fam'])
+    subprocess.check_call(['rm',
+                           args.out + '.qc_ind.bed',
+                           args.out + '.qc_ind.bim',
+                           args.out + '.qc_ind.fam'])
+                           
+    if str(args.mendel) != 'none':
+        subprocess.check_call(["tar", "-zcvf",
+                               args.out + '.qc_snp.plink.tar.gz',
+                               args.out + '.qc_snp.bed',
+                               args.out + '.qc_snp.bim',
+                               args.out + '.qc_snp.fam'])
+        subprocess.check_call(['rm',
+                               args.out + '.qc_snp.bed',
+                               args.out + '.qc_snp.bim',
+                               args.out + '.qc_snp.fam'])                               
+    
+
+    #############
+    print '\nZipping QC metrics:'
+    #############
+    subprocess.check_call(["tar", "-zcvf",
+                           args.out + '.prefilter_stats.tar.gz',
+                           args.out + '.prefilter_stats.imiss',
+                           args.out + '.prefilter_stats.lmiss',
+                           args.out + '.prefilter_stats.frqx'])   
+
+    ind_stats_list = [args.out + '.ind_stats.imiss',
+                      args.out + '.ind_stats.lmiss',
+                      args.out + '.ind_stats.het']
+
+    if not args.skip_sex_check:
+        ind_stats_list.append(args.out + '.ind_stats.sexcheck')
+
+    if str(args.mendel) != 'none':
+        ind_stats_list.extend([args.out+'.ind_stats.mendel', 
+                               args.out+'.ind_stats.imendel', 
+                               args.out+'.ind_stats.lmendel', 
+                               args.out+'.ind_stats.fmendel'])
+                               
+    zip_ind_cmd = ["tar", "-zcvf", args.out+'.ind_stats.tar.gz']
+    zip_ind_cmd.extend(ind_stats_list)
+    subprocess.check_call(zip_ind_cmd)
+    
+
+    snp_stats_list = [args.out + '.snp_stats.frq',
+                      args.out + '.snp_stats.imiss',
+                      args.out + '.snp_stats.lmiss',
+                      args.out + '.snp_stats.missing',
+                      args.out + '.snp_stats.hwe',]
+        
+    if str(args.mendel) != 'none':    
+        snp_stats_list.extend([args.out+'.snp_stats.mendel', 
+                               args.out+'.snp_stats.imendel', 
+                               args.out+'.snp_stats.lmendel', 
+                               args.out+'.snp_stats.fmendel'])
+
+    zip_snp_cmd = ["tar", "-zcvf", args.out+'.snp_stats.tar.gz']
+    zip_snp_cmd.extend(snp_stats_list)
+    subprocess.check_call(zip_snp_cmd)
+
+
+    # remove files once zipped
+    subprocess.check_call(['rm',
+                           args.out + '.prefilter_stats.imiss',
+                           args.out + '.prefilter_stats.lmiss',
+                           args.out + '.prefilter_stats.frqx'])
+    
+    rm_ind_cmd = ['rm']
+    rm_ind_cmd.extend(ind_stats_list)
+    subprocess.check_call(rm_ind_cmd)
+    
+    rm_snp_cmd = ['rm']
+    rm_snp_cmd.extend(snp_stats_list)
+    subprocess.check_call(rm_snp_cmd)    
+    
+    #############
+    print '\nCompress exclusion/warning lists:'
+    #############
+    subprocess.check_call(["gzip", "-v", snpout_nam])
+    subprocess.check_call(["gzip", "-v", idout_nam])
+
+    if not args.skip_sex_check:
+        subprocess.check_call(["gzip", "-v", str(args.out)+'.sexcheck_warnings.txt'])
+    
+    
+    #############
+    print '\nRemove if exist:'
+    #############
+    # allowing failure, since files may or may not exists
+    subprocess.call(["rm", "-v",
+                     args.out + '.prefilter_stats.hh',
+                     args.out + '.prefiltered.hh',
+                     args.out + '.ind_stats.hh',
+                     args.out + '.qc_ind.hh',
+                     args.out + '.snp_stats.hh',
+                     args.out + '.qc_snp.hh',
+                     args.out + '.nomendel.hh',
+                     ])
 
 
 print '\n############'
