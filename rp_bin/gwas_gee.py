@@ -7,9 +7,9 @@
 Runs GWAS of plink data using GEE and sandwich standard error
 """
 # Overview:
+# 1) argparse / file checks
 # 2) trigger rserve
 # 3) gwas
-# 4) format output (to add header, snp info [a2, maf, info])
 # 
 # TODO: effective sample size? (see notes in gee_logit_covar.R)
 # TODO: support continuous phenotypes
