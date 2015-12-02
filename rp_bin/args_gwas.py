@@ -64,10 +64,9 @@ arg_subset = parserbase.add_argument_group('Analysis Subset')
 arg_covar.add_argument('--covar', 
                     type=str,
                     metavar='FILE',
-                    help='file containing analysis covariates. Passed directly to plink.',
+                    help='file containing analysis covariates (GEE analysis only). Passed directly to plink.',
                     required=False)
-arg_covar.add_argument('--covar-number', 
-#                    type=str,
+arg_covar.add_argument('--covar-number',
                     nargs='+',
                     metavar='LIST',
                     help='which columns to use from covariate file (numbered from third column). Passed directly to plink.',
@@ -115,18 +114,8 @@ arg_exloc.add_argument('--r-ex',
 arg_exloc.add_argument('--rplink-ex',
                     type=str,
                     metavar='PATH',
-                    help='path to plink executable with R plugin interface. R plugins are currently supported by Plink1.07 and Plink1.9-dev build, but not by Plink1.9-stable. Default is currently developer preference.',
+                    help='path to plink executable with R plugin interface and \'--dfam\'. Both currently supported by Plink1.07 and Plink1.9-dev build, but not by Plink1.9-stable. Default is currently developer preference.',
                     required=False,
                     default=os.environ['HOME']+'/dev-plink2/plink')
-
-# args:
-# plink file
-# out name
-# covar file, or none
-# which covariates
-# snp file (for easy subsets), or none
-# id file (for easy subsets), or none
-# plink location (requires plink1 or plink2 dev version)
-
 
 # eof
