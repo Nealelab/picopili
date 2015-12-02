@@ -17,6 +17,13 @@ Runs GWAS of plink data using GEE and sandwich standard error
 ####################################
 
 
+# ish benchmarks: 
+#   50 snp, n=473, 1 covar -> 2s
+#   50 snp, n=473, no covar -> 2s
+#   5k snp, n=473, no covar -> 2m, 30s
+# 110k snp, n=473, no covar -> ~1 hr (cf. near-instant w/ dfam)
+
+
 ####################################
 # Setup
 # a) load python dependencies
@@ -159,6 +166,7 @@ else:
 if nsnp > 50000:
     warn('Large number of SNPs present for analysis (%d). Consider splitting for efficiency.' % int(nsnp))
 
+
 print '\n'
 print '############'
 print 'Begin!'
@@ -222,20 +230,8 @@ subprocess.check_call(gee_call)
 # check proper output 
 assert os.path.isfile(outstem +'.auto.R'), 'Failed to generated GWAS results file %s' % outstem +'.auto.R'
 
-# args:
-# plink file
-# out name
-# covar file, or none
-# which covariates
-# snp file (for easy subsets), or none
-# id file (for easy subsets), or none
-# plink location (requires plink1 or plink2 dev version)
-#
-#
-# warn if data is large (> 100k snps?)
-# ish benchmarks: 
-#   50 snp, n=473, 1 covar -> 2s
-#   50 snp, n=473, no covar -> 2s
-#   5k snp, n=473, no covar -> 2m, 30s
-# 110k snp, n=473, no covar -> ~1 hr (cf. near-instant w/ dfam)
 
+print '\n############'
+print '\n'
+print 'SUCCESS!\n'
+exit(0)
