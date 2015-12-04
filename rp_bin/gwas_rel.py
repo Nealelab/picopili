@@ -17,6 +17,6 @@ Runs GWAS of plink family data
 
 # treat this as driver script
 # need to write:
-# chunker (with filter on meta-info)
-# aggregator (for each chunk: read gwas, read meta info, format/join, append to final outfiles)
+# chunker - chunk_snps.py
+# aggregator (for each chunk: read gwas, read meta info [filter?], format/join, append to final outfiles)
 # manhattan/qq plots
