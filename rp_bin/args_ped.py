@@ -78,7 +78,7 @@ arg_ibd = parseribd.add_argument_group('Relatedness File Settings')
 
 arg_ibd.add_argument('--format',
                       type=str.lower,
-                      choices=['reap'],
+                      choices=['reap','plink','plink_full'],
                       help='format of the input IBD file',
                       required=False,
                       default='reap') 

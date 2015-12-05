@@ -8,8 +8,8 @@ Filter family-based GWAS data based on cryptic relatedness
 """
 # Overview:
 # 1) Input relatedness estimates
-#    - allow REAP formats
-# TODO: add plink, king formats, allow running new estimates
+#    - allow REAP, plink (regular or full) formats
+# TODO: add king format, allow running new estimates
 # 2) Flag possible parent/offspring pairs not already in fam file
 # 3) Filter cross-FID relatedness
 # 4) Filter within-FID unrelateds
@@ -208,62 +208,80 @@ print '\n...Parsing relatedness estimates...'
 
 iid_relatives = {}
 rel_info = {}
-
-### parse reap files
-if str(args.format) == 'reap':
     
-    # option of taking gzipped reap files
-    if str(args.input_ibd).endswith('.gz'):
-        import gzip
-        ibd_file = gzip.open(str(args.input_ibd), 'rb')
-        
-    else:
-        ibd_file = open(str(args.input_ibd), 'r')
+# option of taking gzipped files
+if str(args.input_ibd).endswith('.gz'):
+    import gzip
+    ibd_file = gzip.open(str(args.input_ibd), 'rb')
     
-    # read header and verify it matches expected REAP format
-    head = ibd_file.readline().split()
-    if not head == ['FID1','IID1','FID2','IID2','N_SNP','IBD0_PROB','IBD1_PROB','IBD2_PROB','KINCOEF']:
-        raise IOError('First line of %s does not match expected header format for REAP' % str(args.input_ibd))
-    
-    # process lines
-    for line in ibd_file:
-        # parse
-        (fid1, iid1, fid2, iid2, nsnp, ibd0, ibd1, ibd2, kin) = line.split()
-        
-        # build needed variables
-        pi = 2.0 * float(kin)
-        jointid1 = str(fid1) + ':' + str(iid1)
-        jointid2 = str(fid2) + ':' + str(iid2)
-        pair = jointid1 + ':::' + jointid2
-        crossfid = bool (fid1 != fid2)
-
-        # skip relationships that don't hit minimum relatedness threshold
-        if pi < float(args.min_rel):
-            continue
-
-        # record info on the related pair
-        # mark cross-fid relatedness
-        rel_info[pair] = {'fam1': fid1, 'id1': iid1, 'joint1': jointid1, 
-                          'fam2': fid2, 'id2': iid2, 'joint2': jointid2,
-                          'ibds': (ibd0,ibd1,ibd2), 'pihat': pi, 'cross_fid': crossfid}
-        
-        # record relationship for the individuals
-        if jointid1 in iid_relatives:
-            iid_relatives[jointid1].append(jointid2)
-        else:
-            iid_relatives[jointid1] = [jointid2]
-        
-        if jointid2 in iid_relatives:
-            iid_relatives[jointid2].append(jointid1)
-        else:
-            iid_relatives[jointid2] = [jointid1]
-        
-    ibd_file.close()
-            
-
-# should be impossible if --format choices correctly parsed
 else:
-    raise ValueError('Unsupported format for IBD file: %s' % str(args.format))
+    ibd_file = open(str(args.input_ibd), 'r')
+
+
+    
+# read header and verify it matches expected format
+head = ibd_file.readline().split()
+if str(args.format) == 'reap':
+    if not head == ['FID1','IID1','FID2','IID2','N_SNP','IBD0_PROB','IBD1_PROB','IBD2_PROB','KINCOEF']:
+        ibd_file.close()
+        raise IOError('First line of %s does not match expected header format for REAP' % str(args.input_ibd))
+
+elif str(args.format) == 'plink':
+    if not head == ['FID1','IID1','FID2','IID2','RT','EZ','Z0','Z1','Z2','PI_HAT','PHE','DST','PPC','RATIO']:
+        ibd_file.close()
+        raise IOError('First line of %s does not match expected header format for Plink (require output from \'--genome full\')' % str(args.input_ibd))
+
+elif str(args.format) == 'plink_full':
+    if not head == ['FID1','IID1','FID2','IID2','RT','EZ','Z0','Z1','Z2','PI_HAT','PHE','DST','PPC','RATIO','IBS0','IBS1','IBS2','HOMHOM','HETHET']:
+        ibd_file.close()
+        raise IOError('First line of %s does not match expected header format for Plink \'--genome full\'' % str(args.input_ibd))
+
+else: # should be prevented by argparse
+    ibd_file.close()
+    raise ValueError('Failed to handle IBD file format specification. Expected \'reap\' or \'plink\', was given \'%s\'.' % str(args.format) )
+
+# process lines
+for line in ibd_file:
+    # parse, get needed values
+    if args.format == 'reap':
+        (fid1, iid1, fid2, iid2, nsnp, ibd0, ibd1, ibd2, kin) = line.split()
+        pi = 2.0 * float(kin)
+
+    elif args.format == 'plink':
+        (fid1, iid1, fid2, iid2, rt, ez, ibd0, ibd1, ibd2, pi, phe, dst, ppc, ratio) = line.split()
+    
+    elif args.format == 'plink_full':
+        (fid1, iid1, fid2, iid2, rt, ez, ibd0, ibd1, ibd2, pi, phe, dst, ppc, ratio, ibs0, ibs1, ibs2, homhom, hethet) = line.split()
+        
+    # build index variables
+    jointid1 = str(fid1) + ':' + str(iid1)
+    jointid2 = str(fid2) + ':' + str(iid2)
+    pair = jointid1 + ':::' + jointid2
+    crossfid = bool (fid1 != fid2)
+
+    # skip relationships that don't hit minimum relatedness threshold
+    if pi < float(args.min_rel):
+        continue
+
+    # record info on the related pair
+    # mark cross-fid relatedness
+    rel_info[pair] = {'fam1': fid1, 'id1': iid1, 'joint1': jointid1, 
+                      'fam2': fid2, 'id2': iid2, 'joint2': jointid2,
+                      'ibds': (ibd0,ibd1,ibd2), 'pihat': pi, 'cross_fid': crossfid}
+    
+    # record relationship for the individuals
+    if jointid1 in iid_relatives:
+        iid_relatives[jointid1].append(jointid2)
+    else:
+        iid_relatives[jointid1] = [jointid2]
+    
+    if jointid2 in iid_relatives:
+        iid_relatives[jointid2].append(jointid1)
+    else:
+        iid_relatives[jointid2] = [jointid1]
+    
+ibd_file.close()
+
 
 
 #############
@@ -285,8 +303,6 @@ def isPossiblePO(pair_info,
     else:
            return False
 
-# print 'info --- %s' % str(rel_info['QC1025302436:QC1025302436:::QC1025302407:QC1025302407'])
-# print 'trying QC1025302436:QC1025302436:::QC1025302407:QC1025302407 --- %s' % str(isPossiblePO(rel_info['QC1025302436:QC1025302436:::QC1025302407:QC1025302407']))
 
 possibleParents = [rel for rel,info in rel_info.iteritems() if isPossiblePO(info)]
 
@@ -341,6 +357,7 @@ if possibleParents:
     if n_new_po > 0:
         print 'Pairs not in fam file written to %s.' % str(parents_file.name)
 
+# TODO: add check for incorrectly marked PO?
 
 
 #############
@@ -417,8 +434,13 @@ if cross_ids:
         # remove dict entries
         iid_relatives.pop(fail_id)
         fam_info.pop(fail_id)
-        fid_members[fail_fid] = fid_members[fail_fid].remove(fail_iid)
-        iid_relatives = {key: value.remove(fail_id) if fail_id in value else value for key, value in iid_relatives.iteritems()}    
+        fid_members[fail_fid].remove(fail_iid)
+#        iid_relatives = {key: value.remove(fail_id) if fail_id in value else value for key, value in iid_relatives.iteritems()}
+        for value in iid_relatives.values():
+            try:
+                value.remove(fail_id)
+            except ValueError:
+                pass
         rel_info = {key: value for key, value in rel_info.iteritems() if (value['joint1'] != fail_id and value['joint2'] != fail_id)}
     
         # update cross-FID relatedness list
@@ -443,7 +465,7 @@ n_nonrelex = 0
 # loop individuals in fam file
 for indiv in fam_info:
     
-    # print 'indiv = %s' % str(indiv)    
+    # print 'indiv = %s' % str(indiv)
     
     # ok if IID is only member of FID
     if len(fid_members[fam_info[indiv][0]]) < 2:
@@ -451,11 +473,14 @@ for indiv in fam_info:
         continue
     
     # if is related to at least 1 person...
-    elif indiv in iid_relatives:
+    # (latter check possible if all relatives removed in cross-FID filters)
+    elif indiv in iid_relatives and iid_relatives[indiv] is not None:
         # print '    Found some relatives'
+        # print iid_relatives[indiv]
+
 
         # check if at least one of them is in same FID
-        num_in_fam = 0 
+        num_in_fam = 0
         for id2 in iid_relatives[indiv]:
             if fam_info[id2][0] == fam_info[indiv][0]:
                 num_in_fam += 1
@@ -474,6 +499,7 @@ for indiv in fam_info:
         nonrelex_file.write(' '.join(["FID","IID"]) + '\n')
     
     nonrelex_file.write(' '.join([str(fam_info[indiv][0]), str(fam_info[indiv][1])]) + '\n') 
+#     nonrelex_file.write(' '.join([str(fam_info[indiv])]) + '\n') 
     
 # close at end and report
 if n_nonrelex > 0:
