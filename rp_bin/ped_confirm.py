@@ -106,8 +106,10 @@ print '\n...Constructing pedigrees from IBD/relatedness...'
 
 primus_peds_log = open(str(args.out)+'.primus_peds.log', 'w')
 
-if(args.format=='reap'):
+if args.format=='reap':
     pr_input_text = '--input FILE='+str(ibd_txtfile)+' IBD0=6 IBD1=7 IBD2=8 RELATEDNESS=9'
+elif args.format=='plink' or args.format=='plink_full':
+    pr_input_text = '--input FILE='+str(ibd_txtfile)+' IBD0=7 IBD1=8 IBD2=9 PI_HAT=10'
 else:
     raise ValueError('Unsupported IBD file format (%s)' % str(args.format))
 
