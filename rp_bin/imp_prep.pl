@@ -9,9 +9,9 @@ use strict;
 #
 # 
 # Changes in this adaptation:
-# - stop before prephasing/imputation (buigue/chepos/chefli/prep fam file only)
+# - stop before prephasing/imputation (buigue/chepos/chefli only)
 # - remove old version history
-# - remove code for chunking/refind and beyond
+# - remove code for fam file prep/chunking/refind and beyond
 # - remove commented out blocks
 # - remove trioset, phase_txt, pcaer_dir
 #
@@ -1488,7 +1488,7 @@ unless (-e "$rootdir/posing_done") {
 my @chefli_arr = ();
 my $chefli_fini = 0;
 
-    unless (-e "$rootdir/flipping_done") {
+unless (-e "$rootdir/flipping_done") {
 	foreach (@bim_files) {
 	    my $bfile = $_;
 	    $bfile =~ s/.bim$//;
@@ -1539,99 +1539,15 @@ my $chefli_fini = 0;
 	    &mysystem ("touch $rootdir/flipping_done");
 	    print "checkflip done\n";
 	}
-    }
-
-
-
-# exit;
-
-
-###########################
-#### here preparation of famfiles for shapeit
-############################
-
-
-print "prepare famfiles for shapeit\n";
-
-unless (-e "$rootdir/puting_done") {
-    foreach (@bim_files) {
-
-	my $bprefix = $_;
-	$bprefix =~ s/.bim$//;
-	my %sex_hash = ();
-
-	### include sex check for chrX
-	if ($phas == 923 || $phas == 9123 || $phas == 91231) {
-	    if (-e "$bprefix.hg19.ch.fl.fam") {
-		unless (-e "$bprefix.hg19.ch.fl.sexcheck") {
-		    my $sx = "$ploc/plink --memory 2000  --bfile $bprefix.hg19.ch.fl --check-sex --out $bprefix.hg19.ch.fl";
-		    &mysystem ($sx);
-		}
-		
-		
-		die $! unless open SI, "< $bprefix.hg19.ch.fl.sexcheck";
-		while (my $line = <SI>){
-		    my @cells = &split_line($line);
-		    if ($cells[5] < .5) {
-			$sex_hash{"$cells[0]\t$cells[1]"} = 2;
-		    }
-		    else {
-			$sex_hash{"$cells[0]\t$cells[1]"} = 1;
-		    }
-		}
-		close SI;
-	    }
-	}
-	
-	if (-e "$bprefix.hg19.ch.fl.fam"){ 
-	    unless (-e "$bprefix.hg19.ch.fl.fam.idnum") {
-		die $! unless open FI, "< $bprefix.fam";
-		die $! unless open FO, "> $bprefix.hg19.ch.fl.fam.idnum.tmp";
-		die $! unless open FT, "> $bprefix.hg19.ch.fl.fam.transl";
-		my $cc = 1;
-		while (my $line = <FI>){
-		    my @cells = &split_line($line);
-		    print FO "$cc $cc"; 
-
-		    print FO " 0"; 
-		    print FO " 0"; 
-
-#		    print FO " $cells[2]"; 
-#		    print FO " $cells[3]"; 
-		    if (exists $sex_hash{"$cells[0]\t$cells[1]"}){
-			print FO " ".$sex_hash{"$cells[0]\t$cells[1]"}; 
-		    }
-		    else {
-			print FO " $cells[4]"; 
-			if ($phas == 923 || $phas == 9123 || $phas == 91231) {
-			    print "Error: no sex-check on X-chr?\n";
-			    die;
-			}
-		    }
-		    
-		    print FO " $cells[5]\n";
-		    print FT "$cc"; 
-		    print FT " $cells[0]";
-		    print FT " $cells[1]\n";
-		    $cc++;
-		}
-		close FI;
-		close FO;
-		close FT;
-		my $nloc = $cc -1;
-		die $! unless open FN, "> $bprefix.hg19.ch.fl.fam.n";
-		print FN $nloc."\n";
-		close FN;
-		&mysystem ("mv $bprefix.hg19.ch.fl.fam.idnum.tmp $bprefix.hg19.ch.fl.fam.idnum");
-	    }
-	}
-    }
 }
 
-print "\n\n"
-print "###############"
+
+
+
+print "\n\n";
+print "###############";
 print "\n";
-print "FINISHED!\n"
-print "\n\n"
+print "FINISHED!\n";
+print "\n\n";
 
 exit;
