@@ -65,20 +65,20 @@ arg_snpchunk.add_argument('--Mb-size',
                     type=float,
                     metavar='FLOAT',
                     help='Minimum size of chunk, in Mb (megabases)',
-                    required=True,
+                    required=False,
                     default=3.0)
 arg_snpchunk.add_argument('--snp-size', 
                     type=int,
                     metavar='INT',
                     help='Minimum size of chunk, in number of SNPs',
-                    required=True,
+                    required=False,
                     default=50)
 arg_snpchunk.add_argument('--max-chunks', 
                     type=int,
                     metavar='INT',
                     help='Maximum number of chunks to create. Will throw ' + \
                          'a warning if maximum is reached before all SNPs are chunked.',
-                    required=True,
+                    required=False,
                     default=5000)
 arg_snpchunk.add_argument('--ignore-centromeres', 
                     action='store_true',
