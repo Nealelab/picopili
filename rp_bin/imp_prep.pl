@@ -1628,4 +1628,10 @@ unless (-e "$rootdir/puting_done") {
     }
 }
 
+print "\n\n"
+print "###############"
+print "\n";
+print "FINISHED!\n"
+print "\n\n"
+
 exit;
