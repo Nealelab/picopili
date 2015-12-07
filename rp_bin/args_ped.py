@@ -89,7 +89,12 @@ arg_ibd.add_argument('--min-rel',
                          'Default is halfway between 3rd and 4th degree relatives.',
                     required=False,
                     default=.09375)
-
+arg_ibd.add_argument('--max-gens',
+                    type=int,
+                    metavar='INT',
+                    help='Maximum number of generations to allow in pedigree construction',
+                    required=False,
+                    default=5)
 
 ############
 #
