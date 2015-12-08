@@ -67,6 +67,7 @@ print '--bfile '+str(args.bfile)
 print '--out '+str(args.out)
 print '--format '+str(args.format)
 print '--min-rel '+str(args.min_rel)
+print '--max-gens '+str(args.max_gens)
 print ' '
 
 # verify input files exist
@@ -119,7 +120,7 @@ subprocess.check_call([str(args.primus_ex),
                        str(pr_input_text),
                        '--rel_threshold',str(args.min_rel),
                        '--no_IMUS',
-                       '--max_gens',str(5),
+                       '--max_gens',str(args.max_gens),
                        '--sexes',famfile_text,'SEX=5',
                        '--affections',famfile_text,'AFFECTION=6',
                        '--output_dir',str(args.out)+'_primus_peds'],
