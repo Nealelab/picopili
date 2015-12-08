@@ -68,7 +68,7 @@ arg_covar.add_argument('--covar',
                     required=False)
 arg_covar.add_argument('--covar-number',
                     nargs='+',
-                    metavar='LIST',
+                    metavar='COL',
                     help='which columns to use from covariate file (numbered from third column). Passed directly to plink.',
                     required=False)
 arg_subset.add_argument('--keep',

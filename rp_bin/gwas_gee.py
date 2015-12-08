@@ -178,7 +178,7 @@ if not args.rserve_active:
     print '\n...Starting Rserve...'
     #############
 
-    subprocess.check_call([str(args.r_ex), 'CMD', 'Rserve'])
+    subprocess.check_call([str(args.r_ex), 'CMD', 'Rserve', '--no-save'])
     
 
 #############
