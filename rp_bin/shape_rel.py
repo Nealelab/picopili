@@ -283,7 +283,7 @@ shape_call = [shapeit_ex,
               '--duohmm',
               '--thread', str(args.threads),
               '--seed', str(args.seed),
-              '--output-max', outstem+'.phased.haps', outstem+'.phased.sample'
+              '--output-max', outstem+'.phased.haps', outstem+'.phased.sample',
               '--output-log', outstem+'.shape.log']
 
 print ' '.join(shape_call)+'\n'
