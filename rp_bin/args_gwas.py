@@ -58,15 +58,22 @@ arg_base.add_argument('--no-cleanup',
 ############
 
 parsergwas = argparse.ArgumentParser(add_help=False)
-arg_covar = parserbase.add_argument_group('Covariates')
+arg_test = parserbase.add_argument_group('Association Analysis')
 arg_subset = parserbase.add_argument_group('Analysis Subset')
 
-arg_covar.add_argument('--covar', 
+
+arg_test.add_argument('--model', 
+                    type=str.lower,
+                    choices=['dfam','gee'],
+                    help='Which GWAS testing method to use for family data. Current options are plink \'--dfam\' (generalized TDT-alike) or GEE (generalized estimating equations)',
+                    required=False,
+                    default='gee')
+arg_test.add_argument('--covar', 
                     type=str,
                     metavar='FILE',
                     help='file containing analysis covariates (GEE analysis only). Passed directly to plink.',
                     required=False)
-arg_covar.add_argument('--covar-number',
+arg_test.add_argument('--covar-number',
                     nargs='+',
                     metavar='COL',
                     help='which columns to use from covariate file (numbered from third column). Passed directly to plink.',
@@ -94,17 +101,42 @@ arg_subset.add_argument('--exclude',
 
 ############
 #
+# Parallelization settings
+#
+############
+
+parserchunk = argparse.ArgumentParser(add_help=False)
+arg_snpchunk = parserbase.add_argument_group('Parallel Jobs')
+
+arg_snpchunk.add_argument('--snp-chunk', 
+                    type=int,
+                    metavar='INT',
+                    help='Number of SNPs to analyze in each parallel chunk',
+                    required=False,
+                    default=25000)
+
+
+
+############
+#
 # Software settings
 #
 ############
 
 parsersoft = argparse.ArgumentParser(add_help=False)
-arg_soft = parserbase.add_argument_group('Software Settings')
+arg_soft = parserbase.add_argument_group('Software')
+arg_clust = parserbase.add_argument_group('Cluster Settings')
 arg_exloc = parserbase.add_argument_group('Executable Locations')
 
 arg_soft.add_argument('--rserve-active',
                     action='store_true',
                     help='skip launching Rserve. Without this argument, will try \'R CMD Rserve\' to enable Plink-R plugin interface.')
+arg_snpchunk.add_argument('--sleep', 
+                    type=int,
+                    metavar='SEC',
+                    help='Number of seconds to delay on start of UGER jobs',
+                    required=False,
+                    default=30)
 arg_exloc.add_argument('--r-ex',
                     type=str,
                     metavar='PATH',
