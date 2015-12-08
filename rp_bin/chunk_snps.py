@@ -124,6 +124,10 @@ for line in bim:
         chroms.append(str(chrom))
     if int(chrom) in xrange(1,23):
         nbimsnps_valid += 1
+    # prevent later errors
+    if int(bp) > chrend[str(chrom)]:
+        chrend[str(chrom)] = int(bp)
+        warn('SNP %s (chr %s, bp %d) is outside expected chromosome bounds (bp <= %d).' % (str(snp_id), str(chrom), int(bp), int(chrend[str(chrom)])))
 bim.close()
 nbimsnps = file_len(args.bfile + '.bim')
 print 'Loaded %d autosomal SNPs (of %d total in %s).' % (nbimsnps_valid, nbimsnps, bim.name)
@@ -214,7 +218,7 @@ chunks.close()
 if idx > args.max_chunks:
     warn('Exceeded maximum number of chunks; stopping early.')
 elif nsnps != nbimsnps_valid:
-    raise ValueError('Number of chunked SNPs (%d) does not match number of autosomal SNPs in input .bim (%d).' % (nbimsnps_valid, nsnps))
+    raise ValueError('Number of chunked SNPs (%d) does not match number of autosomal SNPs in input .bim (%d).' % (nsnps, nbimsnps_valid))
 
 
 print 'Chunks written to %s.' % outname
