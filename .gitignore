@@ -4,4 +4,5 @@ rp_bin/args_ped.pyc
 rp_bin/args_qc.pyc
 rp_bin/args_gwas.pyc
 rp_bin/args_chunks.pyc
+rp_bin/args_impute.pyc
 
