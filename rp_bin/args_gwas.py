@@ -58,8 +58,8 @@ arg_base.add_argument('--no-cleanup',
 ############
 
 parsergwas = argparse.ArgumentParser(add_help=False)
-arg_test = parserbase.add_argument_group('Association Analysis')
-arg_subset = parserbase.add_argument_group('Analysis Subset')
+arg_test = parsergwas.add_argument_group('Association Analysis')
+arg_subset = parsergwas.add_argument_group('Analysis Subset')
 
 
 arg_test.add_argument('--model', 
@@ -106,7 +106,7 @@ arg_subset.add_argument('--exclude',
 ############
 
 parserchunk = argparse.ArgumentParser(add_help=False)
-arg_snpchunk = parserbase.add_argument_group('Parallel Jobs')
+arg_snpchunk = parserchunk.add_argument_group('Parallel Jobs')
 
 arg_snpchunk.add_argument('--snp-chunk', 
                     type=int,
@@ -119,14 +119,54 @@ arg_snpchunk.add_argument('--snp-chunk',
 
 ############
 #
+# Aggregation settings
+#
+############
+
+parseragg = argparse.ArgumentParser(add_help=False)
+arg_agg = parseragg.add_argument_group('GWAS Results Filtering')
+
+arg_agg.add_argument('--maf-a-th', 
+                    type=float,
+                    metavar='FLOAT',
+                    help='Threshold for minor allele frequency in cases to include in GWAS results',
+                    required=False,
+                    default=.005)
+arg_agg.add_argument('--maf-u-th', 
+                    type=float,
+                    metavar='FLOAT',
+                    help='Threshold for minor allele frequency in controls to include in GWAS results',
+                    required=False,
+                    default=.005)
+arg_agg.add_argument('--info-file', 
+                    type=str,
+                    metavar='FILE',
+                    help='File containing info scores for imputed SNPs',
+                    required=False)
+arg_agg.add_argument('--info-th', 
+                    type=float,
+                    metavar='FLOAT',
+                    help='Threshold for imputation info score to include in GWAS results',
+                    required=False,
+                    default=.6)
+arg_agg.add_argument('--p-th2', 
+                    type=float,
+                    metavar='FLOAT',
+                    help='p-value threshold for inclusion in the p-sorted top results output',
+                    required=False,
+                    default=1e-3)
+
+
+############
+#
 # Software settings
 #
 ############
 
 parsersoft = argparse.ArgumentParser(add_help=False)
-arg_soft = parserbase.add_argument_group('Software')
-arg_clust = parserbase.add_argument_group('Cluster Settings')
-arg_exloc = parserbase.add_argument_group('Executable Locations')
+arg_soft = parsersoft.add_argument_group('Software')
+arg_clust = parsersoft.add_argument_group('Cluster Settings')
+arg_exloc = parsersoft.add_argument_group('Executable Locations')
 
 arg_soft.add_argument('--rserve-active',
                     action='store_true',
