@@ -40,24 +40,40 @@ Rplink <- function(PHENO, GENO, CLUSTER, COVAR){
 		# combine sorting plus exclusions
 		xord <- ord[idx[ord]]
 		
-		fit <- geeglm( y[xord] ~ snp[xord],
-					id=CLUSTER[xord], 
-					family=binomial(link="logit"), 
-					corstr="exchangeable")
-					# maxiter=100,
-					# na.action=na.omit)
-		summ <- summary(fit)
+		# debug:
+		# print("SNP Table:")
+		# print(table( as.factor(snp[xord]), as.factor(y[xord]) ))
 		
-		beta <- coef(summ)$"Estimate"[2]
-		se <- coef(summ)$"Std.err"[2]
-		chi <- coef(summ)$"Wald"[2]
-		# p <- 2*pnorm(abs(z),lower=FALSE)
-		p <- coef(summ)$"Pr(>|W|)"[2]
-		# n <- summ$nobs (from gee rather than geepack)
+		# return NAs if SNP or pheno is invariant, or if empty cells
+		facx <- as.factor(snp[xord])
+		facy <- as.factor(y[xord])
+		if(any(table(facx, facy) == 0) || length(levels(facx))==1 || length(levels(facy))==1){
+			beta <- NA
+			se <- NA
+			chi <- NA
+			p <- NA
+		}else{
+		# fit GEE
+			fit <- geeglm( y[xord] ~ snp[xord],
+						id=CLUSTER[xord], 
+						family=binomial(link="logit"), 
+						corstr="exchangeable",
+						control=geese.control(maxit=100))
+						# maxiter=100,
+						# na.action=na.omit)
+			summ <- summary(fit)
 		
-		# TODO: potentially useful later:
-		# summ$working.correlation in gee, or
-		# summ$corr in geepack
+			beta <- coef(summ)$"Estimate"[2]
+			se <- coef(summ)$"Std.err"[2]
+			chi <- coef(summ)$"Wald"[2]
+			# p <- 2*pnorm(abs(z),lower=FALSE)
+			p <- coef(summ)$"Pr(>|W|)"[2]
+			# n <- summ$nobs (from gee rather than geepack)
+		
+			# TODO: potentially useful later:
+			# summ$working.correlation in gee, or
+			# summ$corr in geepack
+		}
 		
 		out <- c(beta, se, chi, p, n, m)
 		 
