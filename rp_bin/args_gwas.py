@@ -113,7 +113,7 @@ arg_snpchunk.add_argument('--snp-chunk',
                     metavar='INT',
                     help='Number of SNPs to analyze in each parallel chunk',
                     required=False,
-                    default=25000)
+                    default=10000)
 
 
 
@@ -168,10 +168,10 @@ arg_soft = parsersoft.add_argument_group('Software')
 arg_clust = parsersoft.add_argument_group('Cluster Settings')
 arg_exloc = parsersoft.add_argument_group('Executable Locations')
 
-arg_soft.add_argument('--rserve-active',
-                    action='store_true',
-                    help='skip launching Rserve. Without this argument, will try \'R CMD Rserve\' to enable Plink-R plugin interface.')
-arg_snpchunk.add_argument('--sleep', 
+#arg_soft.add_argument('--rserve-active',
+#                    action='store_true',
+#                    help='skip launching Rserve. Without this argument, will try \'R CMD Rserve\' to enable Plink-R plugin interface.')
+arg_clust.add_argument('--sleep', 
                     type=int,
                     metavar='SEC',
                     help='Number of seconds to delay on start of UGER jobs',
@@ -189,5 +189,11 @@ arg_exloc.add_argument('--rplink-ex',
                     help='path to plink executable with R plugin interface and \'--dfam\'. Both currently supported by Plink1.07 and Plink1.9-dev build, but not by Plink1.9-stable. Default is currently developer preference.',
                     required=False,
                     default=os.environ['HOME']+'/dev-plink2/plink')
+arg_clust.add_argument('--port',
+                    type=int,
+                    metavar='TCP_PORT',
+                    help='TCP port to use for Rserve (for \'--model gee\' only)',
+                    required=False,
+                    default=6311)
 
 # eof

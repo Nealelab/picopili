@@ -101,7 +101,7 @@ print '--no-cleanup'
 print '--extract'
 print '--exclude'
 print '--info-th'
-print '--rserve-active'
+# print '--rserve-active'
 print '--r-ex'
 print '--rplink-ex'
 print '\n'
@@ -160,6 +160,10 @@ print '\n...Creating genomic chunks to parallelize GWAS...'
 ######################
 
 # create chunks
+# note: <=16000 chunks is ideal for targeted range of Rserve port numbers
+#       and is enough for chunks >500 SNPs with 8 million imputed markers
+#       but can in theory handle up to 64510 (ie. 1025-65534) if needed before 
+#       port collisions become an issue
 chunk_call = [chunker_ex,
               '--bfile',str(args.bfile),
               '--out',str(args.out),
@@ -167,7 +171,8 @@ chunk_call = [chunker_ex,
               '--Mb-size',str(1),
               '--snp-size',str(args.snp_chunk),
               '--ignore-centromeres',
-              '--allow-small-chunks']
+              '--allow-small-chunks',
+              '--max-chunks',str(64000)]
 chunk_call = filter(None,chunk_call)
 
 chunk_log = open('chunk.'+str(outdot)+'.log', 'w')
@@ -252,8 +257,9 @@ uger_gwas_template = """#!/usr/bin/env sh
 #$ -V
 #$ -N {jname}
 #$ -q short
-#$ -l m_mem_free=2g
+#$ -l m_mem_free=4g
 #$ -t 1-{nchunk}
+#$ -tc 200
 #$ -o {outlog}
 
 source /broad/software/scripts/useuse
@@ -261,6 +267,8 @@ reuse -q Anaconda
 sleep {sleep}
 
 cname=`awk -v a=${{SGE_TASK_ID}} 'NR==a+1{{print $4}}' {cfile}`
+
+{misc}
 
 {gwas_ex} --bfile {bfile} --out {argout} --extract {outdot}.snps.${{cname}}.txt {optargs}
 
@@ -287,12 +295,20 @@ jobdict = {"jname": 'gwas.chunks.'+str(outdot),
            "outlog": str('gwas.chunks.'+str(outdot)+'.$TASK_ID.qsub.log'),
            "sleep": str(args.sleep),
            "cfile": chunk_file.name,
+           "misc": '',
            "gwas_ex": str(gwas_ex),
            "bfile": str(args.bfile),
            "argout": str(args.out),
            "outdot": str(outdot),
            "optargs": str(gwasargs)
            }
+
+# for gee, need to specify Rserve port for each job
+# targeting IANA range 49152-65535 
+# (assuming here will be < 16k jobs; gwas_gee.py handles overflow check)           
+if args.model == 'gee':
+    jobdict['misc'] = 'rport=$((49151+SGE_TASK_ID))'
+    jobdict['optargs'] = str(gwasargs) +' --port $rport'
 
 uger_gwas = open(str(outdot)+'.gwas_chunks.sub.sh', 'w')
 uger_gwas.write(uger_gwas_template.format(**jobdict))
@@ -355,6 +371,7 @@ uger_agg = ' '.join(['qsub',
                         str(args.sleep),
                         ' '.join(agg_call)])
 
+print uger_agg + '\n'
 subprocess.check_call(uger_agg, shell=True)
 
 

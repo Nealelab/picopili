@@ -40,7 +40,7 @@ import gzip
 # from glob import glob
 from math import log10
 from args_gwas import *
-from py_helpers import unbuffer_stdout
+from py_helpers import unbuffer_stdout, file_len
 # , read_conf, link
 unbuffer_stdout()
 
@@ -80,6 +80,8 @@ args = parser.parse_args()
 
 
 # derived args
+rp_bin = os.path.dirname(os.path.realpath(__file__))
+
 if args.addout is not None and str(args.addout) != '':
     outdot = str(args.out)+'.'+str(args.addout)
 else:
@@ -112,6 +114,7 @@ filtoutname = outdot +'.gwas.'+str(args.model)+'.p'+str(logp_int)+'_sort.txt.gz'
 
 # read chunk def file
 chunks = {}
+mis_chunks = {}
 
 chunks_in = open(args.chunk_file, 'r')
 dumphead = chunks_in.readline()
@@ -119,7 +122,97 @@ for line in chunks_in:
     (chrom, start, end, chname) = line.split()
     chunks[str(chname)] = [str(chrom), int(start), int(end)]
 
+    # verify output file exists
+    if args.model == 'gee':
+        ch_out = 'gee.'+str(outdot)+'.'+str(chname)+'.auto.R'
+    elif args.model == 'dfam':
+        ch_out = 'dfam.'+str(outdot)+'.'+str(chname)+'.dfam'
+    
+    # record chunks with no output
+    if not os.path.isfile(ch_out):
+        mis_chunks[str(chname)] = [str(chrom), int(start), int(end)]
+    elif not file_len(ch_out) > 10:
+        mis_chunks[str(chname)] = [str(chrom), int(start), int(end)]
+
 chunks_in.close()
+
+###############
+# if there are missing chunks, restart their gwas and resub agg script
+###############
+if len(mis_chunks) > 0:
+    nummiss = len(mis_chunks)
+    print 'Missing results for %d GWAS jobs. Preparing to resubmit...' % nummiss
+    
+    # just missing chunks for task array    
+    tmp_chunk_file = open('tmp_missing_'+str(nummiss)+'_chunks.'+str(outdot)+'.txt', 'w')
+    tmp_chunk_file.write(' '.join(['CHR','START','END','NAME']) + '\n')
+
+    for ch in mis_chunks.keys():
+        tmp_chunk_file.write(' '.join([str(mis_chunks[ch][0]), str(mis_chunks[ch][1]), str(mis_chunks[ch][2]), str(ch)]) + '\n')    
+    tmp_chunk_file.close()
+    
+    print 'List of missing chunks: %s' % tmp_chunk_file.name
+    
+    # copy original submit script
+    # replace chunk list, name, number of tasks
+    orig_uger_file = open(str(outdot)+'.gwas_chunks.sub.sh', 'r')
+    new_uger_file = open(str(outdot)+'.gwas_chunks.resub_'+ str(nummiss)+'_chunks.sub.sh', 'w')
+    
+    for line in orig_uger_file:
+        if '#$ -t ' in line:
+            new_uger_file.write('#$ -t 1-'+str(nummiss)+'\n')
+            next
+#	elif '#$ -tc ' in line:
+#	    if nummiss < 20:
+#	        new_uger_file.write('#$ -tc 5 \n')
+#	    elif nummiss < 50:
+#	        new_uger_file.write('#$ -tc 10 \n')
+#	    elif nummiss < 100:
+#	        new_uger_file.write('#$ -tc 25 \n')
+#	    else:
+#	        new_uger_file.write('#$ -tc 40 \n')
+#	    new_uger_file.write('#$ -tc 5 \n')
+	elif '#$ -l m_mem_free' in line:
+	    new_uger_file.write('#$ -l m_mem_free=8g \n')
+	else:
+            line=line.replace(args.chunk_file, tmp_chunk_file.name)
+            line=line.replace('.$TASK_ID.','.tmp'+str(nummiss)+'.$TASK_ID.')
+            line=line.replace('#$ -N gwas.chunks.'+str(outdot), '#$ -N gwas.chunks.'+str(outdot)+'.resub_'+str(nummiss))
+            new_uger_file.write(line)
+            
+    orig_uger_file.close()
+    new_uger_file.close()
+
+    print ' '.join(['qsub',new_uger_file.name]) + '\n'
+    subprocess.check_call(' '.join(['qsub',new_uger_file.name]), shell=True)
+    print 'GWAS jobs resubmitted for %d chunks.\n' % nummiss
+    
+    
+    print '\n...Replacing this agg job in the queue...'
+
+    agg_log = 'agg.'+str(outdot)+'.resub_'+str(nummiss)+'.qsub.log'
+    uger_agg = ' '.join(['qsub',
+                            '-hold_jid','gwas.chunks.'+str(outdot)+'.resub_'+str(nummiss),
+                            '-q', 'long',
+                            '-l', 'm_mem_free=4g',
+                            '-N', 'agg_'+str(outdot),
+                            '-o', agg_log,
+                            str(rp_bin)+'/uger.sub.sh',
+                            str(10), # hardcoded since chunks shouldn't normally need a sleep argument
+                            ' '.join(sys.argv[:])])
+    
+    print uger_agg + '\n'
+    subprocess.check_call(uger_agg, shell=True)
+
+    print '\n############'
+    print '\n'
+    print 'All jobs submitted.\n'
+    exit(0)
+
+
+###############
+# if no missing chunks, proceed collecting info for aggregation
+###############
 
 # chnames = chunks.keys()
 # sort chunk keys to aggregate in chr/bp order
@@ -231,7 +324,7 @@ for ch in chnames:
         if float(frqa) > args.maf_a_th and float(frqu) > args.maf_u_th and float(frqa) < 1-args.maf_a_th and float(frqu) < 1-args.maf_u_th: # and float(info) > info_th:
             out_file.write('\t'.join(outline)+'\n')
             
-            if float(p) < args.p_th2:
+            if p != 'NA' and float(p) < args.p_th2:
                 filt_file.write('\t'.join(outline)+'\n')
 
     chunk_res.close()
@@ -259,5 +352,7 @@ subprocess.check_call(' '.join([
 # TODO: check completion/remove tmp?
       
 
-
+print '\n############'
+print '\n'
+print 'SUCCESS!'
 exit(0)
