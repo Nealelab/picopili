@@ -309,9 +309,16 @@ for ch in chnames:
         if args.info_file is None:
             info = 'NA'
             ngt = 'NA'
-        
+ 
+ 
         # construct output
         if args.model == 'gee':
+            # ditch gee results with implausible SEs (likely errors / numerical instability)
+            if se != 'NA' and float(se) > 100:
+                se = 'NA'
+                beta = 'NA'
+                chisq = 'NA'
+                p = 'NA'
             outline = [chrom, snp, bp, a1, a2, frqa, frqu, info, beta, se, chisq, p, na, nu, ngt]
             
         elif args.model == 'dfam':
