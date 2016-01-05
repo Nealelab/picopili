@@ -11,9 +11,10 @@ Filter family-based GWAS data based on cryptic relatedness
 #    - allow REAP, plink (regular or full) formats
 # TODO: add king format, allow running new estimates
 # 2) Flag possible parent/offspring pairs not already in fam file
-# 3) Filter cross-FID relatedness
-# 4) Filter within-FID unrelateds
-# 5) Return exclusion lists with reason, flags for followup
+# 3) Flag parent/offsping pairs from fam not supported by IBD results
+# 4) Flag cross-FID relatedness
+# 5) Flag within-FID unrelateds
+# 6) Return exclusion lists with reason, flags for followup
 #
 ####################################
 
@@ -129,6 +130,7 @@ print '\n...Loading fam file...'
 
 fid_members = {}
 fam_info = {}
+fam_parents = []
 
 with open(str(args.bfile) + '.fam', 'r') as fam_file:
     for line in fam_file:
@@ -149,6 +151,17 @@ with open(str(args.bfile) + '.fam', 'r') as fam_file:
             raise ValueError('Duplicated FID:IID value in fam file (%s): %s' % (str(args.bfile)+'.fam', joint_id))
         else:
             fam_info[joint_id] = [fid, iid, pat, mat, sex, phen]
+
+        # record parent/offspring pairs
+        if str(pat) != '0':
+            joint_pat = str(fid) + ':' + str(pat)
+            pat_pair = joint_pat + ':::' + joint_id
+            fam_parents.append(pat_pair)
+            
+        if str(mat) != '0':
+            joint_mat = str(fid) + ':' + str(mat)
+            mat_pair = joint_mat + ':::' + joint_id
+            fam_parents.append(mat_pair)        
 
 
 # TODO: add option to compute IBD on the fly here?
@@ -260,7 +273,7 @@ for line in ibd_file:
     crossfid = bool (fid1 != fid2)
 
     # skip relationships that don't hit minimum relatedness threshold
-    if pi < float(args.min_rel):
+    if float(pi) < float(args.min_rel):
         continue
 
     # record info on the related pair
@@ -304,8 +317,6 @@ def isPossiblePO(pair_info,
            return False
 
 
-possibleParents = [rel for rel,info in rel_info.iteritems() if isPossiblePO(info)]
-
 def isFamPO(pair_info, fam_info):
     if pair_info['fam1'] == pair_info['fam2']:
         if fam_info[pair_info['joint1']][2] == pair_info['id2']:
@@ -321,21 +332,46 @@ def isFamPO(pair_info, fam_info):
     else:
         return False
 
-# if any...
+
+# get list of related pairs that are possibly parent/offspring
+possibleParents = [rel for rel,info in rel_info.iteritems() if isPossiblePO(info)]
+
+# get starting number of parent pairs
+# new = genetic PO not in fam file
+# bad = fam file PO not supported by genetic rel.
+# mis = parent missing from fam file
+n_fam_po = len(fam_parents)
+n_gen_po = len(possibleParents)
+n_new_po = 0
+n_bad_po = 0
+n_mis_po = 0
+
+# if any genetic parent/offspring pairs
 if possibleParents: 
-    
-    parents_file = open(str(args.out) + '.unmarkedparents.txt', 'w')
-    parents_file.write(' '.join(["FID1","IID1","SEX1","FID2","IID2","SEX2","pihat","ibd0","ibd1","ibd2"]) + '\n')
-
-    n_po = 0
-    n_new_po = 0
-
+       
     for po_pair in possibleParents:
-        n_po += 1
+
+        # get reversed version for checking in fam_parents[]   
+        pair_joint_ids = po_pair.split(':::')
+        po_pair_reverse = str(pair_joint_ids[1] + ':::' + pair_joint_ids[0])
+
+        # if in fam as PO, mark and move on
         if isFamPO(rel_info[po_pair], fam_info):
-            continue
+            if po_pair in fam_parents:
+                fam_parents.remove(po_pair)
+            else:
+                fam_parents.remove(po_pair_reverse)
+            continue                
+        
+        # otherwise is new; flag in file
         else:
             n_new_po += 1
+            
+            # if first found, initialize output file
+            if n_new_po == 1:
+                parents_file = open(str(args.out) + '.unmarkedparents.txt', 'w')
+                parents_file.write(' '.join(["FID1","IID1","SEX1","FID2","IID2","SEX2","pihat","ibd0","ibd1","ibd2"]) + '\n')
+                        
             po_joint1 = rel_info[po_pair]['joint1']
             po_joint2 = rel_info[po_pair]['joint2']
             parents_file.write(' '.join([
@@ -351,13 +387,108 @@ if possibleParents:
                                         str(rel_info[po_pair]['ibds'][2])
                                     ]) + '\n')
     
-    parents_file.close()
-    print 'Found %d putative parent-offspring pairs (%d not indicated in fam file).' % (n_po, n_new_po)
-    
+    # finished flagging genetic PO pairs
     if n_new_po > 0:
-        print 'Pairs not in fam file written to %s.' % str(parents_file.name)
+        parents_file.close()
+    
+# log 
+print 'Found %d putative parent-offspring pairs from relatedness info.' % int(n_gen_po)
+if n_new_po > 0:
+    print '%d pairs not in fam file written to %s.' % (int(n_new_po), str(parents_file.name))
+elif n_gen_po > 0:
+    print 'All putative pairs indicated in fam file.'
 
-# TODO: add check for incorrectly marked PO?
+
+#############
+print '\n...Flagging possibly incorrect parent/offspring pairs from fam file...'
+#############
+
+# any remaining in fam_parents are missing genetic relationship
+if fam_parents:
+    
+    for po_pair in fam_parents:
+        # get joint_ids of parent, offspring 
+        # (are stored in that order in fam_parents)  
+        pair_joint_ids = po_pair.split(':::')
+        
+        # parent not present in plink fam file
+        if pair_joint_ids[0] not in fam_info.keys():
+            n_mis_po += 1
+            continue
+        
+        # otherwise parent exists, but relationship is wrong
+        else:
+            n_bad_po += 1
+            
+            # if needed, init output file
+            if n_bad_po == 1:
+                bad_par_file = open(str(args.out) + '.wrongparents.txt', 'w')
+                bad_par_file.write(' '.join(["FID1","IID1","SEX1","FID2","IID2","SEX2","pihat","ibd0","ibd1","ibd2"]) + '\n')
+           
+            # to record
+            po_joint1 = pair_joint_ids[0]
+            po_joint2 = pair_joint_ids[1]
+            
+            # get relatedness info if present
+            if po_pair in rel_info.keys():
+                bad_par_file.write(' '.join([
+                                str(fam_info[po_joint1][0]),
+                                str(fam_info[po_joint1][1]),
+                                str(fam_info[po_joint1][4]),
+                                str(fam_info[po_joint2][0]),
+                                str(fam_info[po_joint2][1]),
+                                str(fam_info[po_joint2][4]),
+                                str(rel_info[po_pair]['pihat']),
+                                str(rel_info[po_pair]['ibds'][0]),
+                                str(rel_info[po_pair]['ibds'][1]),
+                                str(rel_info[po_pair]['ibds'][2])
+                            ]) + '\n')
+                
+            # possible relatedness file has pair in reverse order
+            elif str(pair_joint_ids[1] + ':::' + pair_joint_ids[0]) in rel_info.keys():
+                po_pair = str(pair_joint_ids[1] + ':::' + pair_joint_ids[0])
+                bad_par_file.write(' '.join([
+                            str(fam_info[po_joint1][0]),
+                            str(fam_info[po_joint1][1]),
+                            str(fam_info[po_joint1][4]),
+                            str(fam_info[po_joint2][0]),
+                            str(fam_info[po_joint2][1]),
+                            str(fam_info[po_joint2][4]),
+                            str(rel_info[po_pair]['pihat']),
+                            str(rel_info[po_pair]['ibds'][0]),
+                            str(rel_info[po_pair]['ibds'][1]),
+                            str(rel_info[po_pair]['ibds'][2])
+                        ]) + '\n')               
+        
+            # otherwise, pi/ibd=NA since below threshold for relationship file
+            else:
+                bad_par_file.write(' '.join([
+                            str(fam_info[po_joint1][0]),
+                            str(fam_info[po_joint1][1]),
+                            str(fam_info[po_joint1][4]),
+                            str(fam_info[po_joint2][0]),
+                            str(fam_info[po_joint2][1]),
+                            str(fam_info[po_joint2][4]),
+                            str('NA'),
+                            str('NA'),
+                            str('NA'),
+                            str('NA')
+                        ]) + '\n')
+
+    if n_bad_po > 0:
+        bad_par_file.close()
+
+
+# log
+n_good_po = int(n_fam_po)-len(fam_parents)
+print 'Found %d parent-offspring pairs indicated by fam file.' % int(n_fam_po)
+print 'Of these, %d (%.1f%%) are supported by genetic relatedness.' % (n_good_po, float(n_good_po)/float(n_fam_po))
+if n_bad_po > 0:
+    print '%d pairs with genetic relatedness inconsistent with parent/offspring relationship.' % int(n_bad_po)
+    print 'Bad pairs written to %s.' % str(bad_par_file.name)
+if n_mis_po > 0:
+    print '%d pairs with parent not present in fam file.' % int(n_mis_po)
+
 
 
 #############
