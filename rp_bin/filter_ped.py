@@ -11,9 +11,10 @@ Filter family-based GWAS data based on cryptic relatedness
 #    - allow REAP, plink (regular or full) formats
 # TODO: add king format, allow running new estimates
 # 2) Flag possible parent/offspring pairs not already in fam file
-# 3) Filter cross-FID relatedness
-# 4) Filter within-FID unrelateds
-# 5) Return exclusion lists with reason, flags for followup
+# 3) Flag parent/offsping pairs from fam not supported by IBD results
+# 4) Flag cross-FID relatedness
+# 5) Flag within-FID unrelateds
+# 6) Return exclusion lists with reason, flags for followup
 #
 ####################################
 
