@@ -37,12 +37,13 @@ if not (('-h' in sys.argv) or ('--help' in sys.argv)):
 import os
 # import subprocess
 import argparse
-from warnings import warn
+import copy
 # from glob import glob
 from args_chunks import *
-from py_helpers import unbuffer_stdout, file_len
+from py_helpers import unbuffer_stdout, file_len, warn_format
 unbuffer_stdout()
-
+import warnings
+warnings.formatwarning = warn_format
 
 #############
 if not (('-h' in sys.argv) or ('--help' in sys.argv)):
@@ -108,7 +109,7 @@ for line in chr_ref:
     chrend[str(chrom)] = int(length)
 chr_ref.close()
 
-
+chrend_orig = copy.deepcopy(chrend)
 
 #############
 print '\n...Reading input bim file...'
@@ -126,8 +127,8 @@ for line in bim:
         nbimsnps_valid += 1
     # prevent later errors
     if int(bp) > chrend[str(chrom)]:
+        warnings.warn('SNP %s (chr %s, bp %d) is outside expected chromosome bounds (bp <= %d).' % (str(snp_id), str(chrom), int(bp), int(chrend_orig[str(chrom)])))
         chrend[str(chrom)] = int(bp)
-        warn('SNP %s (chr %s, bp %d) is outside expected chromosome bounds (bp <= %d).' % (str(snp_id), str(chrom), int(bp), int(chrend[str(chrom)])))
 bim.close()
 nbimsnps = file_len(args.bfile + '.bim')
 print 'Loaded %d autosomal SNPs (of %d total in %s).' % (nbimsnps_valid, nbimsnps, bim.name)
@@ -166,18 +167,21 @@ for ch in xrange(1,23):
             reg_end = chrend[str(ch)]
     
         # init chunks
-        curr_snps = {k: v for k, v in snps.items() if (v[0] == str(ch) and v[1] >= reg_start and v[1] <= reg_end)}
+        curr_snps = {k: v for k, v in snps.items() if (str(v[0]) == str(ch) and int(v[1]) >= int(reg_start) and int(v[1]) <= int(reg_end))}
         first = reg_start
         last = 0
         snps_left = len(curr_snps.keys())
         
         while snps_left > 0 and idx <= args.max_chunks:
 
+            # debug:
+            # print 'chr = %s, snps left = %s' % (str(ch),str(snps_left))
+
             # catch unlikely error mode        
             if snps_left < args.snp_size:
                 nth_snp = sorted(curr_snps.keys(), key=lambda x: curr_snps[x][1])[snps_left-1]
                 if not args.allow_small_chunks:
-                    warn('Starting with too few SNPs (%d) at chr %d, bp %d. Check for sparse data or misaligned chromosome info?' % (snps_left, int(ch), first))                    
+                    warnings.warn('Starting with too few SNPs (%d) at chr %d, bp %d. Check for sparse data or misaligned chromosome info?' % (snps_left, int(ch), first))                    
             else:
             # get bp of (minsnp)th SNP in curr_snps
                 nth_snp = sorted(curr_snps.keys(), key=lambda x: curr_snps[x][1])[args.snp_size-1]            
@@ -216,7 +220,7 @@ for ch in xrange(1,23):
 chunks.close()
 
 if idx > args.max_chunks:
-    warn('Exceeded maximum number of chunks; stopping early.')
+    warnings.warn('Exceeded maximum number of chunks; stopping early.')
 elif nsnps != nbimsnps_valid:
     raise ValueError('Number of chunked SNPs (%d) does not match number of autosomal SNPs in input .bim (%d).' % (nsnps, nbimsnps_valid))
 

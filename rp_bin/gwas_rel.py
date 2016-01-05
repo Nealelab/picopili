@@ -27,7 +27,7 @@ import subprocess
 import os
 from warnings import warn
 from args_gwas import *
-from py_helpers import link, unbuffer_stdout
+from py_helpers import link, unbuffer_stdout, read_conf
 unbuffer_stdout()
 
 
@@ -39,7 +39,7 @@ if not (('-h' in sys.argv) or ('--help' in sys.argv)):
 parser = argparse.ArgumentParser(prog='gwas_rel.py',
                                  formatter_class=lambda prog:
                                  argparse.ArgumentDefaultsHelpFormatter(prog, max_help_position=40),
-                                 parents=[parserbase, parsergwas, parserchunk, parsersoft])
+                                 parents=[parserbase, parsergwas, parserchunk, parseragg, parsersoft])
                     
 args = parser.parse_args()
 
@@ -100,11 +100,22 @@ print '\nWARNING: THESE ARGUMENTS ARE NOT CURRENTLY FUNCTIONAL FROM gwas_rel.py:
 print '--no-cleanup'
 print '--extract'
 print '--exclude'
-print '--rserve-active'
+print '--info-th'
+# print '--rserve-active'
 print '--r-ex'
 print '--rplink-ex'
 print '\n'
 
+
+#############
+print '\n...Reading ricopili config file...'
+#############
+
+### read plink loc from config
+conf_file = os.environ['HOME']+"/ricopili.conf"
+configs = read_conf(conf_file)
+
+plinkx = configs['p2loc']+"plink"
 
 
 #############
@@ -138,7 +149,7 @@ link(wd+'/'+str(args.bfile)+'.fam', str(args.bfile)+'.fam', 'input plink fam fil
 
 
 
-
+# TODO: need to also propogate keep/exclude files, either here or in later args
 # TODO: allow SNP extract/exclude exclusion before chunking
 
 
@@ -149,6 +160,10 @@ print '\n...Creating genomic chunks to parallelize GWAS...'
 ######################
 
 # create chunks
+# note: <=16000 chunks is ideal for targeted range of Rserve port numbers
+#       and is enough for chunks >500 SNPs with 8 million imputed markers
+#       but can in theory handle up to 64510 (ie. 1025-65534) if needed before 
+#       port collisions become an issue
 chunk_call = [chunker_ex,
               '--bfile',str(args.bfile),
               '--out',str(args.out),
@@ -156,7 +171,8 @@ chunk_call = [chunker_ex,
               '--Mb-size',str(1),
               '--snp-size',str(args.snp_chunk),
               '--ignore-centromeres',
-              '--allow-small-chunks']
+              '--allow-small-chunks',
+              '--max-chunks',str(64000)]
 chunk_call = filter(None,chunk_call)
 
 chunk_log = open('chunk.'+str(outdot)+'.log', 'w')
@@ -241,8 +257,9 @@ uger_gwas_template = """#!/usr/bin/env sh
 #$ -V
 #$ -N {jname}
 #$ -q short
-#$ -l m_mem_free=2g
+#$ -l m_mem_free=4g
 #$ -t 1-{nchunk}
+#$ -tc 200
 #$ -o {outlog}
 
 source /broad/software/scripts/useuse
@@ -250,6 +267,8 @@ reuse -q Anaconda
 sleep {sleep}
 
 cname=`awk -v a=${{SGE_TASK_ID}} 'NR==a+1{{print $4}}' {cfile}`
+
+{misc}
 
 {gwas_ex} --bfile {bfile} --out {argout} --extract {outdot}.snps.${{cname}}.txt {optargs}
 
@@ -273,15 +292,23 @@ if args.remove is not None:
 nchunk = len(chunks.keys())
 jobdict = {"jname": 'gwas.chunks.'+str(outdot),
            "nchunk": str(nchunk),
-           "outlog": str('gwas.chunks.'+str(outdot)+'.$TASK_ID.log'),
+           "outlog": str('gwas.chunks.'+str(outdot)+'.$TASK_ID.qsub.log'),
            "sleep": str(args.sleep),
            "cfile": chunk_file.name,
+           "misc": '',
            "gwas_ex": str(gwas_ex),
            "bfile": str(args.bfile),
            "argout": str(args.out),
            "outdot": str(outdot),
            "optargs": str(gwasargs)
            }
+
+# for gee, need to specify Rserve port for each job
+# targeting IANA range 49152-65535 
+# (assuming here will be < 16k jobs; gwas_gee.py handles overflow check)           
+if args.model == 'gee':
+    jobdict['misc'] = 'rport=$((49151+SGE_TASK_ID))'
+    jobdict['optargs'] = str(gwasargs) +' --port $rport'
 
 uger_gwas = open(str(outdot)+'.gwas_chunks.sub.sh', 'w')
 uger_gwas.write(uger_gwas_template.format(**jobdict))
@@ -293,10 +320,62 @@ print 'GWAS jobs submitted for %d chunks.\n' % nchunk
 
 
 
+######################
+print '\n...Preparing meta-data for aggregation...'
+# - create .frq file for aggregation script
+# TODO: any prep for info score file?
+######################
+
+frq_call = [plinkx,
+            '--bfile',str(args.bfile),
+            '--freq','case-control','--nonfounders',
+            '--out','freqinfo.'+str(outdot)]
+if args.keep is not None:
+    frq_call.extend(['--keep',str(args.keep)])
+elif args.remove is not None:
+    frq_call.extend(['--remove',str(args.remove)])
+
+freqname = 'freqinfo.'+str(outdot)+'.frq.cc'
+
+frq_log = open('freqinfo.'+str(outdot)+'.plink.log', 'w')
+subprocess.check_call(frq_call, stderr=subprocess.STDOUT, stdout=frq_log)
+frq_log.close()
+
+
+######################
+print '\n...Queuing GWAS results aggregation script...'
+# call to agg_gwas.py
+# TODO: info score file
+######################
+
+agg_log = 'agg.'+str(outdot)+'.qsub.log'
+agg_call = [str(rp_bin)+'/agg_gwas.py',
+            '--bfile',str(args.bfile),
+            '--out',str(args.out),
+            addout_txt[0],addout_txt[1],
+            '--maf-a-th',str(args.maf_a_th),
+            '--maf-u-th',str(args.maf_u_th),
+            '--p-th2',str(args.p_th2),
+            '--chunk-file',str(chunk_file.name),
+            '--freq-file',str(freqname),
+            '--model',str(args.model)]
+agg_call = filter(None,agg_call)
+
+uger_agg = ' '.join(['qsub',
+                        '-hold_jid','gwas.chunks.'+str(outdot),
+                        '-q', 'long',
+                        '-l', 'm_mem_free=4g',
+                        '-N', 'agg_'+str(outdot),
+                        '-o', agg_log,
+                        str(rp_bin)+'/uger.sub.sh',
+                        str(args.sleep),
+                        ' '.join(agg_call)])
+
+print uger_agg + '\n'
+subprocess.check_call(uger_agg, shell=True)
 
 
 # TODO:
-# queue aggregation script
 # queue summarization script (plots, etc)
 
 
@@ -305,7 +384,8 @@ print 'GWAS jobs submitted for %d chunks.\n' % nchunk
 # finish
 print '\n############'
 print '\n'
-print 'SUCCESS!\n'
+print 'SUCCESS!'
+print 'All jobs submitted.\n'
 exit(0)
 
 #uger_chunk = ' '.join(['qsub',

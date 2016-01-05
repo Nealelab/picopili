@@ -66,6 +66,19 @@ if args.covar_number is not None:
 else:
     cov_num_txt = ['']
 
+# range check on port number
+# capped at 65535
+# minimum 1025 to avoid reserved ports
+if args.port > 65535:
+    rport = 1025 + ((args.port-1024) % (65535-1024))
+elif args.port < 1025:
+    rport = int(args.port)
+    while rport < 1025:
+        rport += (65535-1024)
+else:
+    rport = int(args.port)
+
+
 # sanity check covariate specification, keep/exclude and extract/exclude
 if (args.covar_number is not None) and (args.covar is None):
     raise ValueError('Covariate number specified without a covariate file')
@@ -104,11 +117,12 @@ else:
     print '--exclude '+str(args.exclude)
 
 print '\nSoftware Settings:'
-if args.rserve_active:
-    print '--rserve-active '+str(args.rserve_active)
-else:
-    print '--r-ex '+str(args.r_ex)
+#if args.rserve_active:
+#    print '--rserve-active '+str(args.rserve_active)
+#else:
+print '--r-ex '+str(args.r_ex)
 print '--rplink-ex '+str(args.rplink_ex)
+print '--port '+str(args.port)
 
 
 ##############
@@ -127,8 +141,8 @@ print '\n...Checking dependencies...'
 
 # verify executables
 test_exec(args.rplink_ex, 'Plink')
-if not args.rserve_active:
-    test_exec(args.r_ex, 'R')
+#if not args.rserve_active:
+test_exec(args.r_ex, 'R')
 # TODO: find a way to test Rserve available?
 
 # check required R scripts present
@@ -174,12 +188,13 @@ print '############'
 
 #############
 # Start Rserve to allow Plink R-plugins
-if not args.rserve_active:
-    print '\n...Starting Rserve...'
-    #############
+# use unique port per process
+#if not args.rserve_active:
+print '\n...Starting Rserve...'
+#############
+print 'Using port %s' % str(rport)
+subprocess.check_call([str(args.r_ex), 'CMD', 'Rserve', '--no-save', '--RS-port', str(rport)])
 
-    subprocess.check_call([str(args.r_ex), 'CMD', 'Rserve', '--no-save'])
-    
 
 #############
 print '\n...Running GWAS...'
@@ -214,11 +229,13 @@ else:
 # assemble plink call
 gee_call = [str(args.rplink_ex)] + \
                 ['--bfile', str(args.bfile)] + \
+		['--memory', str(2000)] + \
                 keep_txt + \
                 extract_txt + \
                 covar_txt + \
                 ['--family'] + \
                 ['--R', str(R_gee)] + \
+                ['--R-port', str(rport)] + \
                 ['--out', outstem]
 gee_call = filter(None,gee_call)
 
@@ -227,8 +244,33 @@ print ' '.join(gee_call)
 print ' '
 subprocess.check_call(gee_call)
 
+
+#############
+# shutdown Rserve
+#if not args.rserve_active:
+print '\n...Closing Rserve...'
+#############
+
+# get running Rserve processes
+# (will error if no process)
+ps = subprocess.check_output(' '.join(["ps","wp","$(pgrep Rserve)"]), shell=True)
+
+# cleanup text, string header
+ps_txt = [s.strip().split() for s in ps.splitlines()][1:]
+
+# pid of desired Rserve process (assumes port number is last arg)
+pid = [x[0] for x in ps_txt if x[-1]==str(rport)]
+
+# kill
+subprocess.check_call(['kill',str(pid)])
+
+
+#############
+print '\n...Verifying output exists...'
+#############
+
 # check proper output 
-assert os.path.isfile(outstem +'.auto.R'), 'Failed to generated GWAS results file %s' % outstem +'.auto.R'
+assert file_len(outstem +'.auto.R') >= nsnp, 'Failed to generate full GWAS results file %s' % outstem +'.auto.R'
 
 
 print '\n############'

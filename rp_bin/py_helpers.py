@@ -167,3 +167,8 @@ def file_check_email(filename,taskname):
         pp_send_mail(str(taskname)+'_failed', 'error_file')        
         return False  
 
+
+# nicer warning print format
+def warn_format(msg, *a):
+    return str(msg) + '\n'
+

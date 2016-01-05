@@ -58,8 +58,8 @@ arg_base.add_argument('--no-cleanup',
 ############
 
 parsergwas = argparse.ArgumentParser(add_help=False)
-arg_test = parserbase.add_argument_group('Association Analysis')
-arg_subset = parserbase.add_argument_group('Analysis Subset')
+arg_test = parsergwas.add_argument_group('Association Analysis')
+arg_subset = parsergwas.add_argument_group('Analysis Subset')
 
 
 arg_test.add_argument('--model', 
@@ -106,15 +106,55 @@ arg_subset.add_argument('--exclude',
 ############
 
 parserchunk = argparse.ArgumentParser(add_help=False)
-arg_snpchunk = parserbase.add_argument_group('Parallel Jobs')
+arg_snpchunk = parserchunk.add_argument_group('Parallel Jobs')
 
 arg_snpchunk.add_argument('--snp-chunk', 
                     type=int,
                     metavar='INT',
                     help='Number of SNPs to analyze in each parallel chunk',
                     required=False,
-                    default=25000)
+                    default=10000)
 
+
+
+############
+#
+# Aggregation settings
+#
+############
+
+parseragg = argparse.ArgumentParser(add_help=False)
+arg_agg = parseragg.add_argument_group('GWAS Results Filtering')
+
+arg_agg.add_argument('--maf-a-th', 
+                    type=float,
+                    metavar='FLOAT',
+                    help='Threshold for minor allele frequency in cases to include in GWAS results',
+                    required=False,
+                    default=.005)
+arg_agg.add_argument('--maf-u-th', 
+                    type=float,
+                    metavar='FLOAT',
+                    help='Threshold for minor allele frequency in controls to include in GWAS results',
+                    required=False,
+                    default=.005)
+arg_agg.add_argument('--info-file', 
+                    type=str,
+                    metavar='FILE',
+                    help='File containing info scores for imputed SNPs',
+                    required=False)
+arg_agg.add_argument('--info-th', 
+                    type=float,
+                    metavar='FLOAT',
+                    help='Threshold for imputation info score to include in GWAS results',
+                    required=False,
+                    default=.6)
+arg_agg.add_argument('--p-th2', 
+                    type=float,
+                    metavar='FLOAT',
+                    help='p-value threshold for inclusion in the p-sorted top results output',
+                    required=False,
+                    default=1e-3)
 
 
 ############
@@ -124,14 +164,14 @@ arg_snpchunk.add_argument('--snp-chunk',
 ############
 
 parsersoft = argparse.ArgumentParser(add_help=False)
-arg_soft = parserbase.add_argument_group('Software')
-arg_clust = parserbase.add_argument_group('Cluster Settings')
-arg_exloc = parserbase.add_argument_group('Executable Locations')
+arg_soft = parsersoft.add_argument_group('Software')
+arg_clust = parsersoft.add_argument_group('Cluster Settings')
+arg_exloc = parsersoft.add_argument_group('Executable Locations')
 
-arg_soft.add_argument('--rserve-active',
-                    action='store_true',
-                    help='skip launching Rserve. Without this argument, will try \'R CMD Rserve\' to enable Plink-R plugin interface.')
-arg_snpchunk.add_argument('--sleep', 
+#arg_soft.add_argument('--rserve-active',
+#                    action='store_true',
+#                    help='skip launching Rserve. Without this argument, will try \'R CMD Rserve\' to enable Plink-R plugin interface.')
+arg_clust.add_argument('--sleep', 
                     type=int,
                     metavar='SEC',
                     help='Number of seconds to delay on start of UGER jobs',
@@ -149,5 +189,11 @@ arg_exloc.add_argument('--rplink-ex',
                     help='path to plink executable with R plugin interface and \'--dfam\'. Both currently supported by Plink1.07 and Plink1.9-dev build, but not by Plink1.9-stable. Default is currently developer preference.',
                     required=False,
                     default=os.environ['HOME']+'/dev-plink2/plink')
+arg_clust.add_argument('--port',
+                    type=int,
+                    metavar='TCP_PORT',
+                    help='TCP port to use for Rserve (for \'--model gee\' only)',
+                    required=False,
+                    default=6311)
 
 # eof
