@@ -27,7 +27,18 @@ def file_len(fname):
         raise IOError(err)
     return int(result.strip().split()[0])
 
+   
+# tail of file (see wc -l above)
+def file_tail(fname, n=1):
+    import subprocess    
     
+    p = subprocess.Popen(['tail', '-n', str(n), fname], stdout=subprocess.PIPE, 
+                                                        stderr=subprocess.PIPE)
+    result, err = p.communicate()
+    if p.returncode != 0:
+        raise IOError(err)
+    return str(result)
+
 
 # read ricopili config file as dict    
 def read_conf(fname):

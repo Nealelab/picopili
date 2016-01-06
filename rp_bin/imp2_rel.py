@@ -17,6 +17,13 @@ Runs IMPUTE2 for GWAS data with related individuals
 # 
 ####################################
 
+import sys
+#############
+if not (('-h' in sys.argv) or ('--help' in sys.argv)):
+    print '\n...Importing packages...'
+#############
+
+### load requirements
 import os
 import subprocess
 from args_impute import *
@@ -24,6 +31,10 @@ from py_helpers import unbuffer_stdout, file_len, link, read_conf
 unbuffer_stdout()
 
 
+#############
+if not (('-h' in sys.argv) or ('--help' in sys.argv)):
+    print '\n...Parsing arguments...' 
+#############
 parser = argparse.ArgumentParser(prog='imp2_rel.py',
                                  formatter_class=lambda prog:
                                  argparse.ArgumentDefaultsHelpFormatter(prog, max_help_position=40),
@@ -237,6 +248,7 @@ print 'Imputation jobs submitted for %d chunks.\n' % nchunks
 print '\n############'
 print '\n'
 print 'SUCCESS!\n'
+print 'All jobs submitted.\n'
 exit(0)
 
 # TODO:
