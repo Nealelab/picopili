@@ -294,7 +294,7 @@ uger_call = ' '.join(['qsub',
                       '-l', 'm_mem_free='+str(args.mem_req)+'g',
                       '-pe','smp',str(args.threads),
                       '-t', '1-22',
-                      '-o', '\''+str(args.out)+'.shape.chr$TASK_ID.qsub.log\'',
+                      '-o', '\''+str(args.out)+'.chr$TASK_ID.shape.qsub.log\'',
                       str(rp_bin)+'/uger_array.sub.sh',
                       str(args.sleep),
                       ' '.join(shape_call)])
@@ -309,19 +309,3 @@ print '\n'
 print 'SUCCESS!\n'
 exit(0)
 
-# make genomic chunks
-
-# impute2 
-# -use_prephased_g
-# -known_haps_g .phased.haps
-# -h ref.haplotypes.mgz
-# -l reference.legend.gz
-# -m genetic_map.txt
-# -int <bp> <bp>
-# -buffer 1000
-# -Ne 20000
-# -o_gz
-# -o gwas.fromXXX_toXXX.imputed
-# -seed x
-
-# best-guess / filter info/maf / dosage conversion

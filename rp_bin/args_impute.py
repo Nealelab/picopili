@@ -136,6 +136,37 @@ arg_submit.add_argument('--threads',
                         default=4)
 
 
+############
+#
+# SNP Chunking Parameters
+# 
+# - Subset of of options from args_chunks.py
+# - Remaining arguments (e.g. centromeres, short chunks) fixed for definining imputation chunks
+#
+############
+
+parserchunk = argparse.ArgumentParser(add_help=False)
+arg_snpchunk = parserchunk.add_argument_group('SNP Chunking')
+
+arg_snpchunk.add_argument('--Mb-size', 
+                    type=float,
+                    metavar='FLOAT',
+                    help='Minimum size of chunk, in Mb (megabases)',
+                    required=False,
+                    default=3.0)
+arg_snpchunk.add_argument('--snp-size', 
+                    type=int,
+                    metavar='INT',
+                    help='Minimum size of chunk, in number of SNPs',
+                    required=False,
+                    default=50)
+arg_snpchunk.add_argument('--chr-info-file', 
+                    type=str,
+                    metavar='FILE',
+                    help='file with chromosome length and centromere locations. ' + \
+                         'Default file is retrieved from installation location.',
+                    required=False,
+                    default='hg19_ucsc_chrinfo.txt')
 
 ############
 #
@@ -146,8 +177,64 @@ arg_submit.add_argument('--threads',
 parserimpute = argparse.ArgumentParser(add_help=False)
 arg_imp = parserimpute.add_argument_group('IMPUTE2 Arguments')
 
+arg_imp.add_argument('--ne',
+                     type=int,
+                     metavar='INT',
+                     help='effective population size for imputation',
+                     required=False,
+                     default=20000)
+arg_imp.add_argument('--buffer',
+                     type=int,
+                     metavar='KB',
+                     help='size of buffer region, in kb, to use around target region when imputing genomic chunks',
+                     required=False,
+                     default=1000)
+arg_imp.add_argument('--seed',
+                     type=int,
+                     metavar='INT',
+                     help='random seed for impute2',
+                     required=False,
+                     default=None)
+
+
+############
+#
+# Imputation Reference
+#
+############
+
+parserref = argparse.ArgumentParser(add_help=False)
+arg_ref = parserref.add_argument_group('Imputation Reference')
+
+arg_ref.add_argument('--refstem',
+                        type=str,
+                        metavar='FILESTEM',
+                        help='Imputation reference. CURRENTLY UNUSED, hardcoded to shared 1KG Phase 3',
+                        required=False)
+arg_ref.add_argument('--map-dir', 
+                        type=str,
+                        metavar='PATH',
+                        help='Directory with genomic maps, per chromosome. ' + \
+                             'Expected filenames are ./genetic_map_chr${i}_combined_b37.txt',
+                        required=False,
+                        default='/humgen/atgu1/fs03/shared_resources/1kG/shapeit/genetic_map')
+
+
+############
+#
+# Cluster Settings
+#
+############
+
+parsercluster = argparse.ArgumentParser(add_help=False)
+arg_clust = parsercluster.add_argument_group('Cluster Settings')
+
+arg_clust.add_argument('--sleep', 
+                    type=int,
+                    metavar='SEC',
+                    help='Number of seconds to delay on start of UGER jobs',
+                    required=False,
+                    default=30)
+
 
 # eof
-
-
-
