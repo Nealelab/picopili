@@ -1,10 +1,10 @@
 #! /usr/bin/env python
 
 ####################################
-# agg_imp.py
+# bg_imp.py
 # written by Raymond Walters, January 2016
 """
-Process IMPUTE2 output for GWAS data with related individuals
+Generate best-guess calls from IMPUTE2 output
 """
 # Overview:
 # 1) Parse arguments
@@ -15,11 +15,13 @@ Process IMPUTE2 output for GWAS data with related individuals
 #    - if previously resubbed, fail
 # 4) Setup working directories for remaining tasks 
 # 5) Convert chunks to plink files
-#    - farm 5 & 6 out to cluster
 # 6) Fix bim files (extract rsids, etc)
-# 67) Merge and filter
+#    - farm 5 & 6 out to cluster
 # 
 ####################################
+
+# TODO: turn on subprocess submissions
+# enable missing chunk check
 
 
 import sys
@@ -32,7 +34,7 @@ if not (('-h' in sys.argv) or ('--help' in sys.argv)):
 import os
 import subprocess
 from args_impute import *
-from py_helpers import unbuffer_stdout, read_conf, file_tail #, file_len, link, read_conf
+from py_helpers import unbuffer_stdout, read_conf, file_tail, link
 unbuffer_stdout()
 
 
@@ -40,12 +42,21 @@ unbuffer_stdout()
 if not (('-h' in sys.argv) or ('--help' in sys.argv)):
     print '\n...Parsing arguments...' 
 #############
-parser = argparse.ArgumentParser(prog='agg_imp.py',
+parser = argparse.ArgumentParser(prog='bg_imp.py',
                                  formatter_class=lambda prog:
                                  argparse.ArgumentDefaultsHelpFormatter(prog, max_help_position=40),
                                  parents=[parserbase, parsercluster])
                     
 args = parser.parse_args()
+
+args.bg_th = .8
+args.hard_call_th = None
+
+# process call threshold
+if args.hard_call_th is None:
+    hard_call_th = 1.0 - float(args.bg_th)
+else:
+    hard_call_th = float(args.hard_call_th)
 
 
 # get useful modified args
@@ -95,6 +106,8 @@ print '\n...Checking dependencies...'
 #############
 
 
+assert float(hard_call_th) > 0
+assert float(hard_call_th) < 1
 
 # TODO: here
 
@@ -146,7 +159,9 @@ chunks_in.close()
 ###############
 # if there are missing chunks, restart their imputation and resub agg script
 ###############
-if len(mis_chunks) > 0:
+
+if False:
+# if len(mis_chunks) > 0:
     nummiss = len(mis_chunks)
     print 'Missing results for %d imputation chunks. Preparing to resubmit...' % nummiss
     
@@ -199,15 +214,15 @@ if len(mis_chunks) > 0:
     print 'GWAS jobs resubmitted for %d chunks.\n' % nummiss
     
     
-    print '\n...Replacing this agg job in the queue...'
+    print '\n...Replacing this best-guess job in the queue...'
 
 # TODO: consider queue/mem for agg
-    agg_log = 'agg.'+str(outdot)+'.resub_'+str(nummiss)+'.qsub.log'
+    agg_log = 'bg.'+str(outdot)+'.resub_'+str(nummiss)+'.qsub.log'
     uger_agg = ' '.join(['qsub',
                             '-hold_jid','imp.chunks.'+str(outdot)+'.resub_'+str(nummiss),
                             '-q', 'long',
                             '-l', 'm_mem_free=4g',
-                            '-N', 'agg_'+str(outdot),
+                            '-N', 'bg_'+str(outdot),
                             '-o', agg_log,
                             str(rp_bin)+'/uger.sub.sh',
                             str(args.sleep),
@@ -224,46 +239,72 @@ if len(mis_chunks) > 0:
 
 
 ######################
-print '\n...Setting up working directories...'
+print '\n...Setting up working directory...'
 ######################
 
 # working directories
 proc_dir = wd + '/imp_postproc'
-bg_dir = wd + '/imp_results'
+# bg_dir = wd + '/imp_results'
 os.mkdir(proc_dir)
-os.mkdir(bg_dir)
+# os.mkdir(bg_dir)
 print 'Impute2 output processing: %s' % proc_dir
-print 'Final imputation results: %s' % bg_dir
+# print 'Final imputation results: %s' % bg_dir
+os.chdir(proc_dir)
+link(str(chunk_dir)+'/'+str(outdot)+'.chunks.txt', str(outdot)+'.chunks.txt', 'genomic chunk results')
 
 
 ######################
 print '\n...Generating best-guess genotypes...'
 ######################
 
-# ~/plink2/plink 
-# --gen tester.addertxt.imp.chr1_117_123.gz.gz 
-# --sample tester.addertxt.chr1.phased.sample 
-# --oxford-single-chr 1 
-# --oxford-pheno-name plink_pheno 
-# --hard-call-threshold .2 
-# --missing-code '-9','NA','na' 
-# --out test_parse_imp2
+# TODO: flex queue/mem reqs
+# TODO: add python script after plink to fix bim, fams
+uger_bg_template = """#!/usr/bin/env sh
+#$ -j y
+#$ -cwd
+#$ -V
+#$ -N {jname}
+#$ -q short
+#$ -l m_mem_free=4g
+#$ -t 1-{nchunk}
+#$ -o {outlog}
 
-# format bim files
+source /broad/software/scripts/useuse
+reuse -q Anaconda
+sleep {sleep}
 
-# write a stand-alone task for this to submit, then check here for completion
+cname=`awk -v a=${{SGE_TASK_ID}} 'NR==a+1{{print $4}}' {cfile}`
+cchr=`awk -v a=${{SGE_TASK_ID}} 'NR==a+1{{print $1}}' {cfile}`
 
+{plink_ex} --gen {gen_in} --sample {samp_in} --oxford-single-chr ${{cchr}} --oxford-pheno-name plink_pheno --hard-call-threshold {hard_call_th} --missing-code -9,NA,na --out {out_str} 
 
+# eof
+"""
+    
+# get number of chunks
+nchunks = len(chunks)
 
-######################
-print '\n...Merging and filtering imputation results..'
-######################
+# fill in template
+jobdict = {"jname": 'bg.chunks.'+str(outdot),
+           "nchunk": str(nchunks),
+           "outlog": str('bg.chunks.'+str(outdot)+'.$TASK_ID.qsub.log'),
+           "sleep": str(args.sleep),
+           "cfile": str(outdot)+'.chunks.txt',
+           "plink_ex": str(plink_ex),
+           "gen_in": str(imp_dir)+'/'+str(outdot)+'.imp.${cname}.gz',
+           "samp_in": str(shape_dir)+'/'+str(outdot)+'.chr${cchr}.phased.sample',
+           "hard_call_th": str(hard_call_th),
+           "out_str": str(outdot)+'.bg.${cname}'
+           }
 
-# info
-# mendel errors
-# call rate
-# maf 
+uger_bg = open(str(outdot)+'.bg_chunks.sub.sh', 'w')
+uger_bg.write(uger_bg_template.format(**jobdict))
+uger_bg.close()
 
+# submit
+print ' '.join(['qsub',uger_bg.name]) + '\n'
+# subprocess.check_call(' '.join(['qsub',uger_bg.name]), shell=True)
+print 'Best-guess jobs submitted for %d chunks.\n' % nchunks
 
 
 
@@ -273,5 +314,26 @@ print '\n'
 print 'SUCCESS!'
 print 'All jobs submitted.\n'
 exit(0)
+
+
+
+
+# as separate script:
+
+# format bim files
+# translate back fam files
+
+######################
+# print '\n...Merging and filtering imputation results..'
+######################
+
+# info (--qual-scores)
+# mendel errors
+# call rate
+# maf 
+
+
+
+
 
 # eof
