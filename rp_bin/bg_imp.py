@@ -33,10 +33,11 @@ if not (('-h' in sys.argv) or ('--help' in sys.argv)):
 ### load requirements
 import os
 import subprocess
+import warnings
 from args_impute import *
-from py_helpers import unbuffer_stdout, read_conf, file_tail, link
+from py_helpers import unbuffer_stdout, read_conf, file_tail, link, warn_format
 unbuffer_stdout()
-
+warnings.formatwarning = warn_format
 
 #############
 if not (('-h' in sys.argv) or ('--help' in sys.argv)):
@@ -45,18 +46,26 @@ if not (('-h' in sys.argv) or ('--help' in sys.argv)):
 parser = argparse.ArgumentParser(prog='bg_imp.py',
                                  formatter_class=lambda prog:
                                  argparse.ArgumentDefaultsHelpFormatter(prog, max_help_position=40),
-                                 parents=[parserbase, parsercluster])
+                                 parents=[parserbase, parserbg, parsercluster])
                     
 args = parser.parse_args()
 
-args.bg_th = .8
-args.hard_call_th = None
 
 # process call threshold
 if args.hard_call_th is None:
     hard_call_th = 1.0 - float(args.bg_th)
 else:
     hard_call_th = float(args.hard_call_th)
+    if args.bg_th > 1.0-hard_call_th:
+        if args.bg_th == .8:
+            warn("Default value of --bg-th (0.8) overridden by less strict value for --hard-call-th (%f)." % hard_call_th)
+        else:
+            hard_call_th = 1.0 - float(args.bg_th)
+            warn("Both --hard-call-th and --bg_th specified. Using stricter value (==> hard-call-th %f)" % hard_call_th)
+
+assert float(hard_call_th) > 0
+assert float(hard_call_th) < 1
+
 
 
 # get useful modified args
@@ -67,11 +76,76 @@ else:
     addout_txt = ['','']
     outdot = str(args.out)
 
+
+
 # directories
 wd = os.getcwd()
 shape_dir = wd + '/phase_chr'
 chunk_dir = wd + '/chunks_for_imp'
 imp_dir = wd + '/imp_sub'
+
+
+######
+# setup text for plink filtering
+######
+
+# mendel errors
+if args.keep_mendel:
+    mendel_txt = ''
+elif args.mendel == 'none':
+    args.keep_mendel = True
+    mendel_txt = ''
+elif args.mendel == 'multigen':
+    mendel_txt = '--set-me-missing --mendel-multigen'
+elif args.mendel == 'duos':
+    mendel_txt = '--set-me-missing --mendel-duos'
+elif args.mendel == 'trios':
+    mendel_txt = '--set-me-missing'
+else:
+    raise ValueError("Invalid argument for --mendel. Something has failed.")
+
+# info scores
+# based on impute2 output format for _info files
+if args.info_th is None and args.max_info_th is None:
+    info_txt = ''
+else:
+    # init, then add thresholds
+    info_txt = '--qual-scores '+str(imp_dir)+'/'+str(outdot)+'.imp.${cname}_info' +' 5 2 1'
+    # minimum info
+    if args.info_th >= 0.0 and args.info_th <= 1.0:
+        info_txt = info_txt + ' --qual-threshold '+str(args.info_th)
+    elif args.info_th is not None:
+        raise ValueError("Invalid argument for --info_th. Must be between 0 and 1.")
+    # maximum info
+    if args.max_info_th >= 0.0:
+        info_txt = info_txt + ' --qual-max-threshold '+str(args.max_info_th)
+    elif args.max_info_th is not None:
+        raise ValueError("Invalid argument for --max_info_th. Must be between 0 and 1.")    
+
+# maf
+if args.maf_th is None:
+   maf_txt = '' 
+elif args.maf_th >= 0.0 and args.maf_th <= 0.5:
+    maf_txt = '--maf '+str(args.maf_th)
+else:
+    raise ValueError("Invalid argument for --maf_th. Must be between 0 and 0.5.")
+
+# mac
+if args.mac_th is None:
+    mac_txt = ''
+elif int(args.mac_th) > 0:
+    mac_txt = '--mac '+str(int(args.mac_th))
+else:
+    raise ValueError("Invalid argument for --mac_th. Must be greater than 0.")
+
+# call rate
+if args.miss_th is None:
+    geno_txt = ''
+elif args.miss_th > 0.0 and args.miss_th < 1.0:
+    geno_txt = '--geno '+str(args.miss_th)
+else:
+    raise ValueError("Invalid argument for --miss_th. Must be between 0 and 1.")
+
 
 
 # report settings in use
@@ -81,8 +155,24 @@ print '--out '+str(args.out)
 if args.addout is not None:
     print '--addout '+str(args.addout)
 
-# TODO: Rest of here
+print '\nBest-guess genotype calling:'
+if args.hard_call_th is None:
+    print '--bg-th '+str(args.bg_th)
+else:
+    print '--hard-call-th '+str(hard_call_th)
+print '--info-th '+str(args.info_th)
+print '--max-info-th '+str(args.max_info_th)
+if args.keep_mendel:
+    print '--keep-mendel'
+else:
+    print '--mendel '+str(args.mendel)
+print '--maf-th '+str(args.maf_th)
+if args.mac_th is not None:
+    print '--mac-th '+str(args.mac_th)
+print '--miss-th '+str(args.miss_th)
 
+print '\nCluster settings:'
+print '--sleep '+str(args.sleep)
 
 
 
@@ -106,8 +196,7 @@ print '\n...Checking dependencies...'
 #############
 
 
-assert float(hard_call_th) > 0
-assert float(hard_call_th) < 1
+
 
 # TODO: here
 
@@ -258,7 +347,6 @@ print '\n...Generating best-guess genotypes...'
 ######################
 
 # TODO: flex queue/mem reqs
-# TODO: add python script after plink to fix bim, fams
 uger_bg_template = """#!/usr/bin/env sh
 #$ -j y
 #$ -cwd
@@ -276,7 +364,19 @@ sleep {sleep}
 cname=`awk -v a=${{SGE_TASK_ID}} 'NR==a+1{{print $4}}' {cfile}`
 cchr=`awk -v a=${{SGE_TASK_ID}} 'NR==a+1{{print $1}}' {cfile}`
 
-{plink_ex} --gen {gen_in} --sample {samp_in} --oxford-single-chr ${{cchr}} --oxford-pheno-name plink_pheno --hard-call-threshold {hard_call_th} --missing-code -9,NA,na --out {out_str} 
+{plink_ex} --gen {gen_in} --sample {samp_in} --oxford-single-chr ${{cchr}} --oxford-pheno-name plink_pheno --hard-call-threshold {hard_call_th} --missing-code -9,NA,na --allow-no-sex --out {out_str} 
+
+sleep {sleep}
+{plink_ex} --bfile {out_str} {mendel_txt} {info_txt} --allow-no-sex --make-bed --out {out_str2}
+rm {out_str}.bed
+rm {out_str}.bim
+rm {out_str}.fam
+
+sleep {sleep}
+{plink_ex} --bfile {out_str2} {maf_txt} {mac_txt} {geno_txt} --allow-no-sex --make-bed --out {out_str_filt}
+rm {out_str2}.bed
+rm {out_str2}.bim
+rm {out_str2}.fam
 
 # eof
 """
@@ -294,7 +394,14 @@ jobdict = {"jname": 'bg.chunks.'+str(outdot),
            "gen_in": str(imp_dir)+'/'+str(outdot)+'.imp.${cname}.gz',
            "samp_in": str(shape_dir)+'/'+str(outdot)+'.chr${cchr}.phased.sample',
            "hard_call_th": str(hard_call_th),
-           "out_str": str(outdot)+'.bg.${cname}'
+           "out_str": str(outdot)+'.bg.${cname}',
+           "mendel_txt": str(mendel_txt),
+           "info_txt": str(info_txt),
+           "out_str2": str(outdot)+'.bg.tmp.${cname}',
+           "maf_txt": str(maf_txt),
+           "mac_txt": str(mac_txt),
+           "geno_txt": str(geno_txt),
+           "out_str_filt": str(outdot)+'.bg.filtered.${cname}',
            }
 
 uger_bg = open(str(outdot)+'.bg_chunks.sub.sh', 'w')
@@ -313,27 +420,9 @@ print '\n############'
 print '\n'
 print 'SUCCESS!'
 print 'All jobs submitted.\n'
+
+print 'In testing mode; missing chunks skipped, jobs not actually submitted.\n'
 exit(0)
-
-
-
-
-# as separate script:
-
-# format bim files
-# translate back fam files
-
-######################
-# print '\n...Merging and filtering imputation results..'
-######################
-
-# info (--qual-scores)
-# mendel errors
-# call rate
-# maf 
-
-
-
 
 
 # eof

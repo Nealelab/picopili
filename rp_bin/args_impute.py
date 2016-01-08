@@ -222,6 +222,70 @@ arg_ref.add_argument('--map-dir',
 
 ############
 #
+# Best guess filtering
+#
+############
+
+parserbg = argparse.ArgumentParser(add_help=False)
+arg_bg = parserbg.add_argument_group('Best-Guess Genotypes')
+
+arg_bg.add_argument('--bg-th',
+                        type=float,
+                        metavar='FLOAT',
+                        help="Minimum posterior probability for making best-guess calls",
+                        required=False,
+                        default=0.8)
+arg_bg.add_argument('--info-th',
+                        type=float,
+                        metavar='FLOAT',
+                        help="Info score threshold for filtering best-guess genotypes",
+                        required=False,
+                        default=0.6)
+arg_bg.add_argument('--keep-mendel',
+                        action='store_true',
+                        help='Prevents setting mendelian errors to missing')
+arg_bg.add_argument('--maf-th',
+                        type=float,
+                        metavar='FLOAT',
+                        help="Minor allele frequency threshold for filtering best-guess genotypes",
+                        required=False,
+                        default=0.005)
+arg_bg.add_argument('--miss-th',
+                        type=float,
+                        metavar='FLOAT',
+                        help="SNP missingness threshold for filtering best-guess genotypes",
+                        required=False,
+                        default=0.02)
+arg_bg.add_argument('--mac-th',
+                        type=int,
+                        metavar='INT',
+                        help="Minor allele count threshold for filtering best-guess genotypes",
+                        required=False,
+                        default=None)
+arg_bg.add_argument('--hard-call-th',
+                        type=float,
+                        metavar='FLOAT',
+                        help="Maximum uncertainty for making best-guess calls. Passed directly to plink --hard-call-threshold.",
+                        required=False,
+                        default=None)
+arg_bg.add_argument('--max-info-th',
+                        type=float,
+                        metavar='FLOAT',
+                        help="Maximum info score threshold for filtering best-guess genotypes",
+                        required=False,
+                        default=2.0)
+arg_bg.add_argument('--mendel',
+                        type=str.lower,
+                        choices=['none', 'trios', 'duos', 'multigen'],
+                        help='Mendel error testing method. All methods come from plink2, ' + \
+                        'and differ according to behavior when parental genotypes are missing. ' + \
+                        'See plink2 documentation on "--mendel" (trios), "--mendel-duos", and "--mendel-multigen".',  
+                        default='multigen',
+                        required=False)
+
+
+############
+#
 # Cluster Settings
 #
 ############
