@@ -47,8 +47,8 @@ parser = argparse.ArgumentParser(prog='bg_imp.py',
                                  formatter_class=lambda prog:
                                  argparse.ArgumentDefaultsHelpFormatter(prog, max_help_position=40),
                                  parents=[parserbase, parserbg, parsercluster])
-                    
-args = parser.parse_args()
+                   
+args, extra_args = parser.parse_known_args()
 
 
 # process call threshold
@@ -189,7 +189,7 @@ plink_ex = configs['p2loc']+"plink"
 # get directory containing current script
 # (to get absolute path for scripts)
 rp_bin = os.path.dirname(os.path.realpath(__file__))
-
+rs_ex = str(rp_bin)+'/rs_trans.py'
 
 #############
 print '\n...Checking dependencies...'
@@ -249,8 +249,7 @@ chunks_in.close()
 # if there are missing chunks, restart their imputation and resub agg script
 ###############
 
-if False:
-# if len(mis_chunks) > 0:
+if len(mis_chunks) > 0:
     nummiss = len(mis_chunks)
     print 'Missing results for %d imputation chunks. Preparing to resubmit...' % nummiss
     
@@ -299,26 +298,26 @@ if False:
     new_uger_file.close()
 
     print ' '.join(['qsub',new_uger_file.name]) + '\n'
-#    subprocess.check_call(' '.join(['qsub',new_uger_file.name]), shell=True)
+    subprocess.check_call(' '.join(['qsub',new_uger_file.name]), shell=True)
     print 'GWAS jobs resubmitted for %d chunks.\n' % nummiss
     
     
     print '\n...Replacing this best-guess job in the queue...'
 
-# TODO: consider queue/mem for agg
-    agg_log = 'bg.'+str(outdot)+'.resub_'+str(nummiss)+'.qsub.log'
-    uger_agg = ' '.join(['qsub',
+    # TODO: consider queue/mem for agg
+    bg_log = 'bg.'+str(outdot)+'.resub_'+str(nummiss)+'.qsub.log'
+    uger_bg = ' '.join(['qsub',
                             '-hold_jid','imp.chunks.'+str(outdot)+'.resub_'+str(nummiss),
-                            '-q', 'long',
+                            '-q', 'short',
                             '-l', 'm_mem_free=4g',
-                            '-N', 'bg_'+str(outdot),
-                            '-o', agg_log,
+                            '-N', 'bg.chunks.'+str(outdot),
+                            '-o', bg_log,
                             str(rp_bin)+'/uger.sub.sh',
                             str(args.sleep),
                             ' '.join(sys.argv[:])])
     
-    print uger_agg + '\n'
-#    subprocess.check_call(uger_agg, shell=True)
+    print uger_bg + '\n'
+    subprocess.check_call(uger_bg, shell=True)
 
     print '\n############'
     print '\n'
@@ -333,11 +332,8 @@ print '\n...Setting up working directory...'
 
 # working directories
 proc_dir = wd + '/imp_postproc'
-# bg_dir = wd + '/imp_results'
 os.mkdir(proc_dir)
-# os.mkdir(bg_dir)
 print 'Impute2 output processing: %s' % proc_dir
-# print 'Final imputation results: %s' % bg_dir
 os.chdir(proc_dir)
 link(str(chunk_dir)+'/'+str(outdot)+'.chunks.txt', str(outdot)+'.chunks.txt', 'genomic chunk results')
 
@@ -378,6 +374,8 @@ rm {out_str2}.bed
 rm {out_str2}.bim
 rm {out_str2}.fam
 
+{rs_ex} --chunk ${{cname}} --name {outdot} --imp-dir {imp_dir} --fam-trans {trans}
+
 # eof
 """
     
@@ -402,6 +400,10 @@ jobdict = {"jname": 'bg.chunks.'+str(outdot),
            "mac_txt": str(mac_txt),
            "geno_txt": str(geno_txt),
            "out_str_filt": str(outdot)+'.bg.filtered.${cname}',
+           "rs_ex": str(rs_ex),
+           "outdot": str(outdot),
+           "imp_dir": str(imp_dir),
+           "trans": str(shape_dir)+'/'+str(args.bfile)+'.hg19.ch.fl.fam.transl'
            }
 
 uger_bg = open(str(outdot)+'.bg_chunks.sub.sh', 'w')
@@ -410,18 +412,45 @@ uger_bg.close()
 
 # submit
 print ' '.join(['qsub',uger_bg.name]) + '\n'
-# subprocess.check_call(' '.join(['qsub',uger_bg.name]), shell=True)
+subprocess.check_call(' '.join(['qsub',uger_bg.name]), shell=True)
 print 'Best-guess jobs submitted for %d chunks.\n' % nchunks
 
 
+
+
+###
+# submit next imputation task
+###
+if args.full_pipe:
+    ######################
+    print '\n...Queuing chunk aggregation script...'
+    ######################
+    
+    os.chdir(wd)
+    next_call = str(rp_bin) + '/agg_imp.py '+' '.join(sys.argv[1:])
+
+    # TODO: consider queue/mem for agg
+    agg_log = 'agg_imp.'+str(outdot)+'.qsub.log'
+    uger_agg = ' '.join(['qsub',
+                            '-hold_jid','bg.chunks.'+str(outdot),
+                            '-q', 'long',
+                            '-l', 'm_mem_free=8g',
+                            '-N', 'agg.imp.'+str(outdot),
+                            '-o', agg_log,
+                            str(rp_bin)+'/uger.sub.sh',
+                            str(args.sleep),
+                            next_call])
+    
+    print uger_agg + '\n'
+    subprocess.check_call(uger_agg, shell=True)
+
+    
 
 # finish
 print '\n############'
 print '\n'
 print 'SUCCESS!'
 print 'All jobs submitted.\n'
-
-print 'In testing mode; missing chunks skipped, jobs not actually submitted.\n'
 exit(0)
 
 

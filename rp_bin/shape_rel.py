@@ -57,9 +57,9 @@ if not (('-h' in sys.argv) or ('--help' in sys.argv)):
 parser = argparse.ArgumentParser(prog='shape_rel.py',
                                  formatter_class=lambda prog:
                                  argparse.ArgumentDefaultsHelpFormatter(prog, max_help_position=40),
-                                 parents=[parserbase,parserphase])
+                                 parents=[parserbase, parserphase, parserref, parsercluster])
 
-args = parser.parse_args()
+args, extra_args = parser.parse_known_args()
 
 # other settings
 wd = os.getcwd()
@@ -87,7 +87,7 @@ print '--refdir '+str(args.refdir)
 print '\nPrephasing:'
 print '--window '+str(args.window)
 print '--refstem '+str(refstem) # TODO: change hardcoding
-print '--seed '+str(args.seed)
+print '--shape-seed '+str(args.shape_seed)
 
 print '\nReference Files:'
 print '--map-dir '+str(args.map_dir)
@@ -282,7 +282,7 @@ shape_call = [shapeit_ex,
               '--window', str(args.window),
               '--duohmm',
               '--thread', str(args.threads),
-              '--seed', str(args.seed),
+              '--seed', str(args.shape_seed),
               '--output-max', outstem+'.phased.haps', outstem+'.phased.sample',
               '--output-log', outstem+'.shape.log']
 
@@ -301,6 +301,38 @@ uger_call = ' '.join(['qsub',
 
 print uger_call
 subprocess.check_call(uger_call, shell=True)
+
+
+
+
+
+###
+# submit next imputation task
+###
+if args.full_pipe:
+    ######################
+    print '\n...Queuing best-guess script...'
+    ######################
+    
+    os.chdir(wd)
+    next_call = str(rp_bin) + '/imp2_rel.py '+' '.join(sys.argv[1:])
+
+    # TODO: consider queue/mem for agg
+    imp_log = 'imp_chunks.'+str(outdot)+'.qsub.log'
+    uger_imp = ' '.join(['qsub',
+                            '-hold_jid','imp.chunks.'+str(outdot),
+                            '-q', 'short',
+                            '-l', 'm_mem_free=8g',
+                            '-N', 'imp.chunks.'+str(outdot),
+                            '-o', imp_log,
+                            str(rp_bin)+'/uger.sub.sh',
+                            str(args.sleep),
+                            next_call])
+    
+    print uger_imp + '\n'
+    subprocess.check_call(uger_imp, shell=True)
+
+
 
 
 # finish

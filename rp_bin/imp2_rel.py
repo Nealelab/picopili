@@ -40,7 +40,7 @@ parser = argparse.ArgumentParser(prog='imp2_rel.py',
                                  argparse.ArgumentDefaultsHelpFormatter(prog, max_help_position=40),
                                  parents=[parserbase, parserimpute, parserref, parserchunk, parsercluster])
                     
-args = parser.parse_args()
+args, extra_args = parser.parse_known_args()
 
 # TODO: allow options
 args.refstem = '/humgen/atgu1/fs03/shared_resources/1kG/shapeit/1000GP_Phase3'
@@ -55,8 +55,8 @@ else:
     addout_txt = ['','']
     outdot = str(args.out)
     
-if args.seed is not None and str(args.seed) != '' and int(args.seed) > 0:
-    seedtxt = '-seed '+str(args.seed)
+if args.imp_seed is not None and str(args.imp_seed) != '' and int(args.imp_seed) > 0:
+    seedtxt = '-seed '+str(args.imp_seed)
 else:
     seedtxt = ''
 
@@ -69,10 +69,10 @@ if args.addout is not None:
     print '--addout '+str(args.addout)
 
 print '\nIMPUTE2 arguments:'
-print '--ne '+str(args.ne)
+print '--Ne '+str(args.Ne)
 print '--buffer '+str(args.buffer)
-if args.seed is not None and str(args.seed) != '' and int(args.seed) > 0:
-    print '--seed '+str(args.seed)
+if args.imp_seed is not None and str(args.imp_seed) != '' and int(args.imp_seed) > 0:
+    print '--seed '+str(args.imp_seed)
 
 print '\nImputation reference:'
 print '--refstem '+str(args.refstem)
@@ -115,6 +115,9 @@ print '\n...Checking dependencies...'
 # .hg19.ch.fl.bim for chunking
 # imp. references
 # executables
+
+
+# TODO: resub shapeit if failed
 
 
 
@@ -227,7 +230,7 @@ jobdict = {"jname": 'imp.chunks.'+str(outdot),
            "ref_haps": str(args.refstem)+'_chr${cchr}.hap.gz',
            "ref_leg": str(args.refstem)+'_chr${cchr}.legend.gz',
            "map": str(args.map_dir)+'/genetic_map_chr${cchr}_combined_b37.txt',
-           "Ne": str(args.ne),
+           "Ne": str(args.Ne),
            "buffer": str(args.buffer),
            "out": str(outdot)+'.imp.${cname}',
            "seedtxt": str(seedtxt)
@@ -239,8 +242,39 @@ uger_imp.close()
 
 # submit
 print ' '.join(['qsub',uger_imp.name]) + '\n'
-# subprocess.check_call(' '.join(['qsub',uger_imp.name]), shell=True)
+subprocess.check_call(' '.join(['qsub',uger_imp.name]), shell=True)
 print 'Imputation jobs submitted for %d chunks.\n' % nchunks
+
+
+
+
+###
+# submit next imputation task
+###
+if args.full_pipe:
+    ######################
+    print '\n...Queuing best-guess script...'
+    ######################
+    
+    os.chdir(wd)
+    next_call = str(rp_bin) + '/bg_imp.py '+' '.join(sys.argv[1:])
+
+    # TODO: consider queue/mem for agg
+    bg_log = 'bg_imp.'+str(outdot)+'.qsub.log'
+    uger_bg = ' '.join(['qsub',
+                            '-hold_jid','imp.chunks.'+str(outdot),
+                            '-q', 'short',
+                            '-l', 'm_mem_free=4g',
+                            '-N', 'bg.chunks.'+str(outdot),
+                            '-o', bg_log,
+                            str(rp_bin)+'/uger.sub.sh',
+                            str(args.sleep),
+                            next_call])
+    
+    print uger_bg + '\n'
+    subprocess.check_call(uger_bg, shell=True)
+
+
 
 
 
@@ -250,10 +284,4 @@ print '\n'
 print 'SUCCESS!\n'
 print 'All jobs submitted.\n'
 exit(0)
-
-# TODO:
-# agg script
-# - resub failed chunks in long
-# - best-guess
-# - re-combine chunks
-# - mendel, info qc?
+# eof

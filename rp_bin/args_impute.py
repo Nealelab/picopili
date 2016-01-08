@@ -63,8 +63,7 @@ arg_base.add_argument('--addout',
 parserphase = argparse.ArgumentParser(add_help=False)
 arg_align = parserphase.add_argument_group('Reference Alignment Settings')
 arg_shape = parserphase.add_argument_group('SHAPEIT Arguments')
-arg_refloc = parserphase.add_argument_group('Reference File Locations')
-arg_submit = parserphase.add_argument_group('Cluster Submission Settings')
+arg_submit = parserphase.add_argument_group('SHAPEIT Resource Requirements')
 
 arg_align.add_argument('--popname', 
                        type=str.lower,
@@ -97,31 +96,12 @@ arg_shape.add_argument('--window',
                         help='window size for shapeit, in megabases (Mb)',
                         required=False,
                         default=5)
-# TODO: fix this
-arg_shape.add_argument('--refstem',
-                        type=int,
-                        metavar='INT',
-                        help='reference to use with shapeit. CURRENTLY UNUSED, hardcoded to shared 1KG Phase 3',
-                        required=False)
-arg_shape.add_argument('--seed',
+arg_shape.add_argument('--shape-seed',
                         type=int,
                         metavar='INT',
                         help='random seed for shapeit',
                         required=False,
                         default=12345)
-arg_refloc.add_argument('--map-dir', 
-                        type=str,
-                        metavar='PATH',
-                        help='Directory with genomic maps, per chromosome. ' + \
-                             'Expected filenames are ./genetic_map_chr${i}_combined_b37.txt',
-                        required=False,
-                        default='/humgen/atgu1/fs03/shared_resources/1kG/shapeit/genetic_map')
-arg_submit.add_argument('--sleep',
-                        type=int,
-                        metavar='INT',
-                        help='wait time before executing UGER tasks, in seconds',
-                        required=False,
-                        default=30)
 arg_submit.add_argument('--mem-req',
                         type=int,
                         metavar='INT',
@@ -177,7 +157,7 @@ arg_snpchunk.add_argument('--chr-info-file',
 parserimpute = argparse.ArgumentParser(add_help=False)
 arg_imp = parserimpute.add_argument_group('IMPUTE2 Arguments')
 
-arg_imp.add_argument('--ne',
+arg_imp.add_argument('--Ne',
                      type=int,
                      metavar='INT',
                      help='effective population size for imputation',
@@ -189,7 +169,7 @@ arg_imp.add_argument('--buffer',
                      help='size of buffer region, in kb, to use around target region when imputing genomic chunks',
                      required=False,
                      default=1000)
-arg_imp.add_argument('--seed',
+arg_imp.add_argument('--imp-seed',
                      type=int,
                      metavar='INT',
                      help='random seed for impute2',
@@ -206,6 +186,7 @@ arg_imp.add_argument('--seed',
 parserref = argparse.ArgumentParser(add_help=False)
 arg_ref = parserref.add_argument_group('Imputation Reference')
 
+# TODO: fix this
 arg_ref.add_argument('--refstem',
                         type=str,
                         metavar='FILESTEM',
@@ -299,6 +280,9 @@ arg_clust.add_argument('--sleep',
                     help='Number of seconds to delay on start of UGER jobs',
                     required=False,
                     default=30)
-
+arg_clust.add_argument('--full-pipe', 
+                    action='store_true',
+                    help='Proceed through full imputation pipeline',
+                    required=False)
 
 # eof
