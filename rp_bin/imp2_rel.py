@@ -97,11 +97,20 @@ conf_file = os.environ['HOME']+"/ricopili.conf"
 configs = read_conf(conf_file)
 
 impute_ex = configs['i2loc']+"impute2"
+# TODO: shapeit ex
 
 # get directory containing current script
 # (to get absolute path for scripts)
 rp_bin = os.path.dirname(os.path.realpath(__file__))
 chunker_ex = rp_bin+'/chunk_snps.py'
+
+
+
+# directories
+wd = os.getcwd()
+shape_dir = wd + '/phase_chr'
+
+
 
 
 
@@ -117,7 +126,7 @@ print '\n...Checking dependencies...'
 # executables
 
 
-# TODO: resub shapeit if failed
+
 
 
 
@@ -128,13 +137,143 @@ print 'Begin!'
 print '############'
 
 
+
+######################
+print '\n...Verifying pre-phasing was successful...'
+######################
+
+bad_chr = []
+
+for chrom in xrange(1,22):
+    haps_out = str(shape_dir)+'/'+str(outdot)+'.chr'+str(chrom)+'.phased.haps'
+    samp_out = str(shape_dir)+'/'+str(outdot)+'.chr'+str(chrom)+'.phased.sample'
+
+
+    if not os.path.isfile(haps_out):
+        bad_chr.append(chrom)
+    elif not os.path.isfile(samp_out):
+        bad_chr.append(chrom)
+        
+
+# TODO: resub shapeit if failed
+# TODO: re-queue this job
+if bad_chr:    
+    num_chr = len(bad_chr)
+        print 'Missing pre-phasing results for %d chromosomes. Preparing to resubmit...' % num_chr
+
+    os.chdir(shape_dir)
+        
+    # verify haven't already tried this resub
+    uger_phase_name = str(outdot)+'.shape.resub_'+str(num_chr)+'_chr.sub.sh'
+    if os.path.isfile(uger_phase_name):
+        print '\n####################'
+        print 'ERROR:'
+        print 'Found previous attempt to resubmit %d failed chromosomes.' % int(num_chr)
+        print 'Pre-phasing is likely stuck.'
+        print 'Problem chromosomes: %s' % (','.join(bad_chr))
+        print 'Exiting...\n'
+        exit(1)
+
+    # make submit script
+    # using this structure to get adaptive chromosome list
+    uger_phase_template = """#!/usr/bin/env sh
+    #$ -j y
+    #$ -cwd
+    #$ -V
+    #$ -N {jname}
+    #$ -q long
+    #$ -l m_mem_free={mem}g
+    #$ -pe smp {threads}
+    #$ -t 1-{nchr}
+    #$ -o {outlog}
+    
+    source /broad/software/scripts/useuse
+    reuse -q Anaconda
+    sleep {sleep}
+    
+    chrs=({chr_list})
+    chrom=${{chrs[${{SGE_TASK_ID}}-1]}}
+
+    {shape_ex} {bed} {map} {ref} {window} {thread_str} {seed_str} {outmax} {shapelog} 
+    
+    # eof
+    """
+
+#    shape_call = [shapeit_ex,
+#                  '--input-bed', chrstem+'.bed', chrstem+'.bim', chrstem+'.fam',
+#                  '--input-map', args.map_dir+'/genetic_map_chr\$tasknum_combined_b37.txt',
+#                  '--input-ref', refstem+'_chr\$tasknum.hap.gz', refstem+'_chr\$tasknum.legend.gz', refstem+'.sample',
+#                  '--window', str(args.window),
+#                  '--duohmm',
+#                  '--thread', str(args.threads),
+#                  '--seed', str(args.shape_seed),
+#                  '--output-max', outstem+'.phased.haps', outstem+'.phased.sample',
+#                  '--output-log', outstem+'.shape.log']
+
+    
+    # fill in template
+    chrstem = str(args.bfile)+'.hg19.ch.fl.chr${chrom}'
+    outstem = str(outdot)+'.chr${chrom}'    
+    jobdict = {"jname": 'shape.'+str(outdot)+'.resub_'+str(num_chr),
+               "mem": str(args.mem_req),
+               "threads": str(args.threads),
+               "nchr": str(num_chr),
+               "outlog": str(outdot)+'.resub_'+str(num_chr)+'.shape.qsub.$TASK_ID.log,
+               "sleep": str(args.sleep),
+               "chr_list": ' '.join(bad_chr),
+               "shape_ex": str(shape_ex),
+               "bed": '--input-bed '+str(chrstem)+'.bed '+str(chrstem)+'.bim '+str(chrstem)+'.fam',
+               "map": '--input-map '+str(args.map_dir)+'/genetic_map_chr${chrom}_combined_b37.txt',
+               "ref": '--input-ref '+,
+               "window": '--window '+str(args.window),
+               "thread_str": '--thread '+str(args.threads),
+               "seed_str": '--seed '+str(args.shape_seed),
+               "outmax":, '--output-max '+str(outstem)+'.phased.haps '+str(outstem)+'.phased.sample',
+               "shapelog": str(outstem)+'.shape.resub_'+str(num_chr)+'.log',
+               }
+    
+    uger_phase = open(uger_phase_name, 'w')
+    uger_phase.write(uger_phase_template.format(**jobdict))
+    uger_phase.close()
+    
+    # submit
+    print ' '.join(['qsub',uger_phase_name]) + '\n'
+    subprocess.check_call(' '.join(['qsub',uger_phase_name]), shell=True)
+    print 'Pre-phasing jobs re-submitted for %d chromosomes.\n' % num_chr
+
+
+
+    # put this job back in the queue
+    print '\n...Replacing this imputation job in the queue...'
+    
+    os.chdir(wd)
+    imp_log = 'imp_chunks.'+str(outdot)+'.qsub.log'
+    uger_imp = ' '.join(['qsub',
+                            '-hold_jid','imp.chunks.'+str(outdot),
+                            '-q', 'short',
+                            '-l', 'm_mem_free=8g',
+                            '-N', 'imp.chunks.'+str(outdot),
+                            '-o', imp_log,
+                            str(rp_bin)+'/uger.sub.sh',
+                            str(args.sleep),
+                            ' '.join(sys.argv[:])])
+    
+    print uger_imp + '\n'
+    subprocess.check_call(uger_imp, shell=True)
+
+    print '\n############'
+    print '\n'
+    print 'All jobs submitted.\n'
+    exit(0)
+
+
+
+
 ######################
 print '\n...Setting up working directories...'
 ######################
 
 # working directories
-wd = os.getcwd()
-shape_dir = wd + '/phase_chr'
 chunk_dir = wd + '/chunks_for_imp'
 imp_dir = wd + '/imp_sub'
 os.mkdir(chunk_dir)

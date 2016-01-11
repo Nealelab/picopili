@@ -305,6 +305,7 @@ if len(mis_chunks) > 0:
     print '\n...Replacing this best-guess job in the queue...'
 
     # TODO: consider queue/mem for agg
+    os.chdir(wd)
     bg_log = 'bg.'+str(outdot)+'.resub_'+str(nummiss)+'.qsub.log'
     uger_bg = ' '.join(['qsub',
                             '-hold_jid','imp.chunks.'+str(outdot)+'.resub_'+str(nummiss),

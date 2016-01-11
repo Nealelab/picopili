@@ -100,7 +100,9 @@ print '--threads '+str(args.threads)
 
 
 if str(args.addout) != '' and args.addout is not None:
-    args.out = str(args.out)+'.'+str(args.addout)
+    outdot = str(args.out)+'.'+str(args.addout)
+else:
+    outdot = str(args.out)
 
 
 #############
@@ -137,12 +139,12 @@ print '############'
 print '\n...Aligning data to reference...'
 ######################
 
-prep_log = open(str(args.out) + '.prep.log', 'w')
+prep_log = open(str(outdot) + '.prep.log', 'w')
 prep_call = [str(impprep_ex),
              '--serial',
              '--refdir', str(args.refdir),
              '--popname', str(args.popname),
-             '--out', str(args.out)]
+             '--out', str(outdot)]
 
 print ' '.join(prep_call) + '\n'
 subprocess.check_call(prep_call, 
@@ -250,7 +252,7 @@ link(pi_dir + '/' +str(args.bfile) +'.hg19.ch.fl.fam.transl', str(args.bfile) +'
 
 # TODO: handle empty chromosomes
 for i in xrange(1,23):
-    chr_log = open(str(args.out) + '.chr' + str(i) + '.log', 'w')
+    chr_log = open(str(outdot) + '.chr' + str(i) + '.log', 'w')
     chr_call = [plinkx,
                 '--bfile', str(args.bfile) + '.hg19.ch.fl',
                 '--chr', str(i),
@@ -274,7 +276,7 @@ print '\n...Submitting SHAPEIT jobs...'
 
 # TODO: handle empty chromosomes
 chrstem = str(args.bfile)+'.hg19.ch.fl.chr\$tasknum'
-outstem = str(args.out)+'.chr\$tasknum'
+outstem = str(outdot)+'.chr\$tasknum'
 shape_call = [shapeit_ex,
               '--input-bed', chrstem+'.bed', chrstem+'.bim', chrstem+'.fam',
               '--input-map', args.map_dir+'/genetic_map_chr\$tasknum_combined_b37.txt',
@@ -290,11 +292,11 @@ print ' '.join(shape_call)+'\n'
 
 uger_call = ' '.join(['qsub',
                       '-q','long',
-                      '-N', 'shape_'+str(args.out),
+                      '-N', 'shape_'+str(outdot),
                       '-l', 'm_mem_free='+str(args.mem_req)+'g',
                       '-pe','smp',str(args.threads),
                       '-t', '1-22',
-                      '-o', '\''+str(args.out)+'.chr$TASK_ID.shape.qsub.log\'',
+                      '-o', '\''+str(outdot)+'.chr$TASK_ID.shape.qsub.log\'',
                       str(rp_bin)+'/uger_array.sub.sh',
                       str(args.sleep),
                       ' '.join(shape_call)])
