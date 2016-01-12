@@ -4,17 +4,24 @@
 
 * Expand [ricopili](https://github.com/Nealelab/ricopili) to support GWAS of family data, from sib-pairs to extended pedigrees
 
-### Changelog
+### New Primary Functions
+
+* `qc_rel.py`: runs QC for family GWAS data. Designed to be consistent with ricopili trio QC, with minor adjustments to mendelian error handling and streamlined output.
+* `pca_rel.py`: main driver script to run PCA on family GWAS data. Includes strict QC (with LD pruning, etc), extraction of a set of unrelated individuals to compute PCs, and projection of PCA to full dataset. Jobs are submitted via UGER, and ricopili-like success/failure emails are sent on completion. See tasks `strict_qc.py` and `imus_pca.py`.
+* `admix_rel.py`: estimates relatedness for admixed samples. Relatedness is estimated by starting with a subset of individuals who are unrelated, running an Admixture analysis, selecting "exemplar" individuals for each ancestry component, using those individuals to anchor a supervised Admixture analysis fo the full data, and using those Admixture results as the basis for ancestry-adjusted relatedness estimation using REAP.
+* `filter_ped.py`: uses genetic relatedness information to flag (a) cryptic relatedness across FIDs, (b) unrelated individuals within FIDs, (c) possible parent/offspring pair not identified in .fam file, and (d) parent/offspring pairs indicated by pedigree that aren't supported by genetic relatedness. Provides a suggested sample exclusion list based on weighted preferences for phenotype, pedigree, and genotyping rate.
+* `gwas_rel.py`: Genome-wide association analysis (in parallelized chunks) with either `plink --dfam` or a GEE model.
+* `impute_rel.py` (Coming soon): Imputation pipeline for related samples using SHAPEIT's `--duohmm` and IMPUTE2. Includes build check (with liftOver if needed), alignement to reference, phasing, imputation, and best-guess genotype calls with MAF/info score/mendelian error filtering.
+
+
+### Additional Changes
 
 * Ricopili bugfix: avoid (rarely) losing SNPs when merging chunk results (see [dameta_cat](https://github.com/Nealelab/picopili/blob/dev/rp_bin/dameta_cat))
-* Ricopili bugfix: cleanup interim files from impprob_to_2dos (see pull request 7 in ricopili)
 * New task `strict_qc.py`: runs the stricter QC used for PCA/relatedness. Compared to QC included in `pcaer_20`, includes additional options for how long LD regions, indels, and strand ambiguous SNPs are handled.
 * New task `imus_pca.py`: extracts a set of unrelated individuals (without relying on pedigrees and partially controlling for ancestry-based confounding), runs PCA, and projects the computed PCs back to the remaining (related) individuals. Assumes appropriate QC has already been run.
-* New workflow `pca_rel.py`: main driver script to run PCA on family GWAS data (i.e. `strict_qc.py` followed by `imus_pca.py`). Jobs are submitted via UGER, and ricopili-like success/failure emails are sent on completion.
-* New task `admix_rel.py`: estimates relatedness for admixed samples. Relatedness is estimated by starting with a subset of individuals who are unrelated, running an Admixture analysis, selecting "exemplar" individuals for each ancestry component, using those individuals to anchor a supervised Admixture analysis fo the full data, and using those Admixture results as the basis for ancestry-adjusted relatedness estimation using REAP.
-* New task `filter_ped.py`: uses genetic relatedness information to flag (a) cryptic relatedness across FIDs, (b) unrelated individuals within FIDs, and (c) possible parent/offspring pair not identified in .fam file. Provides a suggested exclusion list based on weighted preferences for phenotype, pedigree, and genotyping rate.
-* New task `ped_confirm.py`: confirms that reported pedigrees in .fam file are consistent with genetic relatedness. Works as a wrapper to `find_expected_pedigree.pl` from PRIMUS. 
-* New task `qc_rel.py`: runs QC for family GWAS data. Designed to be consistent with ricopili trio QC, with minor adjustments to mendelian error handling and streamlined output.
+* New task `ped_confirm.py`: confirms that reported pedigrees in .fam file are consistent with genetic relatedness. Works as a wrapper to `find_expected_pedigree.pl` from PRIMUS.
+* Additional component tasks for imputation/association/etc.
+
 
 ### Install alongside Ricopili
 
