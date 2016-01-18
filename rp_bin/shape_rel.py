@@ -57,9 +57,9 @@ if not (('-h' in sys.argv) or ('--help' in sys.argv)):
 parser = argparse.ArgumentParser(prog='shape_rel.py',
                                  formatter_class=lambda prog:
                                  argparse.ArgumentDefaultsHelpFormatter(prog, max_help_position=40),
-                                 parents=[parserbase,parserphase])
+                                 parents=[parserbase, parserphase, parserref, parsercluster])
 
-args = parser.parse_args()
+args, extra_args = parser.parse_known_args()
 
 # other settings
 wd = os.getcwd()
@@ -87,7 +87,7 @@ print '--refdir '+str(args.refdir)
 print '\nPrephasing:'
 print '--window '+str(args.window)
 print '--refstem '+str(refstem) # TODO: change hardcoding
-print '--seed '+str(args.seed)
+print '--shape-seed '+str(args.shape_seed)
 
 print '\nReference Files:'
 print '--map-dir '+str(args.map_dir)
@@ -100,7 +100,9 @@ print '--threads '+str(args.threads)
 
 
 if str(args.addout) != '' and args.addout is not None:
-    args.out = str(args.out)+'.'+str(args.addout)
+    outdot = str(args.out)+'.'+str(args.addout)
+else:
+    outdot = str(args.out)
 
 
 #############
@@ -137,12 +139,12 @@ print '############'
 print '\n...Aligning data to reference...'
 ######################
 
-prep_log = open(str(args.out) + '.prep.log', 'w')
+prep_log = open(str(outdot) + '.prep.log', 'w')
 prep_call = [str(impprep_ex),
              '--serial',
              '--refdir', str(args.refdir),
              '--popname', str(args.popname),
-             '--out', str(args.out)]
+             '--out', str(outdot)]
 
 print ' '.join(prep_call) + '\n'
 subprocess.check_call(prep_call, 
@@ -250,7 +252,7 @@ link(pi_dir + '/' +str(args.bfile) +'.hg19.ch.fl.fam.transl', str(args.bfile) +'
 
 # TODO: handle empty chromosomes
 for i in xrange(1,23):
-    chr_log = open(str(args.out) + '.chr' + str(i) + '.log', 'w')
+    chr_log = open(str(outdot) + '.chr' + str(i) + '.log', 'w')
     chr_call = [plinkx,
                 '--bfile', str(args.bfile) + '.hg19.ch.fl',
                 '--chr', str(i),
@@ -274,7 +276,7 @@ print '\n...Submitting SHAPEIT jobs...'
 
 # TODO: handle empty chromosomes
 chrstem = str(args.bfile)+'.hg19.ch.fl.chr\$tasknum'
-outstem = str(args.out)+'.chr\$tasknum'
+outstem = str(outdot)+'.chr\$tasknum'
 shape_call = [shapeit_ex,
               '--input-bed', chrstem+'.bed', chrstem+'.bim', chrstem+'.fam',
               '--input-map', args.map_dir+'/genetic_map_chr\$tasknum_combined_b37.txt',
@@ -282,7 +284,7 @@ shape_call = [shapeit_ex,
               '--window', str(args.window),
               '--duohmm',
               '--thread', str(args.threads),
-              '--seed', str(args.seed),
+              '--seed', str(args.shape_seed),
               '--output-max', outstem+'.phased.haps', outstem+'.phased.sample',
               '--output-log', outstem+'.shape.log']
 
@@ -290,11 +292,11 @@ print ' '.join(shape_call)+'\n'
 
 uger_call = ' '.join(['qsub',
                       '-q','long',
-                      '-N', 'shape_'+str(args.out),
+                      '-N', 'shape.'+str(outdot),
                       '-l', 'm_mem_free='+str(args.mem_req)+'g',
                       '-pe','smp',str(args.threads),
                       '-t', '1-22',
-                      '-o', '\''+str(args.out)+'.shape.chr$TASK_ID.qsub.log\'',
+                      '-o', '\'shape.'+str(outdot)+'.chr$TASK_ID.qsub.log\'',
                       str(rp_bin)+'/uger_array.sub.sh',
                       str(args.sleep),
                       ' '.join(shape_call)])
@@ -303,25 +305,41 @@ print uger_call
 subprocess.check_call(uger_call, shell=True)
 
 
+
+
+
+###
+# submit next imputation task
+###
+if args.full_pipe:
+    ######################
+    print '\n...Queuing best-guess script...'
+    ######################
+    
+    os.chdir(wd)
+    next_call = str(rp_bin) + '/imp2_rel.py '+' '.join(sys.argv[1:])
+
+    # TODO: consider queue/mem for agg
+    imp_log = 'imp_chunks.'+str(outdot)+'.qsub.log'
+    uger_imp = ' '.join(['qsub',
+                            '-hold_jid','shape.'+str(outdot),
+                            '-q', 'short',
+                            '-l', 'm_mem_free=8g',
+                            '-N', 'imp.chunks.'+str(outdot),
+                            '-o', imp_log,
+                            str(rp_bin)+'/uger.sub.sh',
+                            str(args.sleep),
+                            next_call])
+    
+    print uger_imp + '\n'
+    subprocess.check_call(uger_imp, shell=True)
+
+
+
+
 # finish
 print '\n############'
 print '\n'
 print 'SUCCESS!\n'
 exit(0)
 
-# make genomic chunks
-
-# impute2 
-# -use_prephased_g
-# -known_haps_g .phased.haps
-# -h ref.haplotypes.mgz
-# -l reference.legend.gz
-# -m genetic_map.txt
-# -int <bp> <bp>
-# -buffer 1000
-# -Ne 20000
-# -o_gz
-# -o gwas.fromXXX_toXXX.imputed
-# -seed x
-
-# best-guess / filter info/maf / dosage conversion

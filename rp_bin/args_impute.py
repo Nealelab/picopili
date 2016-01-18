@@ -63,8 +63,7 @@ arg_base.add_argument('--addout',
 parserphase = argparse.ArgumentParser(add_help=False)
 arg_align = parserphase.add_argument_group('Reference Alignment Settings')
 arg_shape = parserphase.add_argument_group('SHAPEIT Arguments')
-arg_refloc = parserphase.add_argument_group('Reference File Locations')
-arg_submit = parserphase.add_argument_group('Cluster Submission Settings')
+arg_submit = parserphase.add_argument_group('SHAPEIT Resource Requirements')
 
 arg_align.add_argument('--popname', 
                        type=str.lower,
@@ -97,31 +96,12 @@ arg_shape.add_argument('--window',
                         help='window size for shapeit, in megabases (Mb)',
                         required=False,
                         default=5)
-# TODO: fix this
-arg_shape.add_argument('--refstem',
-                        type=int,
-                        metavar='INT',
-                        help='reference to use with shapeit. CURRENTLY UNUSED, hardcoded to shared 1KG Phase 3',
-                        required=False)
-arg_shape.add_argument('--seed',
+arg_shape.add_argument('--shape-seed',
                         type=int,
                         metavar='INT',
                         help='random seed for shapeit',
                         required=False,
                         default=12345)
-arg_refloc.add_argument('--map-dir', 
-                        type=str,
-                        metavar='PATH',
-                        help='Directory with genomic maps, per chromosome. ' + \
-                             'Expected filenames are ./genetic_map_chr${i}_combined_b37.txt',
-                        required=False,
-                        default='/humgen/atgu1/fs03/shared_resources/1kG/shapeit/genetic_map')
-arg_submit.add_argument('--sleep',
-                        type=int,
-                        metavar='INT',
-                        help='wait time before executing UGER tasks, in seconds',
-                        required=False,
-                        default=30)
 arg_submit.add_argument('--mem-req',
                         type=int,
                         metavar='INT',
@@ -136,6 +116,37 @@ arg_submit.add_argument('--threads',
                         default=4)
 
 
+############
+#
+# SNP Chunking Parameters
+# 
+# - Subset of of options from args_chunks.py
+# - Remaining arguments (e.g. centromeres, short chunks) fixed for definining imputation chunks
+#
+############
+
+parserchunk = argparse.ArgumentParser(add_help=False)
+arg_snpchunk = parserchunk.add_argument_group('SNP Chunking')
+
+arg_snpchunk.add_argument('--Mb-size', 
+                    type=float,
+                    metavar='FLOAT',
+                    help='Minimum size of chunk, in Mb (megabases)',
+                    required=False,
+                    default=3.0)
+arg_snpchunk.add_argument('--snp-size', 
+                    type=int,
+                    metavar='INT',
+                    help='Minimum size of chunk, in number of SNPs',
+                    required=False,
+                    default=30)
+arg_snpchunk.add_argument('--chr-info-file', 
+                    type=str,
+                    metavar='FILE',
+                    help='file with chromosome length and centromere locations. ' + \
+                         'Default file is retrieved from installation location.',
+                    required=False,
+                    default='hg19_ucsc_chrinfo.txt')
 
 ############
 #
@@ -146,8 +157,132 @@ arg_submit.add_argument('--threads',
 parserimpute = argparse.ArgumentParser(add_help=False)
 arg_imp = parserimpute.add_argument_group('IMPUTE2 Arguments')
 
+arg_imp.add_argument('--Ne',
+                     type=int,
+                     metavar='INT',
+                     help='effective population size for imputation',
+                     required=False,
+                     default=20000)
+arg_imp.add_argument('--buffer',
+                     type=int,
+                     metavar='KB',
+                     help='size of buffer region, in kb, to use around target region when imputing genomic chunks',
+                     required=False,
+                     default=1000)
+arg_imp.add_argument('--imp-seed',
+                     type=int,
+                     metavar='INT',
+                     help='random seed for impute2',
+                     required=False,
+                     default=None)
+
+
+############
+#
+# Imputation Reference
+#
+############
+
+parserref = argparse.ArgumentParser(add_help=False)
+arg_ref = parserref.add_argument_group('Imputation Reference')
+
+# TODO: fix this
+arg_ref.add_argument('--refstem',
+                        type=str,
+                        metavar='FILESTEM',
+                        help='Imputation reference. CURRENTLY UNUSED, hardcoded to shared 1KG Phase 3',
+                        required=False)
+arg_ref.add_argument('--map-dir', 
+                        type=str,
+                        metavar='PATH',
+                        help='Directory with genomic maps, per chromosome. ' + \
+                             'Expected filenames are ./genetic_map_chr${i}_combined_b37.txt',
+                        required=False,
+                        default='/humgen/atgu1/fs03/shared_resources/1kG/shapeit/genetic_map')
+
+
+############
+#
+# Best guess filtering
+#
+############
+
+parserbg = argparse.ArgumentParser(add_help=False)
+arg_bg = parserbg.add_argument_group('Best-Guess Genotypes')
+
+arg_bg.add_argument('--bg-th',
+                        type=float,
+                        metavar='FLOAT',
+                        help="Minimum posterior probability for making best-guess calls",
+                        required=False,
+                        default=0.8)
+arg_bg.add_argument('--info-th',
+                        type=float,
+                        metavar='FLOAT',
+                        help="Info score threshold for filtering best-guess genotypes",
+                        required=False,
+                        default=0.6)
+arg_bg.add_argument('--keep-mendel',
+                        action='store_true',
+                        help='Prevents setting mendelian errors to missing')
+arg_bg.add_argument('--maf-th',
+                        type=float,
+                        metavar='FLOAT',
+                        help="Minor allele frequency threshold for filtering best-guess genotypes",
+                        required=False,
+                        default=0.005)
+arg_bg.add_argument('--miss-th',
+                        type=float,
+                        metavar='FLOAT',
+                        help="SNP missingness threshold for filtering best-guess genotypes",
+                        required=False,
+                        default=0.02)
+arg_bg.add_argument('--mac-th',
+                        type=int,
+                        metavar='INT',
+                        help="Minor allele count threshold for filtering best-guess genotypes",
+                        required=False,
+                        default=None)
+arg_bg.add_argument('--hard-call-th',
+                        type=float,
+                        metavar='FLOAT',
+                        help="Maximum uncertainty for making best-guess calls. Passed directly to plink --hard-call-threshold.",
+                        required=False,
+                        default=None)
+arg_bg.add_argument('--max-info-th',
+                        type=float,
+                        metavar='FLOAT',
+                        help="Maximum info score threshold for filtering best-guess genotypes",
+                        required=False,
+                        default=2.0)
+arg_bg.add_argument('--mendel',
+                        type=str.lower,
+                        choices=['none', 'trios', 'duos', 'multigen'],
+                        help='Mendel error testing method. All methods come from plink2, ' + \
+                        'and differ according to behavior when parental genotypes are missing. ' + \
+                        'See plink2 documentation on "--mendel" (trios), "--mendel-duos", and "--mendel-multigen".',  
+                        default='multigen',
+                        required=False)
+
+
+############
+#
+# Cluster Settings
+#
+############
+
+parsercluster = argparse.ArgumentParser(add_help=False)
+arg_clust = parsercluster.add_argument_group('Cluster Settings')
+
+arg_clust.add_argument('--sleep', 
+                    type=int,
+                    metavar='SEC',
+                    help='Number of seconds to delay on start of UGER jobs',
+                    required=False,
+                    default=30)
+arg_clust.add_argument('--full-pipe', 
+                    action='store_true',
+                    help='Proceed through full imputation pipeline',
+                    required=False)
 
 # eof
-
-
-
