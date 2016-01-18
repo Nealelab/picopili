@@ -26,11 +26,9 @@ if not (('-h' in sys.argv) or ('--help' in sys.argv)):
 ### load requirements
 import os
 import subprocess
-import warnings
 from args_impute import *
-from py_helpers import unbuffer_stdout, read_conf, file_tail, link, warn_format
+from py_helpers import unbuffer_stdout #, read_conf, file_tail, link, warn_format
 unbuffer_stdout()
-warnings.formatwarning = warn_format
 
 #############
 if not (('-h' in sys.argv) or ('--help' in sys.argv)):
@@ -44,9 +42,73 @@ parser = argparse.ArgumentParser(prog='impute_rel.py',
 args = parser.parse_args()
 
 
-# TODO: print args
+# TODO: full sanity check of the args here
 
 
+# print args
+print '\nBasic settings:'
+print '--bfile '+str(args.bfile)
+print '--out '+str(args.out)
+if args.addout is not None:
+    print '--addout '+str(args.addout)
+
+
+print '\nReference Alignment:'
+print '--popname '+str(args.popname)
+print '--sfh '+str(args.sfh)
+print '--fth '+str(args.fth)
+print '--refdir '+str(args.refdir)
+
+
+print '\nShapeit Resources:'
+print '--mem-req '+str(args.mem_req)
+print '--threads '+str(args.threads)
+
+
+print '\nIMPUTE2 arguments:'
+print '--Ne '+str(args.Ne)
+print '--buffer '+str(args.buffer)
+if args.imp_seed is not None and str(args.imp_seed) != '' and int(args.imp_seed) > 0:
+    print '--seed '+str(args.imp_seed)
+
+
+print '\nGenomic chunks:'
+print '--Mb-size '+str(args.Mb_size)
+print '--snp_size '+str(args.snp_size)
+print '--chr_info_file '+str(args.chr_info_file)
+
+
+print '\nImputation reference:'
+print '--refstem '+str(args.refstem)
+print '--map-dir '+str(args.map_dir)
+
+
+print '\nBest-guess genotype calling:'
+if args.hard_call_th is None:
+    print '--bg-th '+str(args.bg_th)
+else:
+    print '--hard-call-th '+str(hard_call_th)
+print '--info-th '+str(args.info_th)
+print '--max-info-th '+str(args.max_info_th)
+if args.keep_mendel:
+    print '--keep-mendel'
+else:
+    print '--mendel '+str(args.mendel)
+print '--maf-th '+str(args.maf_th)
+if args.mac_th is not None:
+    print '--mac-th '+str(args.mac_th)
+print '--miss-th '+str(args.miss_th)
+
+
+print '\nCluster settings:'
+print '--sleep '+str(args.sleep)
+
+
+
+if str(args.addout) != '' and args.addout is not None:
+    outdot = str(args.out)+'.'+str(args.addout)
+else:
+    outdot = str(args.out)
 
 
 #############
@@ -64,7 +126,22 @@ print '\n...Checking dependencies...'
 print '\n...Submitting first task...'
 #############
 
+rp_bin = os.path.dirname(os.path.realpath(__file__))
+next_call = str(rp_bin) + '/shape_rel.py '+' '.join(sys.argv[1:])+' --full-pipe'
 
+# TODO: consider queue/mem for agg
+shape_log = 'shape.'+str(outdot)+'.qsub.log'
+uger_shape = ' '.join(['qsub',
+                        '-q', 'long',
+                        '-l', 'm_mem_free='+str(args.mem_req)+'g',
+                        '-N', 'shape.'+str(outdot),
+                        '-o', shape_log,
+                        str(rp_bin)+'/uger.sub.sh',
+                        str(args.sleep),
+                        next_call])
+
+print uger_shape + '\n'
+subprocess.check_call(uger_shape, shell=True)
 
 
 # TODO: here

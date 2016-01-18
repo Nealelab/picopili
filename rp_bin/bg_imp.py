@@ -285,7 +285,7 @@ if len(mis_chunks) > 0:
         if '#$ -t ' in line:
             new_uger_file.write('#$ -t 1-'+str(nummiss)+'\n')
         elif '#$ -l m_mem_free' in line:
-	    new_uger_file.write('#$ -l m_mem_free=12g \n')     
+	    new_uger_file.write('#$ -l m_mem_free=16g \n')     
         elif '#$ -q short' in line:
 	    new_uger_file.write('#$ -q long \n')
         else:

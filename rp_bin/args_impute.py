@@ -139,7 +139,7 @@ arg_snpchunk.add_argument('--snp-size',
                     metavar='INT',
                     help='Minimum size of chunk, in number of SNPs',
                     required=False,
-                    default=50)
+                    default=30)
 arg_snpchunk.add_argument('--chr-info-file', 
                     type=str,
                     metavar='FILE',

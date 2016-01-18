@@ -292,11 +292,11 @@ print ' '.join(shape_call)+'\n'
 
 uger_call = ' '.join(['qsub',
                       '-q','long',
-                      '-N', 'shape_'+str(outdot),
+                      '-N', 'shape.'+str(outdot),
                       '-l', 'm_mem_free='+str(args.mem_req)+'g',
                       '-pe','smp',str(args.threads),
                       '-t', '1-22',
-                      '-o', '\''+str(outdot)+'.chr$TASK_ID.shape.qsub.log\'',
+                      '-o', '\'shape.'+str(outdot)+'.chr$TASK_ID.qsub.log\'',
                       str(rp_bin)+'/uger_array.sub.sh',
                       str(args.sleep),
                       ' '.join(shape_call)])
@@ -322,7 +322,7 @@ if args.full_pipe:
     # TODO: consider queue/mem for agg
     imp_log = 'imp_chunks.'+str(outdot)+'.qsub.log'
     uger_imp = ' '.join(['qsub',
-                            '-hold_jid','imp.chunks.'+str(outdot),
+                            '-hold_jid','shape.'+str(outdot),
                             '-q', 'short',
                             '-l', 'm_mem_free=8g',
                             '-N', 'imp.chunks.'+str(outdot),

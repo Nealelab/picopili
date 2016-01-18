@@ -97,7 +97,7 @@ conf_file = os.environ['HOME']+"/ricopili.conf"
 configs = read_conf(conf_file)
 
 impute_ex = configs['i2loc']+"impute2"
-# TODO: shapeit ex
+shapeit_ex = configs['shloc'] + '/bin/shapeit'
 
 # get directory containing current script
 # (to get absolute path for scripts)
@@ -159,7 +159,7 @@ for chrom in xrange(1,22):
 # TODO: re-queue this job
 if bad_chr:    
     num_chr = len(bad_chr)
-        print 'Missing pre-phasing results for %d chromosomes. Preparing to resubmit...' % num_chr
+    print 'Missing pre-phasing results for %d chromosomes. Preparing to resubmit...' % num_chr
 
     os.chdir(shape_dir)
         
@@ -218,17 +218,17 @@ if bad_chr:
                "mem": str(args.mem_req),
                "threads": str(args.threads),
                "nchr": str(num_chr),
-               "outlog": str(outdot)+'.resub_'+str(num_chr)+'.shape.qsub.$TASK_ID.log,
+               "outlog": 'shape.'+str(outdot)+'.resub_'+str(num_chr)+'.qsub.$TASK_ID.log',
                "sleep": str(args.sleep),
                "chr_list": ' '.join(bad_chr),
                "shape_ex": str(shape_ex),
                "bed": '--input-bed '+str(chrstem)+'.bed '+str(chrstem)+'.bim '+str(chrstem)+'.fam',
                "map": '--input-map '+str(args.map_dir)+'/genetic_map_chr${chrom}_combined_b37.txt',
-               "ref": '--input-ref '+,
+               "ref": '--input-ref '+str(args.refstem)+'_chr${chrom}.hap.gz '+str(args.refstem)+'_chr${chrom}.legend.gz '+str(args.refstem)+'.sample',
                "window": '--window '+str(args.window),
                "thread_str": '--thread '+str(args.threads),
                "seed_str": '--seed '+str(args.shape_seed),
-               "outmax":, '--output-max '+str(outstem)+'.phased.haps '+str(outstem)+'.phased.sample',
+               "outmax": '--output-max '+str(outstem)+'.phased.haps '+str(outstem)+'.phased.sample',
                "shapelog": str(outstem)+'.shape.resub_'+str(num_chr)+'.log',
                }
     
