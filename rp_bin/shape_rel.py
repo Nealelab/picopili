@@ -86,6 +86,8 @@ print '--refdir '+str(args.refdir)
 
 print '\nPrephasing:'
 print '--window '+str(args.window)
+if args.no_duohmm:
+    print '--no-duohmm '
 print '--refstem '+str(refstem) # TODO: change hardcoding
 print '--shape-seed '+str(args.shape_seed)
 
@@ -274,6 +276,11 @@ for i in xrange(1,23):
 print '\n...Submitting SHAPEIT jobs...'
 ######################
 
+if args.no_duohmm:
+    duo_txt = ''
+else:
+    duo_txt = '--duohmm'
+
 # TODO: handle empty chromosomes
 chrstem = str(args.bfile)+'.hg19.ch.fl.chr\$tasknum'
 outstem = str(outdot)+'.chr\$tasknum'
@@ -282,7 +289,7 @@ shape_call = [shapeit_ex,
               '--input-map', args.map_dir+'/genetic_map_chr\$tasknum_combined_b37.txt',
               '--input-ref', refstem+'_chr\$tasknum.hap.gz', refstem+'_chr\$tasknum.legend.gz', refstem+'.sample',
               '--window', str(args.window),
-              '--duohmm',
+              str(duo_txt),
               '--thread', str(args.threads),
               '--seed', str(args.shape_seed),
               '--output-max', outstem+'.phased.haps', outstem+'.phased.sample',

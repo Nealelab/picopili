@@ -91,11 +91,15 @@ arg_align.add_argument('--refdir',
                         required=False,
                         default='/psych/genetics_data/ripke/1000Genomes_reference/1KG_Oct14/1000GP_Phase3_sr/subchr/')
 arg_shape.add_argument('--window',
-                        type=int,
-                        metavar='INT',
+                        type=float,
+                        metavar='FLOAT',
                         help='window size for shapeit, in megabases (Mb)',
                         required=False,
-                        default=5)
+                        default=5.0)
+arg_shape.add_argument('--no-duohmm',
+                        action='store_true',
+                        help='omit --duohmm flag for family-aware pre-phasing in shapeit',
+                        required=False)
 arg_shape.add_argument('--shape-seed',
                         type=int,
                         metavar='INT',
@@ -174,7 +178,7 @@ arg_imp.add_argument('--imp-seed',
                      metavar='INT',
                      help='random seed for impute2',
                      required=False,
-                     default=None)
+                     default=54321)
 
 
 ############
