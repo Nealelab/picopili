@@ -329,6 +329,8 @@ print '\n...Preparing meta-data for aggregation...'
 frq_call = [plinkx,
             '--bfile',str(args.bfile),
             '--freq','case-control','--nonfounders',
+            '--silent',
+            '--memory', str(2000),
             '--out','freqinfo.'+str(outdot)]
 if args.keep is not None:
     frq_call.extend(['--keep',str(args.keep)])
