@@ -364,13 +364,13 @@ cchr=`awk -v a=${{SGE_TASK_ID}} 'NR==a+1{{print $1}}' {cfile}`
 {plink_ex} --gen {gen_in} --sample {samp_in} --oxford-single-chr ${{cchr}} --oxford-pheno-name plink_pheno --hard-call-threshold {hard_call_th} --missing-code -9,NA,na --allow-no-sex --silent --memory 4000 --out {out_str} 
 
 sleep {sleep}
-{plink_ex} --bfile {out_str} {mendel_txt} {info_txt} --allow-no-sex --make-bed --silent --memory 4000 --out {out_str2}
+{plink_ex} --bfile {out_str} {mendel_txt} {info_txt} --allow-no-sex --make-bed --silent --memory 2000 --out {out_str2}
 rm {out_str}.bed
 rm {out_str}.bim
 rm {out_str}.fam
 
 sleep {sleep}
-{plink_ex} --bfile {out_str2} {maf_txt} {mac_txt} {geno_txt} --allow-no-sex --make-bed --silent --memory 4000 --out {out_str_filt}
+{plink_ex} --bfile {out_str2} {maf_txt} {mac_txt} {geno_txt} --allow-no-sex --make-bed --silent --memory 2000 --out {out_str_filt}
 rm {out_str2}.bed
 rm {out_str2}.bim
 rm {out_str2}.fam
