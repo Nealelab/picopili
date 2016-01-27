@@ -250,6 +250,7 @@ prefilter_stats_str = [str(plinkx),
                                "--make-founders","require-2-missing",
                                "--freqx",
                                "--silent",
+                               "--memory", str(2000),
                                "--allow-no-sex",
                                "--out", prefilter_stats]
 
@@ -285,6 +286,7 @@ prefilter_out_str = [str(plinkx),
                                "--bfile", args.bfile,
                                "--exclude", snpout_nam,
                                "--silent",
+                               "--memory", str(2000),
                                "--allow-no-sex",
                                "--make-bed",
                                "--out", prefilter_out]
@@ -360,6 +362,7 @@ ind_stats_str = [str(plinkx),
                          mendel_txt[0], mendel_txt[1],
                          "--read-freq",str(prefilter_stats)+'.frqx',
                          "--silent",
+                         "--memory", str(2000),
                          "--allow-no-sex",
                          "--out", ind_stats]
 
@@ -487,6 +490,7 @@ idfilter_out_str = [str(plinkx),
                                "--bfile", prefilter_out,
                                "--remove", idout_nam,
                                "--silent",
+                               "--memory", str(2000),
                                "--allow-no-sex",
                                "--make-bed",
                                "--out", idfilter_out]
@@ -519,6 +523,7 @@ snp_stats_str = [str(plinkx),
                          "--freq",
                          "--hardy",
                          "--silent",
+                         "--memory", str(2000),
                          "--allow-no-sex",
                          "--out", snp_stats]
 
@@ -667,6 +672,7 @@ snpfilter_out_str = [str(plinkx),
                                "--bfile", str(idfilter_out),
                                "--exclude", snpout_nam,
                                "--silent",
+                               "--memory", str(2000),
                                "--allow-no-sex",
                                "--make-bed",
                                "--out", snpfilter_out]
@@ -690,6 +696,7 @@ if (args.mendel != 'none') and (not args.keep_mendel):
                            mendel_txt[1],
                            '--set-me-missing',
                            '--silent',
+                           "--memory", str(2000),
                            '--allow-no-sex',
                            '--make-bed',
                            '--out', mendel_out]

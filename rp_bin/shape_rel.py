@@ -257,6 +257,8 @@ for i in xrange(1,23):
                 '--bfile', str(args.bfile) + '.hg19.ch.fl',
                 '--chr', str(i),
                 '--make-bed',
+                '--silent',
+                '--memory', str(2000),
                 '--out', str(args.bfile) + '.hg19.ch.fl.chr' + str(i)]
     
     if i == 1:

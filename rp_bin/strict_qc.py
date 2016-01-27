@@ -145,6 +145,7 @@ subprocess.check_call([str(plinkx),
                "--missing",
                "--hardy",
                "--silent",
+               "--memory", str(2000),
                "--allow-no-sex",
                "--out", sumstat_out])
 
@@ -311,6 +312,7 @@ if args.all_chr:
                    "--exclude", snpout_nam,
                    "--make-bed",
                    "--silent",
+                   "--memory", str(2000),
                    "--allow-no-sex",
                    "--out", filtered_out])
 else:
@@ -321,6 +323,7 @@ else:
                "--autosome",
                "--make-bed",
                "--silent",
+               "--memory", str(2000),
                "--allow-no-sex",
                "--out", filtered_out]) 
 
@@ -344,6 +347,7 @@ subprocess.check_call([str(plinkx),
                "--bfile", filtered_out,
                "--indep-pairwise", str(args.ld_wind), str(ld_move), str(args.ld_th),
                "--silent",
+               "--memory", str(2000),
                "--allow-no-sex",
                "--out", args.out + '.prune' + str(i) + '.tmp' ])
 
@@ -363,6 +367,7 @@ while nprune_old > nprune_new:
                "--extract", args.out + '.prune' + str(i-1) + '.tmp.prune.in',
                "--indep-pairwise", str(args.ld_wind), str(ld_move), str(args.ld_th),
                "--silent",
+               "--memory", str(2000),
                "--allow-no-sex",
                "--out", args.out + '.prune' + str(i) + '.tmp' ])
 
@@ -379,6 +384,7 @@ subprocess.check_call([str(plinkx),
                "--extract", args.out + '.prune' + str(i) + '.tmp.prune.in',
                "--make-bed",
                "--silent",
+               "--memory", str(2000),
                "--allow-no-sex",
                "--out", args.out + '.strictqc.pruned' ])
 

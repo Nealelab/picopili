@@ -200,6 +200,7 @@ subprocess.check_call([plinkx,
                        "--bfile", args.bfile,
                        "--keep", imus_file,
                        "--silent",
+                       "--memory", str(2000),
                        "--make-bed",
                        "--allow-no-sex",
                        "--out", bfile_imus])
