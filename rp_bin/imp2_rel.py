@@ -194,7 +194,7 @@ if bad_chr:
     chrs=({chr_list})
     chrom=${{chrs[${{SGE_TASK_ID}}-1]}}
 
-    {shape_ex} {bed} {map} {ref} {window} {thread_str} {seed_str} {outmax} {shapelog} 
+    {shape_ex} {bed} {map} {ref} {window} {duo_txt} {thread_str} {seed_str} {outmax} {shapelog} 
     
     # eof
     """
@@ -226,6 +226,7 @@ if bad_chr:
                "map": '--input-map '+str(args.map_dir)+'/genetic_map_chr${chrom}_combined_b37.txt',
                "ref": '--input-ref '+str(args.refstem)+'_chr${chrom}.hap.gz '+str(args.refstem)+'_chr${chrom}.legend.gz '+str(args.refstem)+'.sample',
                "window": '--window '+str(args.window),
+               "duo_txt": '--duohmm',
                "thread_str": '--thread '+str(args.threads),
                "seed_str": '--seed '+str(args.shape_seed),
                "outmax": '--output-max '+str(outstem)+'.phased.haps '+str(outstem)+'.phased.sample',
