@@ -56,8 +56,9 @@ from time import strftime
 start_time = strftime("%H:%M:%S %d-%B-%Y")
 # from glob import glob
 from args_qc import *
-from py_helpers import unbuffer_stdout, read_conf, test_exec, link, file_len
+from py_helpers import unbuffer_stdout, read_conf, test_exec, link, file_len, warn_format
 unbuffer_stdout()
+warnings.formatwarning = warn_format
 
 #############
 if not (('-h' in sys.argv) or ('--help' in sys.argv)):
@@ -91,6 +92,7 @@ print '\nIndividual QC Thresholds:'
 print '--mind-th '+str(args.mind_th)
 print '--het-th '+str(args.het_th)
 print '--skip-sex-check '+str(args.skip_sex_check)
+print '--min-chrx-snps '+str(args.min_chrx_snps)
 
 print '\nSNP QC Thresholds:'
 print '--pre-miss '+str(args.pre_miss)
@@ -176,6 +178,7 @@ else:
 # setup SNP, ID QC fail lists
 snpout_nam = args.out + '.exclude_snps.txt'
 idout_nam = args.out + '.exclude_iids.txt'
+
 
 
 #############
@@ -450,28 +453,28 @@ if not args.skip_sex_check:
         (fid, iid, pedsex, snpsex, status_txt, fsex) = line.split()
         if int(pedsex) == 1:
             if str(fsex) == "NA":
-                sex_warn_out.write(fid + ' ' + iid + ' sexcheck_F_NA')
+                sex_warn_out.write(fid + ' ' + iid + ' sexcheck_F_NA\n')
                 nwarn += 1
             if float(fsex) < 0.5:
-                id_out.write(fid + ' ' + iid + ' sexcheck_pedmale')
+                id_out.write(fid + ' ' + iid + ' sexcheck_pedmale\n')
                 nex += 1
-            elif fsex < 0.8:
-               sex_warn_out.write(fid + ' ' + iid + ' sexcheck_pedmale')
+            elif float(fsex) < 0.8:
+               sex_warn_out.write(fid + ' ' + iid + ' sexcheck_pedmale\n')
                nwarn += 1
                
         elif int(pedsex) == 2:
             if str(fsex) == "NA":
-                sex_warn_out.write(fid + ' ' + iid + ' sexcheck_F_NA')
+                sex_warn_out.write(fid + ' ' + iid + ' sexcheck_F_NA\n')
                 nwarn += 1
             if float(fsex) > 0.5:
-                id_out.write(fid + ' ' + iid + ' sexcheck_pedfemale')
+                id_out.write(fid + ' ' + iid + ' sexcheck_pedfemale\n')
                 nex += 1
-            elif fsex > 0.2:
-               sex_warn_out.write(fid + ' ' + iid + ' sexcheck_pedfemale')
+            elif float(fsex) > 0.2:
+               sex_warn_out.write(fid + ' ' + iid + ' sexcheck_pedfemale\n')
                nwarn += 1            
                      
         else:
-            sex_warn_out.write(fid + ' ' + iid + ' sexcheck_ped_NA')
+            sex_warn_out.write(fid + ' ' + iid + ' sexcheck_ped_NA\n')
             nwarn += 1
     
     sexcheck_res.close()
@@ -499,6 +502,84 @@ print 'Running: ' + ' '.join(idfilter_out_str)
 subprocess.check_call(idfilter_out_str)
 
 
+#############
+# Summarizing per-individual QC
+#############
+# parse initial fam file for summary info
+n_pre = 0
+n_pre_cas = 0
+n_pre_con = 0
+n_pre_male = 0
+n_pre_female = 0
+n_pre_fam = 0
+pre_fids = []
+
+if args.skip_fid_tags:
+    pre_fam = open(str(args.bfile)+'.fam', 'r')
+else:
+    pre_fam = open(str(args.bfile)+'.fam.original', 'r')
+
+for line in pre_fam:
+    (fid, iid, pat, mat, sex, phen) = line.split()
+    
+    n_pre += 1
+
+    if str(sex) == '2':
+        n_pre_female += 1
+    elif str(sex) == '1':
+        n_pre_male += 1
+    
+    if str(phen) == '2':
+        n_pre_cas += 1
+    elif str(phen) == '1':
+        n_pre_con += 1
+    
+    if fid not in pre_fids:
+        pre_fids.append(fid)
+
+pre_fam.close()
+n_pre_fam = len(pre_fids)
+
+
+# parse final fam file for summary info
+n_post = 0
+n_post_cas = 0
+n_post_con = 0
+n_post_male = 0
+n_post_female = 0
+n_post_fam = 0
+post_fids = []
+
+post_fam = open(str(idfilter_out)+'.fam', 'r')
+for line in post_fam:
+    (fid, iid, pat, mat, sex, phen) = line.split()
+    
+    n_post += 1
+
+    if str(sex) == '2':
+        n_post_female += 1
+    elif str(sex) == '1':
+        n_post_male += 1
+    
+    if str(phen) == '2':
+        n_post_cas += 1
+    elif str(phen) == '1':
+        n_post_con += 1
+    
+    if fid not in post_fids:
+        post_fids.append(fid)
+
+post_fam.close()
+n_post_fam = len(post_fids)
+
+
+
+# check if have cases and controls for differential missingness
+if not args.skip_diff_miss:
+    if n_post_cas == 0 or n_post_con == 0:
+        warnings.warn('WARNING: No cases and/or controls remaining after per-ID QC. Will skip differential missingness checks.')
+        args.skip_diff_miss = True
+
 
 #############
 print '\n...QCing SNPs...'
@@ -513,11 +594,16 @@ print '\n...QCing SNPs...'
 
 snp_stats = str(args.out) + '.snp_stats'
 
+if args.skip_diff_miss:
+    diff_miss_txt = ''
+else:
+    diff_miss_txt = '--test-missing'
+
 # get metrics
 snp_stats_str = [str(plinkx), 
                          "--bfile", str(idfilter_out),
                          "--missing",
-                         "--test-missing",
+                         diff_miss_txt,
                          mendel_txt[0], mendel_txt[1],
                          "--make-founders","require-2-missing",
                          "--freq",
@@ -555,28 +641,31 @@ print 'Found %d SNPs to exclude for missingness rate > %r' % (nex, args.miss_th)
 
 
 # filter differential missingness
-diffmiss_nam = str(snp_stats) + '.missing'
-diffmiss = open(diffmiss_nam, 'r')
-dumphead = diffmiss.readline()
 nex_abs = 0
 nex_p = 0
 
-for line in diffmiss:
-    (chrom, snp, miss_cas, miss_con, miss_p) = line.split()
-
-    diff = float(miss_cas) - float(miss_con)
-
-    if float(miss_p) < args.diff_miss_p:
-        snp_out.write(snp + ' differential_missing_pval\n')
-        nex_p += 1
-        
-    if abs(float(diff)) > args.diff_miss_abs:
-        snp_out.write(snp + ' absolute_differential_missing\n')
-        nex_abs += 1
-        
-diffmiss.close()
-print 'Found %d SNPs to exclude for absolute differential missingness > %r' % (nex_abs, args.diff_miss_abs)
-print 'Found %d SNPs to exclude for differential missingness p-value < %r' % (nex_p, args.diff_miss_p)
+if not args.skip_diff_miss:
+    diffmiss_nam = str(snp_stats) + '.missing'
+    diffmiss = open(diffmiss_nam, 'r')
+    dumphead = diffmiss.readline()
+    
+    
+    for line in diffmiss:
+        (chrom, snp, miss_cas, miss_con, miss_p) = line.split()
+    
+        diff = float(miss_cas) - float(miss_con)
+    
+        if float(miss_p) < args.diff_miss_p:
+            snp_out.write(snp + ' differential_missing_pval\n')
+            nex_p += 1
+            
+        if abs(float(diff)) > args.diff_miss_abs:
+            snp_out.write(snp + ' absolute_differential_missing\n')
+            nex_abs += 1
+            
+    diffmiss.close()
+    print 'Found %d SNPs to exclude for absolute differential missingness > %r' % (nex_abs, args.diff_miss_abs)
+    print 'Found %d SNPs to exclude for differential missingness p-value < %r' % (nex_p, args.diff_miss_p)
 
 
 # filter mendel errors
@@ -598,7 +687,7 @@ if args.mendel != 'none':
             nex += 1
 
     lmendel.close()
-    print 'Found %d SNPs to exclude for excessive mendel errors > %r of SNPs' % (nex, args.snp_mendel_th)
+    print 'Found %d SNPs to exclude for excessive mendel errors > %r of nuclear families' % (nex, args.snp_mendel_th)
 
 
 # filter HWE
@@ -613,17 +702,17 @@ for line in hwe:
         (chrom, snp, test, a1, a2, geno, ohet, ehet, hwe_p) = line.split()
         
         if test == 'ALL' or test == 'ALL(QT)' or test == 'ALL(NP)':
-            if hwe_p < args.hwe_th_all:
+            if hwe_p != 'NA' and float(hwe_p) < args.hwe_th_all:
                 snp_out.write(str(snp) + ' hardy-weinberg_all\n')
                 nex_all += 1
                 
         elif test == 'AFF':
-            if hwe_p < args.hwe_th_cas:
+            if hwe_p != 'NA' and float(hwe_p) < args.hwe_th_cas:
                 snp_out.write(str(snp) + ' hardy-weinberg_cases\n')
                 nex_cas += 1
                 
         elif test == 'UNAFF':
-            if hwe_p < args.hwe_th_con:
+            if hwe_p != 'NA' and float(hwe_p) < args.hwe_th_con:
                 snp_out.write(str(snp) + ' hardy-weinberg_controls\n')
                 nex_con += 1
             
@@ -631,9 +720,9 @@ for line in hwe:
             raise IOError('Failed to parse Hardy-Weinberg results for SNP %s in %s' % (str(snp), str(hwe_nam)))
 
 hwe.close()
-print 'Found %d SNPs to exclude for Hardy-Weinberg p-value in cases > %r' % (nex_cas, args.hwe_th_cas)
-print 'Found %d SNPs to exclude for Hardy-Weinberg p-value in controls > %r' % (nex_con, args.hwe_th_con)
-print 'Found %d SNPs to exclude for Hardy-Weinberg p-value in all IDs > %r' % (nex_all, args.hwe_th_all)
+print 'Found %d SNPs to exclude for Hardy-Weinberg p-value in founder cases > %r' % (nex_cas, args.hwe_th_cas)
+print 'Found %d SNPs to exclude for Hardy-Weinberg p-value in founder controls > %r' % (nex_con, args.hwe_th_con)
+print 'Found %d SNPs to exclude for Hardy-Weinberg p-value in all founder IDs > %r' % (nex_all, args.hwe_th_all)
 
 
 # filter MAF
@@ -659,8 +748,8 @@ if float(args.maf_th) >= 0.0:
                 nex_maf += 1
         
     maf.close()
-    print 'Found %d SNPs to exclude for missing MAF' % nex_mis
-    print 'Found %d SNPs to exclude for low/invariant MAF <= %r' % (nex_maf, args.maf_th)
+    print 'Found %d SNPs to exclude for missing MAF in founders' % nex_mis
+    print 'Found %d SNPs to exclude for low/invariant MAF <= %r in founders' % (nex_maf, args.maf_th)
     
 
 
@@ -752,73 +841,6 @@ print '\n...Generating summary information...'
 
 
 
-# parse initial fam file for summary info
-n_pre = 0
-n_pre_cas = 0
-n_pre_con = 0
-n_pre_male = 0
-n_pre_female = 0
-n_pre_fam = 0
-pre_fids = []
-
-if args.skip_fid_tags:
-    pre_fam = open(str(args.bfile)+'.fam', 'r')
-else:
-    pre_fam = open(str(args.bfile)+'.fam.original', 'r')
-
-for line in pre_fam:
-    (fid, iid, pat, mat, sex, phen) = line.split()
-    
-    n_pre += 1
-
-    if str(sex) == '2':
-        n_pre_female += 1
-    elif str(sex) == '1':
-        n_pre_male += 1
-    
-    if str(phen) == '2':
-        n_pre_cas += 1
-    elif str(phen) == '1':
-        n_pre_con += 1
-    
-    if fid not in pre_fids:
-        pre_fids.append(fid)
-
-pre_fam.close()
-n_pre_fam = len(pre_fids)
-
-
-# parse final fam file for summary info
-n_post = 0
-n_post_cas = 0
-n_post_con = 0
-n_post_male = 0
-n_post_female = 0
-n_post_fam = 0
-post_fids = []
-
-post_fam = open(wd+'/'+str(rp_outname)+'.fam', 'r')
-for line in post_fam:
-    (fid, iid, pat, mat, sex, phen) = line.split()
-    
-    n_post += 1
-
-    if str(sex) == '2':
-        n_post_female += 1
-    elif str(sex) == '1':
-        n_post_male += 1
-    
-    if str(phen) == '2':
-        n_post_cas += 1
-    elif str(phen) == '1':
-        n_post_con += 1
-    
-    if fid not in post_fids:
-        post_fids.append(fid)
-
-post_fam.close()
-n_post_fam = len(post_fids)
-
 
 ### print file of summary info
 sum_file_nam = str(args.out)+'.qc_summary.txt'
@@ -869,8 +891,10 @@ sum_file.write('--skip-sex-check '+str(args.skip_sex_check)+'\n')
 sum_file.write('\nSNP QC Thresholds:'+'\n')
 sum_file.write('--pre-miss '+str(args.pre_miss)+'\n')
 sum_file.write('--miss-th '+str(args.miss_th)+'\n')
-sum_file.write('--diff-miss-abs '+str(args.diff_miss_abs)+'\n')
-sum_file.write('--diff-miss-p '+str(args.diff_miss_p)+'\n')
+sum_file.write('--skip-diff-miss '+str(args.skip_diff_miss)+'\n')
+if not args.skip_diff_miss:
+    sum_file.write('--diff-miss-abs '+str(args.diff_miss_abs)+'\n')
+    sum_file.write('--diff-miss-p '+str(args.diff_miss_p)+'\n')
 sum_file.write('--hwe-th-cas '+str(args.hwe_th_cas)+'\n')
 sum_file.write('--hwe-th-con '+str(args.hwe_th_con)+'\n')
 sum_file.write('--hwe-th-all '+str(args.hwe_th_all)+'\n')
@@ -937,7 +961,7 @@ if not args.no_cleanup:
                            args.out + '.qc_ind.bim',
                            args.out + '.qc_ind.fam'])
                            
-    if str(args.mendel) != 'none':
+    if str(args.mendel) != 'none' and (not args.keep_mendel):
         subprocess.check_call(["tar", "-zcvf",
                                args.out + '.qc_snp.plink.tar.gz',
                                args.out + '.qc_snp.bed',
@@ -975,13 +999,17 @@ if not args.no_cleanup:
     zip_ind_cmd.extend(ind_stats_list)
     subprocess.check_call(zip_ind_cmd)
     
+    
+    
 
     snp_stats_list = [args.out + '.snp_stats.frq',
                       args.out + '.snp_stats.imiss',
                       args.out + '.snp_stats.lmiss',
-                      args.out + '.snp_stats.missing',
-                      args.out + '.snp_stats.hwe',]
-        
+                      args.out + '.snp_stats.hwe']
+    
+    if not args.skip_diff_miss:
+        snp_stats_list.extend([args.out + '.snp_stats.missing'])
+    
     if str(args.mendel) != 'none':    
         snp_stats_list.extend([args.out+'.snp_stats.mendel', 
                                args.out+'.snp_stats.imendel', 
