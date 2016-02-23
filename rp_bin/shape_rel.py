@@ -212,8 +212,8 @@ for line in fam:
         else:
             pat_num = next_iid
             next_iid += 1
-            iids[str(joint_pat)] = [fid_num, id_num] 
-            famtrans.write("%d %d %s %s\n" % (fid_num, id_num, str(fid), str(pat)))
+            iids[str(joint_pat)] = [fid_num, pat_num] 
+            famtrans.write("%d %d %s %s\n" % (fid_num, pat_num, str(fid), str(pat)))
     else:
         pat_num = 0
 
@@ -224,8 +224,8 @@ for line in fam:
         else:
             mat_num = next_iid
             next_iid += 1
-            iids[str(joint_mat)] = [fid_num, id_num]
-            famtrans.write("%d %d %s %s\n" % (fid_num, id_num, str(fid), str(mat)))
+            iids[str(joint_mat)] = [fid_num, mat_num]
+            famtrans.write("%d %d %s %s\n" % (fid_num, pat_num, str(fid), str(mat)))
     else:
         mat_num = 0
 
