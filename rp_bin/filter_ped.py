@@ -482,12 +482,12 @@ if fam_parents:
 # log
 n_good_po = int(n_fam_po)-len(fam_parents)
 print 'Found %d parent-offspring pairs indicated by fam file.' % int(n_fam_po)
-print 'Of these, %d (%.1f%%) are supported by genetic relatedness.' % (n_good_po, float(n_good_po)/float(n_fam_po))
+if n_mis_po > 0:
+    print '%d pairs with parent not present in fam file.' % int(n_mis_po)
+print '%d are supported by genetic relatedness.' % (n_good_po)
 if n_bad_po > 0:
     print '%d pairs with genetic relatedness inconsistent with parent/offspring relationship.' % int(n_bad_po)
     print 'Bad pairs written to %s.' % str(bad_par_file.name)
-if n_mis_po > 0:
-    print '%d pairs with parent not present in fam file.' % int(n_mis_po)
 
 
 
