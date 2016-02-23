@@ -60,7 +60,14 @@ print '--fth '+str(args.fth)
 print '--refdir '+str(args.refdir)
 
 
-print '\nShapeit Resources:'
+print '\nShapeit arguments:'
+print '--window '+str(args.mem_req)
+if args.no_duohmm:
+    print '--no-duohmm '
+print '--shape-seed '+str(args.shape_seed)
+
+
+print '\nShapeit resources:'
 print '--mem-req '+str(args.mem_req)
 print '--threads '+str(args.threads)
 

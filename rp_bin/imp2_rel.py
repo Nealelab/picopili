@@ -159,8 +159,19 @@ for chrom in xrange(1,22):
 # TODO: re-queue this job
 if bad_chr:    
     num_chr = len(bad_chr)
-    print 'Missing pre-phasing results for %d chromosomes. Preparing to resubmit...' % num_chr
-
+    print 'Missing pre-phasing results for %d chromosomes.' % num_chr
+    
+    if not args.full_pipe:
+        print 'Missing: %s' % ','.join(bad_chr)
+        print 'Exiting\n'
+        exit(1)
+    # else continue to resub
+    print 'Preparing to resubmit...'
+    # note: assuming required shapeit args will be in extra_args
+    #   if running under --full-pipe
+    #   TODO: add check on this
+    #   (mem_req, threads, no_duohmm, window, shape_seed) 
+    
     os.chdir(shape_dir)
         
     # verify haven't already tried this resub
@@ -194,7 +205,7 @@ if bad_chr:
     chrs=({chr_list})
     chrom=${{chrs[${{SGE_TASK_ID}}-1]}}
 
-    {shape_ex} {bed} {map} {ref} {window} {thread_str} {seed_str} {outmax} {shapelog} 
+    {shape_ex} {bed} {map} {ref} {window} {duo_txt} {thread_str} {seed_str} {outmax} {shapelog} 
     
     # eof
     """
@@ -213,21 +224,26 @@ if bad_chr:
     
     # fill in template
     chrstem = str(args.bfile)+'.hg19.ch.fl.chr${chrom}'
-    outstem = str(outdot)+'.chr${chrom}'    
+    outstem = str(outdot)+'.chr${chrom}'
+    if extra_args.no_duohmm:
+        duo_txt = ''
+    else:
+        duo_txt = '--duohmm'
     jobdict = {"jname": 'shape.'+str(outdot)+'.resub_'+str(num_chr),
-               "mem": str(args.mem_req),
-               "threads": str(args.threads),
+               "mem": str(extra_args.mem_req),
+               "threads": str(extra_args.threads),
                "nchr": str(num_chr),
                "outlog": 'shape.'+str(outdot)+'.resub_'+str(num_chr)+'.qsub.$TASK_ID.log',
                "sleep": str(args.sleep),
                "chr_list": ' '.join(bad_chr),
-               "shape_ex": str(shape_ex),
+               "shape_ex": str(shapeit_ex),
                "bed": '--input-bed '+str(chrstem)+'.bed '+str(chrstem)+'.bim '+str(chrstem)+'.fam',
                "map": '--input-map '+str(args.map_dir)+'/genetic_map_chr${chrom}_combined_b37.txt',
                "ref": '--input-ref '+str(args.refstem)+'_chr${chrom}.hap.gz '+str(args.refstem)+'_chr${chrom}.legend.gz '+str(args.refstem)+'.sample',
-               "window": '--window '+str(args.window),
-               "thread_str": '--thread '+str(args.threads),
-               "seed_str": '--seed '+str(args.shape_seed),
+               "window": '--window '+str(extra_args.window),
+               "duo_txt": str(duo_txt),
+               "thread_str": '--thread '+str(extra_args.threads),
+               "seed_str": '--seed '+str(extra_args.shape_seed),
                "outmax": '--output-max '+str(outstem)+'.phased.haps '+str(outstem)+'.phased.sample',
                "shapelog": str(outstem)+'.shape.resub_'+str(num_chr)+'.log',
                }

@@ -86,6 +86,8 @@ print '--refdir '+str(args.refdir)
 
 print '\nPrephasing:'
 print '--window '+str(args.window)
+if args.no_duohmm:
+    print '--no-duohmm '
 print '--refstem '+str(refstem) # TODO: change hardcoding
 print '--shape-seed '+str(args.shape_seed)
 
@@ -210,8 +212,8 @@ for line in fam:
         else:
             pat_num = next_iid
             next_iid += 1
-            iids[str(joint_pat)] = [fid_num, id_num] 
-            famtrans.write("%d %d %s %s\n" % (fid_num, id_num, str(fid), str(pat)))
+            iids[str(joint_pat)] = [fid_num, pat_num] 
+            famtrans.write("%d %d %s %s\n" % (fid_num, pat_num, str(fid), str(pat)))
     else:
         pat_num = 0
 
@@ -222,8 +224,8 @@ for line in fam:
         else:
             mat_num = next_iid
             next_iid += 1
-            iids[str(joint_mat)] = [fid_num, id_num]
-            famtrans.write("%d %d %s %s\n" % (fid_num, id_num, str(fid), str(mat)))
+            iids[str(joint_mat)] = [fid_num, mat_num]
+            famtrans.write("%d %d %s %s\n" % (fid_num, pat_num, str(fid), str(mat)))
     else:
         mat_num = 0
 
@@ -276,6 +278,11 @@ for i in xrange(1,23):
 print '\n...Submitting SHAPEIT jobs...'
 ######################
 
+if args.no_duohmm:
+    duo_txt = ''
+else:
+    duo_txt = '--duohmm'
+
 # TODO: handle empty chromosomes
 chrstem = str(args.bfile)+'.hg19.ch.fl.chr\$tasknum'
 outstem = str(outdot)+'.chr\$tasknum'
@@ -284,7 +291,7 @@ shape_call = [shapeit_ex,
               '--input-map', args.map_dir+'/genetic_map_chr\$tasknum_combined_b37.txt',
               '--input-ref', refstem+'_chr\$tasknum.hap.gz', refstem+'_chr\$tasknum.legend.gz', refstem+'.sample',
               '--window', str(args.window),
-              '--duohmm',
+              str(duo_txt),
               '--thread', str(args.threads),
               '--seed', str(args.shape_seed),
               '--output-max', outstem+'.phased.haps', outstem+'.phased.sample',
