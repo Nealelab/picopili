@@ -225,7 +225,7 @@ for line in fam:
             mat_num = next_iid
             next_iid += 1
             iids[str(joint_mat)] = [fid_num, mat_num]
-            famtrans.write("%d %d %s %s\n" % (fid_num, pat_num, str(fid), str(mat)))
+            famtrans.write("%d %d %s %s\n" % (fid_num, mat_num, str(fid), str(mat)))
     else:
         mat_num = 0
 
