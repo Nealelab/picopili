@@ -66,8 +66,10 @@ shape_dir = wd + '/phase_chr'
 chunk_dir = wd + '/chunks_for_imp'
 imp_dir = wd + '/imp_sub'
 bg_dir = wd + '/imp_postproc'
-out_dir = wd + '/cobg_dir_'+str(args.out)+'_'+str(args.addout)
-
+if args.addout is not None and str(args.addout) != '':
+    out_dir = wd + '/cobg_dir_'+str(args.out)+'_'+str(args.addout)
+else:
+    out_dir = wd + '/cobg_dir_'+str(args.out)
 
 
 
