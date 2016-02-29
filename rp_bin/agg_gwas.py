@@ -32,7 +32,7 @@ if not (('-h' in sys.argv) or ('--help' in sys.argv)):
     print '\n...Importing packages...'
 #############
 
-# import os
+import os
 import subprocess
 import argparse
 import gzip
@@ -143,8 +143,21 @@ if len(mis_chunks) > 0:
     nummiss = len(mis_chunks)
     print 'Missing results for %d GWAS jobs. Preparing to resubmit...' % nummiss
     
-    # just missing chunks for task array    
-    tmp_chunk_file = open('tmp_missing_'+str(nummiss)+'_chunks.'+str(outdot)+'.txt', 'w')
+    # just missing chunks for task array
+    # fail if already tried
+    tmp_chunk_file_name = 'tmp_missing_'+str(nummiss)+'_chunks.'+str(outdot)+'.txt'
+
+    if os.path.isfile(tmp_chunk_file_name):
+        print '\n####################'
+        print 'ERROR:'
+        print 'Found previous attempt to resubmit %d failed chunks.' % int(nummiss)
+        print 'GWAS is likely stuck.'
+        print 'See %s for failing chunks.' % (tmp_chunk_file_name)
+        print 'Exiting...\n'
+        exit(1)
+
+    # else setup resubmission
+    tmp_chunk_file = open(tmp_chunk_file_name, 'w')
     tmp_chunk_file.write(' '.join(['CHR','START','END','NAME']) + '\n')
 
     for ch in mis_chunks.keys():
