@@ -146,8 +146,8 @@ link(wd+'/'+str(args.bfile)+'.bed', str(args.bfile)+'.bed', 'input plink bed fil
 link(wd+'/'+str(args.bfile)+'.bim', str(args.bfile)+'.bim', 'input plink bim file')
 link(wd+'/'+str(args.bfile)+'.fam', str(args.bfile)+'.fam', 'input plink fam file')
 
-
-
+if args.covar is not None and str(args.covar) != "None":
+    link(wd+'/'+str(args.covar), str(args.covar), 'covariate file')
 
 # TODO: need to also propogate keep/exclude files, either here or in later args
 # TODO: allow SNP extract/exclude exclusion before chunking
