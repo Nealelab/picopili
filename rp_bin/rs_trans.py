@@ -70,6 +70,7 @@ for line in bim_raw:
     # - rsid:bp:a2:a1
     # - chr:bp:a2:a1
     # - chr:bp:a1:<struct>:bp2
+    # (strip leading "chr" on first field if present)
     #
     # (2) If first field is rsid, take it
     # else take first 2 (chr:bp)
@@ -82,6 +83,10 @@ for line in bim_raw:
     # - Hack inspired by ricopili
         
     snp_split = snpid.split(':')
+
+    if str(snp_split[0][:3]).lower() == "chr":
+        snp_split[0] = snp_split[0][3:]
+        
     if str(snp_split[0]) == str(chrom):
         rs = str(snp_split[0]) + ':' + str(snp_split[1])
     else:
