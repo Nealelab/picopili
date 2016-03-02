@@ -290,7 +290,7 @@ if not args.test_sub:
 print '\n############\n'
 if warn_mem:
     print 'WARNING: Commands not submitted!'
-    print 'IMUS PCA expected to require > 16 GB of RAM (estimate %d MB based on sample size)' % imus_mem
+    print 'IMUS PCA expected to require > 16 GB of RAM (estimate %d GB based on sample size)' % imus_mem
     print 'Please resubmit with \'--large-mem-ok\' if this is acceptable.\n'
     exit(1)
 elif args.test_sub:
