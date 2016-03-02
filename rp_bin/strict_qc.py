@@ -247,9 +247,12 @@ for line in frqs:
 frqs.close()
 
 
+
 ####################################
 # Identify HWE failures
 # - write to snp_out_nam
+# - note: "NA" results for HWE are not filtered out
+#       since they reflect genotyping rate, not HWE failures
 ####################################
 
 #############
@@ -262,6 +265,9 @@ dumphead = hwes.readline()
 
 for line in hwes:
     (chrom, snp, test, a1, a2, geno, Ohet, Ehet, p) = line.split()
+
+    if str(p) == "NA":
+        continue
     
     if (test == "ALL") and ( float(p) < args.hwe_th ):
         snp_out.write(snp + ' HWE_fail\n')
