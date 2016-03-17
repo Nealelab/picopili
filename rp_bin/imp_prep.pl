@@ -15,7 +15,7 @@ use strict;
 # - remove commented out blocks, unused subroutines
 # - remove --phase (--refdir now required)
 # - remove unused arguments
-# - remove "readref"-style alignment
+# - remove non-"readref" alignment
 # - remove checks for unused scripts
 #
 # TODO: refine output format
@@ -177,19 +177,19 @@ if ($sleep_sw) {
 ##############################################################
 my @test_scripts;
 
-
-
+my $readref_script = "my.readref";         ### my.pipeline_tar
+my $readrefsum_script = "my.readref_sum";  ### my.pipeline_tar
 my $buigue_script = "buigue";              ### my.pipeline_tar
 my $checkpos_script = "checkpos6";         ### my.pipeline_tar
 my $checkflip_script = "checkflip4";       ### my.pipeline_tar
 my $mutt_script = "mutt";                  ### my.pipeline_tar
 my $blue_script = "blueprint";         ### my.pipeline_tar
 
-
-
-push @test_scripts, $buigue_script ;
-push @test_scripts, $checkpos_script ;
-push @test_scripts, $checkflip_script ;
+push @test_scripts, $readref_script;
+push @test_scripts, $readrefsum_script;
+push @test_scripts, $buigue_script;
+push @test_scripts, $checkpos_script;
+push @test_scripts, $checkflip_script;
 push @test_scripts,  $blue_script;
 
 #push @test_scripts, $mutt_script ;
@@ -774,6 +774,18 @@ unless (-e "$rootdir/puting_done") {
 }
 
 
+#####################################################
+## check readref
+########################################################
+
+foreach my $chrloc(1..22) {
+    my $reffi ="$refdir/$suminfo_s.$chrloc.gz";
+    unless (-e $reffi) {
+		die "Error: $reffi not found\n";
+    }
+}
+
+
 ###################################
 ### GUESS BUILD
 ###################################
@@ -781,43 +793,141 @@ unless (-e "$rootdir/puting_done") {
 my @buigue_arr = ();
 my $buigue_fini = 0;
 
-    unless (-e "$rootdir/buigue_done") {
+unless (-e "$rootdir/buigue_done") {
     unless (-e "$rootdir/posing_done") {
+		foreach (@bim_files) {
+		    my $bfile = $_;
+		    $bfile =~ s/.bim$//;
+		    my $accfli ="$bfile".".hg19.bim";
+	#	    print "he: $accfli\n";
+	#	    exit;
+		    unless (exists $bimhg19_array{$accfli}) {
+				push @buigue_arr, "$buigue_script --lift19 $bfile.bim" ;#
+		    }
+		    else {
+				$buigue_fini++;
+		    }
+		}
+
+		if (@buigue_arr > 0) {
+	    
+		    $sjadir = $impute_dir;
+		    $sjaname = "buigue";
+	    
+		    $sjatime = 2;
+	#	    $sjatime = 4 if ($buigue_fini > 0);
+	    
+		    $sjamem = 3000;
+		    @sjaarray = @buigue_arr;
+	    
+		    &send_jobarray;
+		}
+		else {
+		    &mysystem ("touch $rootdir/buigue_done");
+		    print "build_guess done\n";
+		}
+    }
+}
+
+
+###################################
+### READREF
+###################################
+
+
+
+my @readref_arr = ();
+my $readref_fini = 0;
+
+unless (-e "$rootdir/readref_done") {
 	foreach (@bim_files) {
-	    my $bfile = $_;
+	    my $bimfile = $_;
+	    my $bfile = $bimfile;
 	    $bfile =~ s/.bim$//;
 	    my $accfli ="$bfile".".hg19.bim";
-#	    print "he: $accfli\n";
-#	    exit;
-	    unless (exists $bimhg19_array{$accfli}) {
-		push @buigue_arr, "$buigue_script --lift19 $bfile.bim" ;#
-	    }
-	    else {
-		$buigue_fini++;
+
+	    
+	    foreach my $chrloc(1..22) {
+		my $bimref ="$accfli".".ref.chr$chrloc";
+		my $reffi ="$refdir/$suminfo_s.$chrloc.gz";
+		unless (exists $bimref_array{$bimref}) {
+		    push @readref_arr, "$readref_script --chr $chrloc --ref $reffi $accfli" ;#
+#		print "$readref_script --chr $chrloc --ref $reffi $bimfile\n" ;#
+		}
+		else {
+		    $readref_fini;
+		}
 	    }
 	}
-
-	if (@buigue_arr > 0) {
+#    exit;
+	if (@readref_arr > 0) {
 	    
 	    $sjadir = $impute_dir;
-	    $sjaname = "buigue";
-	    
+	    $sjaname = "readref";
 	    $sjatime = 2;
-#	    $sjatime = 4 if ($buigue_fini > 0);
+#	    $sjatime = 4 if ($readref_fini > 0);
 	    
 	    $sjamem = 3000;
-	    @sjaarray = @buigue_arr;
+	    $sjamaxpar = 100;
+	    @sjaarray = @readref_arr;
 	    
+
+
 	    &send_jobarray;
 	}
 	else {
-	    &mysystem ("touch $rootdir/buigue_done");
-	    print "build_guess done\n";
+	    &mysystem ("touch $rootdir/readref_done");
+	    print "readref done\n";
 	}
-    }
-    }
+}
 
 
+###################################
+### sum readref
+###################################
+
+unless (-e "$rootdir/readrefsum_done") {
+
+	my @readrefsum_arr = ();
+	my $readrefsum_fini = 0;
+	
+	unless (-e "$rootdir/readrefsum_done") {
+	    foreach (@bim_files) {
+		my $bimfile = $_;
+		my $bfile = $bimfile;
+		$bfile =~ s/.bim$//;
+		my $accfli ="$bfile".".hg19.bim";
+		my $bimref_done ="$accfli".".ref.sum.done";
+#		print "looking for $bimref_done\n";
+		unless (exists $bimref_array{$bimref_done}) {
+		    push @readrefsum_arr, "$readrefsum_script $accfli" ;#
+		}
+		else {
+		    $readrefsum_fini++;
+		}
+	    }
+	    
+	    if (@readrefsum_arr > 0) {
+
+#		print "stragne\n";
+#		exit;
+		
+		$sjadir = $impute_dir;
+		$sjaname = "reresum";
+		$sjatime = 2;
+#		$sjatime = 4 if ($readrefsum_fini > 0);
+
+		$sjamem = 1000;
+		@sjaarray = @readrefsum_arr;
+		
+		&send_jobarray;
+	    }
+	    else {
+		&mysystem ("touch $rootdir/readrefsum_done");
+		print "readrefsum done\n";
+	    }
+	}
+}
 
 
 ###################################
@@ -848,17 +958,18 @@ unless (-e "$rootdir/posing_done") {
 
 	    }
 	    else {
-		$chepos_fini++;
+			$chepos_fini++;
 	    }
 	}
 	else {
-	    print "locref $locref is not existing! would be better if it did\n";
-	    unless (exists $bimpos_array{$accfli}) {
-		push @chepos_arr, "$checkpos_script --dbcol 1,8,9 --dbsnp $refdir/$suminfo_s $bfile.hg19.bim" ;#
-	    }
-	    else {
-		$chepos_fini++;
-	    }
+		die "$locref does not exist. Readref may have failed.\n"
+#	    print "locref $locref is not existing! would be better if it did\n";
+#	    unless (exists $bimpos_array{$accfli}) {
+#		push @chepos_arr, "$checkpos_script --dbcol 1,8,9 --dbsnp $refdir/$suminfo_s $bfile.hg19.bim" ;#
+#	    }
+#	    else {
+#		$chepos_fini++;
+#	    }
 	}
 
     }
@@ -877,8 +988,8 @@ unless (-e "$rootdir/posing_done") {
 	&send_jobarray;
     }
     else {
-	&mysystem ("touch $rootdir/posing_done");
-	print "checkpos done\n";
+		&mysystem ("touch $rootdir/posing_done");
+		print "checkpos done\n";
     }
 }
 
@@ -902,26 +1013,27 @@ unless (-e "$rootdir/flipping_done") {
 	    my $locref = $bfile.".bim.ref.sum";
 
 	    if (-e $locref) {
-		print "locref $locref is existing! safes some time\n";
-		unless (exists $bimfli_array{$accfli}) {
-		    my $systmp = "$checkflip_script --dbcol 0,3,4,5 --fth $fth_th --sfh $sec_freq --info $rootdir/$impute_dir/$locref $bfile.hg19.ch.bim" ;
-		    push @chefli_arr, $systmp ;
-#		    print "$systmp\n";
-#		    exit;
-#		    push @chepos_arr, "$checkpos_script --dbcol 1,2,3 --dbsnp $rootdir/$impute_dir/$locref $bfile.hg19.bim" ;#
+			print "locref $locref is existing! safes some time\n";
+			unless (exists $bimfli_array{$accfli}) {
+				my $systmp = "$checkflip_script --dbcol 0,3,4,5 --fth $fth_th --sfh $sec_freq --info $rootdir/$impute_dir/$locref $bfile.hg19.ch.bim" ;
+				push @chefli_arr, $systmp ;
+#			    print "$systmp\n";
+#			    exit;
+#			    push @chepos_arr, "$checkpos_script --dbcol 1,2,3 --dbsnp $rootdir/$impute_dir/$locref $bfile.hg19.bim" ;#
 		    
-		}
-		else {
-		    $chefli_fini++;
-		}
+			}
+			else {
+		    	$chefli_fini++;
+			}
 	    }
 	    else {
-		unless (exists $bimfli_array{$accfli}) {
-		    push @chefli_arr, "$checkflip_script --fth $fth_th --sfh $sec_freq --info $refdir/$suminfo_s $bfile.hg19.ch.bim" ;
-		}
-		else {
-		    $chefli_fini++;
-		}
+			die "$locref not found. This should not be possible; check readref and checkpos for errors.\n"
+#			unless (exists $bimfli_array{$accfli}) {
+#		    	push @chefli_arr, "$checkflip_script --fth $fth_th --sfh $sec_freq --info $refdir/$suminfo_s $bfile.hg19.ch.bim" ;
+#			}
+#			else {
+#		    	$chefli_fini++;
+#			}
 	    }
 
 
