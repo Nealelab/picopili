@@ -12,11 +12,13 @@ use strict;
 # - stop before prephasing/imputation (buigue/chepos/chefli only)
 # - remove old version history
 # - remove code for fam file prep/chunking/refind and beyond
-# - remove commented out blocks
-# - remove trioset, phase_txt, pcaer_dir
+# - remove commented out blocks, unused subroutines
+# - remove --phase (--refdir now required)
+# - remove unused arguments
+# - remove "readref"-style alignment
+# - remove checks for unused scripts
 #
-# TODO: remove unused args, dependencies
-# - refine output format
+# TODO: refine output format
 # 
 #### 
 
@@ -30,43 +32,8 @@ my $command_line = "$progname @ARGV";
 
 my $jnum = 7; ### number of imputation job per node
 
-my $spliha_n = 1500; ## split haplotypes with N individuals
-
-my $best_lahunt = 5;
-
 my $multithread1 = 4;
 my $multithread2 = 8;
-
-
-my $phas = -1;
-
-
-
-
-my $info_txt = "";
-#my $homedir = "/home/gwas";
-my $rootdir = "";
-
-my $iname = "" ;
-
-
-my $suminfo = "infosum_pos";
-my $suminfo_n = "$suminfo.nsnps";
-my $suminfo_r = "$suminfo.reffiles";
-#my $suminfo_s = "$suminfo.sorted";
-my $suminfo_s = "NAN";
-
-my $job_bn_th = 1000;
-
-my @ref_coll = ();
-
-
-
-#my $hapmap_ref_root = "/home/gwas/pgc-samples/hapmap_ref/";
-
-
-my $fth_th = 0.15;
-
 
 use Sys::Hostname;
 my $host = hostname;
@@ -97,11 +64,8 @@ sub trans {
 }
 
 my $ploc = &trans("p2loc");
-my $shloc = &trans("shloc"); # shapeit
-my $hapmap_ref_root = &trans("hmloc");
 my $homedir = &trans("home");
 my $qloc = &trans("queue");
-my $i2loc = &trans("i2loc");
 my $liloc = &trans("liloc");
 my $email = &trans("email");
 my $loloc = &trans("loloc");
@@ -109,117 +73,33 @@ my $loloc = &trans("loloc");
 
 ###############################################
 
-$ref_coll[5] = "$hapmap_ref_root"."1KG/phased/subchr" ;
-$ref_coll[6] = "$hapmap_ref_root"."1KG_june10/hapmap3_r2_plus_1000g_jun2010_b36_ceu/bgl/subchr_5" ;
-$ref_coll[7] = "$hapmap_ref_root"."1KG_aug10/subchr" ;
-$ref_coll[8] = "$hapmap_ref_root"."1KG_aug10_nodup/subchr" ;
-$ref_coll[8883] = "$hapmap_ref_root"."1KG_aug10_nodup/mhc_window" ;
-$ref_coll[8882] = "$hapmap_ref_root"."mars_window/1KG" ;
+my $rootdir = "";
+my $iname = "" ;
 
-$ref_coll[88] = "$hapmap_ref_root"."1KG_phas1_umich/ref_0611/subchr" ;
-$ref_coll[881] = "$hapmap_ref_root"."1KG_phas1_umich/ref_0611_eur/subchr" ;
-$ref_coll[882] = "$hapmap_ref_root"."1KG_phas1_umich/ref_0611_eur_3Mb/subchr" ;
-$ref_coll[8821] = "$hapmap_ref_root"."1KG_phas1_umich/ref_0611_eur_3Mb/subchr/test2" ;
-$ref_coll[8822] = "$hapmap_ref_root"."1KG_phas1_umich/ref_0611_eur_3Mb/subchr/NOD2" ;
-$ref_coll[88222] = "$hapmap_ref_root"."1KG_phas1_umich/ref_0611_eur_3Mb/subchr/best_basam" ;
-$ref_coll[882222] = "$hapmap_ref_root"."1KG_phas1_umich/ref_0611_eur_3Mb/subchr/chr3_itih" ;
-$ref_coll[882223] = "$hapmap_ref_root"."1KG_phas1_umich/ref_0611_eur_3Mb/subchr/chr19_ncan" ;
+my $suminfo = "infosum_pos";
+my $suminfo_s = "NAN";
 
-$ref_coll[9999] = "$hapmap_ref_root"."impute2_ref/1KG_Mar12/ALL_1000G_phase1integrated_feb2012_impute/test/subchr" ;
-$ref_coll[9] = "$hapmap_ref_root"."impute2_ref/1KG_Mar12/ALL_1000G_phase1integrated_feb2012_impute/subchr" ;
-$ref_coll[91] = "$hapmap_ref_root"."impute2_ref/1KG_Aug12/ALL_1000G_phase1integrated_v3_impute_macGT1/subchr" ;
-$ref_coll[9111] = "$hapmap_ref_root"."impute2_ref/1KG_Aug12/ALL_1000G_phase1integrated_v3_impute_macGT1/subchr/test" ;
-$ref_coll[9123] = "$hapmap_ref_root"."impute2_ref/1KG_Aug12/ALL_1000G_phase1integrated_v3_impute_macGT1/chr23/subchr" ;
-$ref_coll[91231] = "$hapmap_ref_root"."impute2_ref/1KG_Aug12/ALL_1000G_phase1integrated_v3_impute_macGT1/chr23/subchr/test" ;
-
-
-$ref_coll[923] = "$hapmap_ref_root"."impute2_ref/1KG_Mar12/ALL_1000G_phase1integrated_feb2012_impute/chr23/subchr" ;
-$ref_coll[9231] = "$hapmap_ref_root"."impute2_ref/1KG_Mar12/ALL_1000G_phase1integrated_feb2012_impute/chr23_pseudo/subchr" ;
-
-
-$ref_coll[555] = "$hapmap_ref_root"."1KG/phased/subchr/test";
-$ref_coll[3] = "$hapmap_ref_root"."subchr";
-$ref_coll[323] = "$hapmap_ref_root"."subchr/23";
-$ref_coll[333] = "$hapmap_ref_root"."subchr/test" ;
-
-$ref_coll[334] = "$hapmap_ref_root"."subchr/HLA" ;
-$ref_coll[335] = "$hapmap_ref_root"."subchr/chr2_test" ;
-$ref_coll[3333] = "$hapmap_ref_root"."subchr/test/local" ;
-$ref_coll[3331] = "$hapmap_ref_root"."subchr/SDCCA" ;
-$ref_coll[3332] = "$hapmap_ref_root"."mars_window" ;
-$ref_coll[39] = "$hapmap_ref_root"."impute2_ref/HM3/hapmap3_r2_b36/subchr" ;
-$ref_coll[399] = "$hapmap_ref_root"."impute2_ref/HM3/hapmap3_r2_b36/subchr.3mb" ;
-
-$ref_coll[15] ="$hapmap_ref_root"."hla_t1d/subchr";
-$ref_coll[152] ="$hapmap_ref_root"."impute2_ref/HLA_0813/orig/subchr";
-$ref_coll[1521] ="$hapmap_ref_root"."impute2_ref/HLA_0813/orig/hg19";
-$ref_coll[1522] ="$hapmap_ref_root"."mhc";
-$ref_coll[515] = "$hapmap_ref_root"."1KG/phased/subchr/hla" ;
-$ref_coll[511] = "$hapmap_ref_root"."1KG/phased/subchr/mir" ;
-$ref_coll[512] = "$hapmap_ref_root"."1KG/phased/subchr/mir708" ;
-$ref_coll[513] = "$hapmap_ref_root"."1KG/phased/subchr/HBII-108" ;
-
-$ref_coll[514] = "$hapmap_ref_root"."1KG/phased/subchr/chr10_11" ;
-$ref_coll[515] = "$hapmap_ref_root"."1KG/phased/subchr/chr8_9" ;
-$ref_coll[516] = "$hapmap_ref_root"."1KG/phased/subchr/cacna1c" ;
-$ref_coll[517] = "$hapmap_ref_root"."1KG/phased/subchr/csmd1" ;
-$ref_coll[518] = "$hapmap_ref_root"."1KG/phased/subchr/tcf4" ;
-$ref_coll[519] = "$hapmap_ref_root"."1KG/phased/subchr/chr2_20" ;
-$ref_coll[520] = "$hapmap_ref_root"."1KG/phased/subchr/top_scz" ;
-$ref_coll[521] = "$hapmap_ref_root"."1KG/phased/subchr/chr11_13" ;
-
-$ref_coll[5555] ="$hapmap_ref_root"."impute2_ref/lboettger/chr16";
-
-$ref_coll[4] = "$hapmap_ref_root"."CNV/subchr";
-$ref_coll[444] = "$hapmap_ref_root"."CNV/subchr_test";
-
-$ref_coll[2] = "$hapmap_ref_root"."phas2/subchr/outdir";
-$ref_coll[222] = "$hapmap_ref_root"."phas2/subchr/outdir/chr12_1";
-$ref_coll[311] = "$hapmap_ref_root"."hm3_ww/subchr";
-$ref_coll[322] = "$hapmap_ref_root"."finref/fineur/refdan/subchr";
-
-
-my $info_th = 0.1;
-my $freq_th = 0.005;
-my $bg_th = 0.8;
+my $job_bn_th = 1000;
 
 my $sjamem_incr = 0;
-#exit;
-
 my $sec_freq = .2;  ## secure freq distance around 50%
-
-
-
-
-
-
+my $fth_th = 0.15;
 my $popname = "eur";
+
+
 
 ##### help message
 my $usage = "
-Usage : $progname [options] --phase PHASE --outname OUTNAME
+Usage : $progname [options] --refdir STRING --outname OUTNAME
 
 version: $version
 
 
  --help            print this text and exits
 
- --phase INT       impute with HM - Phase INT as ref., no default; 
-                       (mandatory if --refdir is not specified)
-
- --refdir STRING   full path of reference directory, overwrites --phase
+ --refdir STRING   full path of reference directory (mandatory)
 
  --outname STRING  identifier for imputation run (mandatory)
-
-
-
-#### for trio datasets
-
- --triset STRING  for subset of trio datasets (can contain bimfiles)
-
- --spliha INT      split haplotypes with N individuals
-
-
 
 
 ##### alignment to reference:
@@ -238,24 +118,9 @@ version: $version
                                 for checkflip (compare to reference)
 
 
-
- 
-#### post - imputation cleaning
-
-  --info_th FLOAT  threshold for infoscore, default = $info_th
-
-  --freq_th FLOAT  threshold for frequence (cases and controls), default = $freq_th
-
-  --bg_th FLOAT    threshold for frequence (cases and controls), default = $bg_th
-
-
 ### technical options
 
-  --refiex            file containing refinds to exclude
-
   --sjamem_incr INT   increase all memore requests by INT Mb in steps of 1000 (1000 is 1Gb)
-
-  --noclean           do not clean up intermediate files at the very end
 
   --force1            do not exit if same fail, but do this only once
 
@@ -269,14 +134,9 @@ version: $version
 
 ### remarks 
 
-  --phase is mandatory!! use --phase 0 for list of options
+  --refdir is mandatory!!
 
   --outname is mandatory!!
-
-
-
-
- created by Stephan Ripke 2009 at MGH, Boston, MA
 
 ";
 
@@ -285,34 +145,19 @@ version: $version
 use Getopt::Long;
 GetOptions( 
 
-
-    "sjamem_incr=i"=> \$sjamem_incr,
-    "info_th=f"=> \$info_th,
-    "freq_th=f"=> \$freq_th,
-    "bg_th=f"=> \$bg_th,
-    "triset=s"=> \my $trioset_file,
-
     "help"=> \my $help,
-    "serial"=> \my $serial,
-    "sleep=i"=> \my $sleep_sw,
+	"refdir=s"=> \my $refdir_str,
+	"outname=s"=> \my $outname,
 
-
-
-    "outname=s"=> \my $outname,
-    "refdir=s"=> \my $refdir_str,
-    "phase=i"=> \ $phas,
-
+	"popname=s"=> \$popname,
     "sfh=f"=> \$sec_freq,
     "fth=f"=> \$fth_th,
-
-    "spliha_n=i"=> \$spliha_n,
-    "noclean"=> \my $noclean,
+	
+    "sjamem_incr=i"=> \$sjamem_incr,
     "force1"=> \my $force1,
-
-
-    "popname=s"=> \$popname,
-    "refiex=s"=> \my $refiex_file,
-
+    "sleep=i"=> \my $sleep_sw,
+    "serial"=> \my $serial,
+    
     );
 
 
@@ -333,59 +178,18 @@ if ($sleep_sw) {
 my @test_scripts;
 
 
-my $readref_script = "my.readref";         ### my.pipeline_tar
-my $readrefsum_script = "my.readref_sum";  ### my.pipeline_tar
+
 my $buigue_script = "buigue";              ### my.pipeline_tar
 my $checkpos_script = "checkpos6";         ### my.pipeline_tar
 my $checkflip_script = "checkflip4";       ### my.pipeline_tar
-my $chuck_script = "my.chuck2";            ### my.pipeline_tar
-my $preph_script = "my.preph2";             ### my.pipeline_tar
-my $imp2_script = "my.imp2.3";             ### my.pipeline_tar
-my $dos_script = "haps2dos4";              ### my.pipeline_tar
-my $impprob_script = "impprob_to_2dos";    ### my.pipeline_tar
-my $dabg_script = "daner_bg3";             ### my.pipeline_tar
-my $cobg_script = "bcomb_5_p2";            ### my.pipeline_tar
-my $cobg_gw_script = "comb_bg_dir_1";      ### my.pipeline_tar
-my $prune_script = "my.prune";             ### my.pipeline_tar
-my $merge_script = "my.merge";             ### my.pipeline_tar
-my $pseudo_script = "haps2pseudo2";        ### my.pipeline_tar
-my $lift_script = "lift18219";             ### my.pipeline_tar
-my $trisha_script = "trio2shape";          ### my.pipeline_tar
-my $splithap_script = "splithap_1";        ### my.pipeline_tar
-my $cleandir_script = "my.cleandir";       ### my.pipeline_tar
-my $cleanerrandout_script = "my.cleanerrandout";  ### my.pipeline_tar
-my $pdflatex_script = "pdflatex";          ### my.pipeline_tar
-my $mystart_script = "my.start_job";       ### my.pipeline_tar
 my $mutt_script = "mutt";                  ### my.pipeline_tar
-my $du_script = "my.du";                  ### my.pipeline_tar
 my $blue_script = "blueprint";         ### my.pipeline_tar
 
 
 
-push @test_scripts, $readref_script;
-push @test_scripts, $impprob_script;
-push @test_scripts, $readrefsum_script ;
 push @test_scripts, $buigue_script ;
 push @test_scripts, $checkpos_script ;
 push @test_scripts, $checkflip_script ;
-push @test_scripts, $chuck_script ;
-push @test_scripts, $preph_script ;
-push @test_scripts, $imp2_script ;
-push @test_scripts, $dos_script ;
-push @test_scripts, $dabg_script ;
-push @test_scripts, $cobg_script ;
-push @test_scripts, $cobg_gw_script ;
-push @test_scripts, $prune_script ;
-push @test_scripts, $merge_script ;
-push @test_scripts, $pseudo_script ;
-push @test_scripts, $lift_script ;
-push @test_scripts, $trisha_script ;
-push @test_scripts, $pdflatex_script ;
-push @test_scripts, $splithap_script ;
-push @test_scripts, $cleandir_script ;
-push @test_scripts, $cleanerrandout_script ;
-push @test_scripts, $du_script ;
-push @test_scripts,  $mystart_script;
 push @test_scripts,  $blue_script;
 
 #push @test_scripts, $mutt_script ;
@@ -494,68 +298,16 @@ print "------------------------------------\n";
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-my $nomega_sw = 1;
-
-
-
-my $nomega = 0;
-$nomega = 1 if ($nomega_sw);
-
-
-
-
 die $usage if $help;
 
 die $usage unless $outname;
-if ($phas == -1) {
-    unless ($refdir_str) {
+
+unless ($refdir_str) {
 	print "$usage\n";
 	exit;
-    }
-}
-if ($phas == 0) {
-    unless ($refdir_str) {
-	print "$usage\n";
-	exit;
-    }
 }
 
-
-
-#my ($xsnp,$xchr,$xbeg,$xend);
-#($xsnp,$xchr,$xbeg,$xend)= split ',', $xareastr if ($xareastr);
-
-
-if ($phas == 9) {
-  print "please do not use old reference any more\n";
-  exit;
-}
-
-my $p2_txt = "";
-if ($phas == 2 ){
-    $p2_txt = "--phase2";
-}
-
-
-my $refdir = "";
-
-if ($refdir_str) {
-    $refdir = $refdir_str;
-}
-else {
-    $refdir = $ref_coll[$phas];
-}
+$refdir = $refdir_str;
 
 unless (-d $refdir) {
     print "reference directory ($refdir) is not existing\n";
@@ -571,31 +323,6 @@ my $impute_dir = "pi_sub";
 
 
 
-
-
-
-sub fisher_yates_shuffle {
-    my $deck = shift;  # $deck is a reference to an array
-    my $i = @$deck;
-    while ($i--) {
-	my $j = int rand ($i+1);
-	@$deck[$i,$j] = @$deck[$j,$i];
-    }
-}
-
-
-#####################################
-# print array to file
-####################################
-
-sub a2file {
-    my ($file, @lines)=@_;
-    die $! unless open FILE, "> $file";
-    foreach (@lines){
-	print FILE $_;
-    }
-    close FILE;
-}
 
 
 ###################################################
@@ -619,21 +346,6 @@ sub split_line {
     $line =~ s/^[\s]+//g;
     my @cols=  split /\s+/, $line;
 }
-
-##########################################
-# subroutine to split a plink-output-line with references
-##########################################
-
-sub split_line_ref {
-    my ($line)=${$_[0]};
-    chomp($line);
-    $line =~ s/^[\s]+//g;
-    my @cols=  split /\s+/, $line;
-    \@cols;
-}
-
-
-
 
 
 #####################################
@@ -661,49 +373,6 @@ sub a2filenew_app {
 	print FILE "$_\n";
     }
     close FILE;
-}
-
-#####################################
-# subroutine to count lines of a file
-#####################################
-
-sub count_lines {
-    my ($file)=@_;
-    my $lc=0;
-    die "$file: ".$! unless open FILE, "< $file";
-    while (<FILE>){
-	$lc++;
-    }
-    close FILE;
-    $lc;
-}
-
-
-
-#####################################
-# subroutine to re-invoke this script
-#####################################
-
-sub reinvo_b {
-    my ($message, $wt_file)=@_;
-    my $now = localtime time;
-    my $old_cmd = `tail -3 $loloc/impute_dir_info | head -1`;
-
-    my $message_part = $info_txt."\t$message";
-    $message = $info_txt."\t$message\t$now";
-
-    &a2filenew_app("$loloc/impute_dir_info",$message);
-    die "2 times already" if ($old_cmd =~ /$message_part/);
-    chdir "$rootdir" or die "something strange";
-    if ($qloc eq "bsub") {
-	$wt_file =~ s/.*blueprint_joblist_file-//;
-    }
-
-    my $sys_re = "$blue_script --njob $job_bn_th -b \"$command_line\" --wa 4 --di -j --fwt $wt_file --na _if_$outname";
-#    print "$sys_re\n";
-    &mysystem ($sys_re);
-    exit;
-
 }
 
 
@@ -858,8 +527,7 @@ sub send_jobarray {
 
     my $sjarow_part = $sjainfotxt."\t$sjacontent";
     my $sjarow      = $sjainfotxt."\t$sjacontent\t$now";
-#    $message = $info_txt."\t$message\t$now";
-
+	
     &a2filenew_app("$sjainfofile",$sjarow);
 
     if ($old_cmd =~ /$sjarow_part/){
@@ -946,32 +614,6 @@ sub send_jobarray {
 
 
 
-#####################################
-# subroutine to re-invoke this script
-#####################################
-
-sub reinvo_b_week {
-    my ($message, $wt_file)=@_;
-    my $now = localtime time;
-    my $old_cmd = `tail -3 $loloc/impute_dir_info | head -1`;
-
-    my $message_part = $info_txt."\t$message";
-    $message = $info_txt."\t$message\t$now";
-
-    &a2filenew_app("$loloc/impute_dir_info",$message);
-    die "2 times already" if ($old_cmd =~ /$message_part/);
-    chdir "$rootdir" or die "something strange";
-    if ($qloc eq "bsub") {
-	$wt_file =~ s/.*blueprint_joblist_file-//;
-    }
-
-    &mysystem ("$blue_script --week 1 --njob $job_bn_th -b \"$command_line\" --wa 10 --di -j --fwt $wt_file --na _if_$outname");
-    exit;
-
-}
-
-
-
 ##############################################
 ##############################################
 #############  BEGIN
@@ -984,14 +626,6 @@ use File::Path;
 $rootdir = &Cwd::cwd();
 $sjainfotxt = "$rootdir\t$command_line";
 
-
-
-
-
-
-my $archive_dir = "/archive/gwas/scz/archive/$outname";
-
-#exit;
 
 unless (-e $impute_dir){
     print "impute_dir is not existing, create one for you\n";
@@ -1022,99 +656,11 @@ else {
     }
 }
 
-#print $refdir."\n";
-#print $suminfo_s."\n";
-#exit;
 
 
-unless (-e "$refdir/$suminfo_n"){
-    print "ERROR: $refdir/$suminfo_n not existing\n";
-
-#    chdir ($refdir);
-#    &mysystem ("wc -l *.info_pos > $suminfo_n");
-#    chdir ($rootdir);
-}
-
-
-unless (-e "$refdir/$suminfo_r"){
-    print "ERROR: $refdir/$suminfo_r not existing\n";
-    die;
-#    chdir ($refdir);
-#    &mysystem ("ls sc_*.bgl > $suminfo_r");
-#    chdir ($rootdir);
-}
-
-#my @refallfiles;
-
-#    opendir(DIR, "$refdir") || die "can't opendir .: $!";
-#    @refallfiles = readdir(DIR);
-#    closedir DIR;
-#}
-my $cc=0;
-
-
-
-my %refiex;
-if ($refiex_file) {
-    print "read $refiex_file\n";
-    die $!." <$refiex_file>" unless open IN, "< $refiex_file";
-    while (my $line = <IN>){
-	chomp($line);
-	$refiex{$line} = 1;
-	print "$line\n";
-    }
-    close IN;
-
-}
-
-
-
-
-
-
-
-my @reffiles;
-print "read $refdir/$suminfo_n....\n";
-die $!." <$refdir/$suminfo_n>" unless open IN, "< $refdir/$suminfo_n";
-while (my $line = <IN>){
-    my @cells = &split_line($line);
-    die "problem with $refdir/$suminfo_n" if (@cells < 2);
-    my $bgl_file = $cells[1];
-    $bgl_file =~ s/.info_pos$//;
-
-    if ($refiex_file) {
-
-	my $refind = $bgl_file;
-	if ($refind =~ /chr[0-9]*_[0-9]*_[0-9]*/){
-	    $refind =~ s/.*(chr[0-9]*_[0-9]*_[0-9]*).*/\1/;
-	}
-	else {
-	    $refind =~ s/.*(chr[0-9]*_[0-9]*).*/\1/;
-	}
-
-	if (exists $refiex{$refind}){
-	    print "exclude: $bgl_file\n" ;
-	    next;
-	}
-
-    }
-
-    next if ($bgl_file eq "total");
-
-#    print "$bgl_file\n";
-    push @reffiles, $bgl_file;
-    $cc++;
-}
-close IN;
-#print "finished reading $refdir/$suminfo_n\n";
-die "reference directory <$refdir> empty (no sc.*bgl)" if (@reffiles == 0);
-
-
-
-#exit;
-#print "sleep\n";
-#sleep(5);
-
+#####################################
+## file management
+###################################
 
 my @files = ();
 opendir(DIR, ".") || die "can't opendir .: $!";
@@ -1210,6 +756,7 @@ $iname = $bim_files[0] if ($iname eq "");
 $iname =~ s/.bim$//;
 $iname =~ s/qc2report_//;
 
+
 #####################################
 # prepare pi_subdir
 #####################################
@@ -1225,43 +772,6 @@ unless (-e "$rootdir/puting_done") {
 	&mysystem("ln -s $rootdir/$bfile.fam .") unless (-e "$bfile.fam");
     }
 }
-
-
-################################################
-### set info text
-####################################################
-
-
-$info_txt = "command:\t\"$command_line\"\tdir:\t$rootdir";
-
-
-
-#####################################################
-## check readref
-########################################################
-
-
-my $readref_sw = 1;
-
-foreach my $chrloc(1..22) {
-    my $reffi ="$refdir/$suminfo_s.$chrloc.gz";
-    unless (-e $reffi) {
-	print "Warning: $reffi is not existing, it's ok if using older reference\n";
-	$readref_sw = 0;
-	last;
-    }
-}
-
-if ($readref_sw == 1) {
-    print "efficient reference alignment switched on\n";
-}
-else {
-    print "efficient reference alignment switched off, please check refdir, will continue in 3 sec...\n";
-    sleep(3);
-}
-#print "exit;\n";
-#exit;
-
 
 
 ###################################
@@ -1307,110 +817,6 @@ my $buigue_fini = 0;
     }
     }
 
-
-###################################
-### READREF
-###################################
-
-
-
-my @readref_arr = ();
-my $readref_fini = 0;
-
-if ($readref_sw == 1) {
-    unless (-e "$rootdir/readref_done") {
-	foreach (@bim_files) {
-	    my $bimfile = $_;
-	    my $bfile = $bimfile;
-	    $bfile =~ s/.bim$//;
-	    my $accfli ="$bfile".".hg19.bim";
-
-	    
-	    foreach my $chrloc(1..22) {
-		my $bimref ="$accfli".".ref.chr$chrloc";
-		my $reffi ="$refdir/$suminfo_s.$chrloc.gz";
-		unless (exists $bimref_array{$bimref}) {
-		    push @readref_arr, "$readref_script --chr $chrloc --ref $reffi $accfli" ;#
-#		print "$readref_script --chr $chrloc --ref $reffi $bimfile\n" ;#
-		}
-		else {
-		    $readref_fini;
-		}
-	    }
-	}
-#    exit;
-	if (@readref_arr > 0) {
-	    
-	    $sjadir = $impute_dir;
-	    $sjaname = "readref";
-	    $sjatime = 2;
-#	    $sjatime = 4 if ($readref_fini > 0);
-	    
-	    $sjamem = 3000;
-	    $sjamaxpar = 100;
-	    @sjaarray = @readref_arr;
-	    
-
-
-	    &send_jobarray;
-	}
-	else {
-	    &mysystem ("touch $rootdir/readref_done");
-	    print "readref done\n";
-	}
-    }
-
-
-###################################
-### sum readref
-###################################
-
-    unless (-e "$rootdir/readrefsum_done") {
-
-	my @readrefsum_arr = ();
-	my $readrefsum_fini = 0;
-	
-	unless (-e "$rootdir/readrefsum_done") {
-	    foreach (@bim_files) {
-		my $bimfile = $_;
-		my $bfile = $bimfile;
-		$bfile =~ s/.bim$//;
-		my $accfli ="$bfile".".hg19.bim";
-		my $bimref_done ="$accfli".".ref.sum.done";
-#		print "looking for $bimref_done\n";
-		unless (exists $bimref_array{$bimref_done}) {
-		    push @readrefsum_arr, "$readrefsum_script $accfli" ;#
-		}
-		else {
-		    $readrefsum_fini++;
-		}
-	    }
-	    
-	    if (@readrefsum_arr > 0) {
-
-#		print "stragne\n";
-#		exit;
-		
-		$sjadir = $impute_dir;
-		$sjaname = "reresum";
-		$sjatime = 2;
-#		$sjatime = 4 if ($readrefsum_fini > 0);
-
-		$sjamem = 1000;
-		@sjaarray = @readrefsum_arr;
-		
-		&send_jobarray;
-	    }
-	    else {
-		&mysystem ("touch $rootdir/readrefsum_done");
-		print "readrefsum done\n";
-	    }
-	}
-    }
-}
-
-
-#exit;
 
 
 
