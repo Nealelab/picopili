@@ -84,12 +84,15 @@ arg_align.add_argument('--fth',
                        help='allowed frequency difference compared to the reference',
                        required=False,
                        default=0.15)
-arg_align.add_argument('--refdir', 
+arg_align.add_argument('--ref-info', 
                        type=str,
                        metavar='PATH',
-                        help='Ricopili reference directory. Used to get allele frequencies during alignment',
+                        help='gzipped file of reference information, with columns ' + \
+                                '"id","position","a0","a1", and $popname, where $popname' + \
+                                'contains the allele frequency for the "a1" allele. Can ' + \
+                                'include "###" in place of chromosome number (as in default).',
                         required=False,
-                        default='/psych/genetics_data/ripke/1000Genomes_reference/1KG_Oct14/1000GP_Phase3_sr/subchr/')
+                        default='/humgen/atgu1/fs03/shared_resources/1kG/shapeit/1000GP_Phase3_chr###.legend.gz')
 arg_shape.add_argument('--window',
                         type=float,
                         metavar='FLOAT',
@@ -190,20 +193,30 @@ arg_imp.add_argument('--imp-seed',
 parserref = argparse.ArgumentParser(add_help=False)
 arg_ref = parserref.add_argument_group('Imputation Reference')
 
-# TODO: fix this
-arg_ref.add_argument('--refstem',
-                        type=str,
-                        metavar='FILESTEM',
-                        help='Imputation reference. CURRENTLY UNUSED, hardcoded to shared 1KG Phase 3',
-                        required=False)
-arg_ref.add_argument('--map-dir', 
-                        type=str,
-                        metavar='PATH',
-                        help='Directory with genomic maps, per chromosome. ' + \
-                             'Expected filenames are ./genetic_map_chr${i}_combined_b37.txt',
-                        required=False,
-                        default='/humgen/atgu1/fs03/shared_resources/1kG/shapeit/genetic_map')
-
+arg_ref.add_argument('--ref-maps', 
+                     type=str,
+                     metavar='FILENAME',
+                     help='Genomic maps. To specify files split by chromosome, use "###" to indicate chromosome number (see default).',
+                     required=False,
+                     default='/humgen/atgu1/fs03/shared_resources/1kG/shapeit/genetic_map/genetic_map_chr###_combined_b37.txt')
+arg_ref.add_argument('--ref-haps',
+                     type=str,
+                     metavar='FILENAME',
+                     help='Imputation reference .hap.gz file for shapeit and impute2. Can use "###" to indicate chromosome number (see default).',
+                     required=False,
+                     default='/humgen/atgu1/fs03/shared_resources/1kG/shapeit/1000GP_Phase3_chr###.hap.gz')
+arg_ref.add_argument('--ref-legs',
+                     type=str,
+                     metavar='FILENAME',
+                     help='Imputation reference .legend.gz file for shapeit and impute2. Can use "###" to indicate chromosome number (see default).',
+                     required=False,
+                     default='/humgen/atgu1/fs03/shared_resources/1kG/shapeit/1000GP_Phase3_chr###.legend.gz')
+arg_ref.add_argument('--ref-samps',
+                     type=str,
+                     metavar='FILENAME',
+                     help='Imputation reference .sample file for shapeit and impute2. Can use "###" to indicate chromosome number.',
+                     required=False,
+                     default='/humgen/atgu1/fs03/shared_resources/1kG/shapeit/1000GP_Phase3.sample')
 
 ############
 #
