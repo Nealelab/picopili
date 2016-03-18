@@ -140,6 +140,7 @@ print '############'
 print '\n...Aligning data to reference...'
 ######################
 
+# TODO: consider restructure to avoid --serial here
 prep_log = open(str(outdot) + '.prep.log', 'w')
 prep_call = [str(impprep_ex),
              '--serial',
