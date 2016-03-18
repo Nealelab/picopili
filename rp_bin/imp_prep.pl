@@ -13,7 +13,7 @@ use strict;
 # - remove old version history
 # - remove code for fam file prep/chunking/refind and beyond
 # - remove commented out blocks, unused subroutines
-# - remove --phase (--refdir now required)
+# - remove --phase (now using --reffiles)
 # - remove unused arguments
 # - remove non-"readref" alignment
 # - remove checks for unused scripts
@@ -90,14 +90,17 @@ my $popname = "eur";
 
 ##### help message
 my $usage = "
-Usage : $progname [options] --refdir STRING --outname OUTNAME
+Usage : $progname [options] --bim FILE --reffiles STRING --outname OUTNAME
 
 version: $version
 
 
  --help            print this text and exits
+ 
+ --bim FILE        bim file of dataset to prepare (in current directory)
 
- --refdir STRING   full path of reference directory (mandatory)
+ --reffiles STRING   full path of reference directory (mandatory)
+                            can use \"###\" as chr placeholder 
 
  --outname STRING  identifier for imputation run (mandatory)
 
@@ -106,10 +109,11 @@ version: $version
 
   --popname STRING    important for freq-checks, either 
                            eur (default), 
-                           asn (asian), 
+                           eas (east asian),
+						   sas (south asian),
                            amr (america), 
                            afr (africa), 
-                           asw (african american)
+                           all (combined populations)
 
   --sfh FLOAT         secure frequency around 50% (default: $sec_freq)
                                 for checkflip (compare to reference),
@@ -134,9 +138,7 @@ version: $version
 
 ### remarks 
 
-  --refdir is mandatory!!
-
-  --outname is mandatory!!
+  --bim, --reffiles, and --outname are mandatory!!
 
 ";
 
@@ -146,7 +148,8 @@ use Getopt::Long;
 GetOptions( 
 
     "help"=> \my $help,
-	"refdir=s"=> \my $refdir_str,
+	"bim=s"=> \my $bim,
+	"reffiles=s"=> \my $reffile_struct,
 	"outname=s"=> \my $outname,
 
 	"popname=s"=> \$popname,
@@ -160,7 +163,7 @@ GetOptions(
     
     );
 
-
+my $popname_uc = uc($popname);
 
 
 
@@ -177,13 +180,13 @@ if ($sleep_sw) {
 ##############################################################
 my @test_scripts;
 
-my $readref_script = "my.readref";         ### my.pipeline_tar
+my $readref_script = "readref_pico.pl";    ### my.pipeline_tar
 my $readrefsum_script = "my.readref_sum";  ### my.pipeline_tar
 my $buigue_script = "buigue";              ### my.pipeline_tar
 my $checkpos_script = "checkpos6";         ### my.pipeline_tar
 my $checkflip_script = "checkflip4";       ### my.pipeline_tar
 my $mutt_script = "mutt";                  ### my.pipeline_tar
-my $blue_script = "blueprint";         ### my.pipeline_tar
+my $blue_script = "blueprint";             ### my.pipeline_tar
 
 push @test_scripts, $readref_script;
 push @test_scripts, $readrefsum_script;
@@ -300,20 +303,25 @@ print "------------------------------------\n";
 
 die $usage if $help;
 
+die $usage unless $bim;
+die $usage unless $reffile_struct;
 die $usage unless $outname;
 
-unless ($refdir_str) {
-	print "$usage\n";
-	exit;
+
+#########
+## check files exist for readref
+#########
+foreach my $chrloc(1..22) {
+    my $reffi = $reffile_struct;
+	$reffi =~ s/###/$chrloc/g;
+    unless (-e $reffi) {
+		die "Error: $reffi not found\n";
+    }
 }
 
-$refdir = $refdir_str;
-
-unless (-d $refdir) {
-    print "reference directory ($refdir) is not existing\n";
-    exit;
+unless (-e $bim) {
+	die "Error: $bim not found\n";
 }
-
 
 my $impute_dir = "pi_sub";
 
@@ -636,28 +644,6 @@ unless (-e $impute_dir){
 }
 
 
-
-#####################################
-## if new frequency file is existing
-###################################
-if (-e "$refdir/sumfrq.$popname") {
-    $suminfo_s = "sumfrq.$popname";
-}
-else {
-
-    my $popname_uc = uc($popname);
-    if (-e "$refdir/sumfrq.$popname_uc") {
-	$suminfo_s = "sumfrq.$popname_uc";
-    }
-    else {
-	print "$refdir/sumfrq.$popname_uc in refdir is not existing!!!\n";
-	die;
-#	sleep(10);
-    }
-}
-
-
-
 #####################################
 ## file management
 ###################################
@@ -677,7 +663,7 @@ unless (-e "$rootdir/puting_done") {
 
 
 ### read bim-files
-my @bim_files = grep {/bim$/} @files;
+my @bim_files = ($bim);
 #print "@bim_files\n";
 
 foreach (@bim_files) {
@@ -774,18 +760,6 @@ unless (-e "$rootdir/puting_done") {
 }
 
 
-#####################################################
-## check readref
-########################################################
-
-foreach my $chrloc(1..22) {
-    my $reffi ="$refdir/$suminfo_s.$chrloc.gz";
-    unless (-e $reffi) {
-		die "Error: $reffi not found\n";
-    }
-}
-
-
 ###################################
 ### GUESS BUILD
 ###################################
@@ -845,18 +819,19 @@ unless (-e "$rootdir/readref_done") {
 	    my $bfile = $bimfile;
 	    $bfile =~ s/.bim$//;
 	    my $accfli ="$bfile".".hg19.bim";
-
+	    
 	    
 	    foreach my $chrloc(1..22) {
-		my $bimref ="$accfli".".ref.chr$chrloc";
-		my $reffi ="$refdir/$suminfo_s.$chrloc.gz";
-		unless (exists $bimref_array{$bimref}) {
-		    push @readref_arr, "$readref_script --chr $chrloc --ref $reffi $accfli" ;#
-#		print "$readref_script --chr $chrloc --ref $reffi $bimfile\n" ;#
-		}
-		else {
-		    $readref_fini;
-		}
+			my $bimref ="$accfli".".ref.chr$chrloc";
+		    my $reffi = $reffile_struct;
+			$reffi =~ s/###/$chrloc/g;
+			unless (exists $bimref_array{$bimref}) {
+				push @readref_arr, "$readref_script --ref $reffi --refheads id,NULL,position,a1,a0,$popname_uc --chr $chrloc $accfli" ;#
+				#		print "$readref_script --chr $chrloc --ref $reffi $bimfile\n" ;#
+			}
+			else {
+				$readref_fini++;
+			}
 	    }
 	}
 #    exit;
@@ -865,7 +840,7 @@ unless (-e "$rootdir/readref_done") {
 	    $sjadir = $impute_dir;
 	    $sjaname = "readref";
 	    $sjatime = 2;
-#	    $sjatime = 4 if ($readref_fini > 0);
+	    $sjatime = 4 if ($readref_fini > 0);
 	    
 	    $sjamem = 3000;
 	    $sjamaxpar = 100;
@@ -1010,7 +985,7 @@ unless (-e "$rootdir/flipping_done") {
 	    my $bfile = $_;
 	    $bfile =~ s/.bim$//;
 	    my $accfli ="$bfile".".hg19.ch.fl.bim";
-	    my $locref = $bfile.".bim.ref.sum";
+	    my $locref = $bfile.".hg19.bim.ref.sum";
 
 	    if (-e $locref) {
 			print "locref $locref is existing! safes some time\n";
