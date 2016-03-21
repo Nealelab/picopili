@@ -44,7 +44,7 @@ import argparse
 # import random
 # import warnings
 from args_impute import *
-from py_helpers import unbuffer_stdout, link, read_conf, test_exec
+from py_helpers import unbuffer_stdout, link, read_conf #, test_exec
 # file_len, read_conf, find_from_path, link, gz_confirm
 unbuffer_stdout()
 
@@ -66,9 +66,6 @@ wd = os.getcwd()
 pi_dir = str(wd)+'/pi_sub'
 rp_bin = os.path.dirname(os.path.realpath(__file__))
 impprep_ex = str(rp_bin) + '/imp_prep.pl'
-# TODO: allow options
-refstem = '/humgen/atgu1/fs03/shared_resources/1kG/shapeit/1000GP_Phase3'
-
 
 
 ### print settings in use
@@ -82,17 +79,19 @@ print '\nReference Alignment:'
 print '--popname '+str(args.popname)
 print '--sfh '+str(args.sfh)
 print '--fth '+str(args.fth)
-print '--refdir '+str(args.refdir)
+print '--ref-info '+str(args.ref_info)
 
 print '\nPrephasing:'
 print '--window '+str(args.window)
 if args.no_duohmm:
     print '--no-duohmm '
-print '--refstem '+str(refstem) # TODO: change hardcoding
 print '--shape-seed '+str(args.shape_seed)
 
-print '\nReference Files:'
-print '--map-dir '+str(args.map_dir)
+print '\nImputation Reference Files:'
+print '--ref-maps '+str(args.ref_maps)
+print '--ref-haps '+str(args.ref_haps)
+print '--ref-legs '+str(args.ref_legs)
+print '--ref-samps '+str(args.ref_samps)
 
 print '\nJob Submission:'
 print '--sleep '+str(args.sleep)
@@ -141,12 +140,17 @@ print '############'
 print '\n...Aligning data to reference...'
 ######################
 
+# TODO: consider restructure to avoid --serial here
 prep_log = open(str(outdot) + '.prep.log', 'w')
 prep_call = [str(impprep_ex),
              '--serial',
-             '--refdir', str(args.refdir),
-             '--popname', str(args.popname),
-             '--out', str(outdot)]
+             '--sleep',str(args.sleep),
+             '--bim',str(args.bfile)+'.bim',
+             '--reffiles',str(args.ref_info),
+             '--popname',str(args.popname),
+             '--sfh',str(args.sfh),
+             '--fth',str(args.fth),
+             '--outname',str(outdot)]
 
 print ' '.join(prep_call) + '\n'
 subprocess.check_call(prep_call, 
@@ -286,10 +290,15 @@ else:
 # TODO: handle empty chromosomes
 chrstem = str(args.bfile)+'.hg19.ch.fl.chr\$tasknum'
 outstem = str(outdot)+'.chr\$tasknum'
+map_arg = str(args.ref_maps).replace('###','\$tasknum')
+hap_arg = str(args.ref_haps).replace('###','\$tasknum')
+leg_arg = str(args.ref_legs).replace('###','\$tasknum')
+samp_arg = str(args.ref_samps).replace('###','\$tasknum')
+
 shape_call = [shapeit_ex,
               '--input-bed', chrstem+'.bed', chrstem+'.bim', chrstem+'.fam',
-              '--input-map', args.map_dir+'/genetic_map_chr\$tasknum_combined_b37.txt',
-              '--input-ref', refstem+'_chr\$tasknum.hap.gz', refstem+'_chr\$tasknum.legend.gz', refstem+'.sample',
+              '--input-map', map_arg,
+              '--input-ref', hap_arg, leg_arg, samp_arg,
               '--window', str(args.window),
               str(duo_txt),
               '--thread', str(args.threads),
@@ -298,6 +307,7 @@ shape_call = [shapeit_ex,
               '--output-log', outstem+'.shape.log']
 
 print ' '.join(shape_call)+'\n'
+
 
 uger_call = ' '.join(['qsub',
                       '-q','long',

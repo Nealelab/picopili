@@ -57,7 +57,7 @@ print '\nReference Alignment:'
 print '--popname '+str(args.popname)
 print '--sfh '+str(args.sfh)
 print '--fth '+str(args.fth)
-print '--refdir '+str(args.refdir)
+print '--ref-info '+str(args.ref_info)
 
 
 print '\nShapeit arguments:'
@@ -85,9 +85,11 @@ print '--snp_size '+str(args.snp_size)
 print '--chr_info_file '+str(args.chr_info_file)
 
 
-print '\nImputation reference:'
-print '--refstem '+str(args.refstem)
-print '--map-dir '+str(args.map_dir)
+print '\nImputation Reference Files:'
+print '--ref-maps '+str(args.ref_maps)
+print '--ref-haps '+str(args.ref_haps)
+print '--ref-legs '+str(args.ref_legs)
+print '--ref-samps '+str(args.ref_samps)
 
 
 print '\nBest-guess genotype calling:'

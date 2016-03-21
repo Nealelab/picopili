@@ -42,10 +42,6 @@ parser = argparse.ArgumentParser(prog='imp2_rel.py',
                     
 args, extra_args = parser.parse_known_args()
 
-# TODO: allow options
-args.refstem = '/humgen/atgu1/fs03/shared_resources/1kG/shapeit/1000GP_Phase3'
-
-
 
 # get useful modified args
 if args.addout is not None and str(args.addout) != '':
@@ -74,9 +70,11 @@ print '--buffer '+str(args.buffer)
 if args.imp_seed is not None and str(args.imp_seed) != '' and int(args.imp_seed) > 0:
     print '--seed '+str(args.imp_seed)
 
-print '\nImputation reference:'
-print '--refstem '+str(args.refstem)
-print '--map-dir '+str(args.map_dir)
+print '\nImputation reference files:'
+print '--ref-maps '+str(args.ref_maps)
+print '--ref-haps '+str(args.ref_haps)
+print '--ref-legs '+str(args.ref_legs)
+print '--ref-samps '+str(args.ref_samps)
 
 print '\nGenomic chunks:'
 print '--Mb-size '+str(args.Mb_size)
@@ -238,8 +236,8 @@ if bad_chr:
                "chr_list": ' '.join(bad_chr),
                "shape_ex": str(shapeit_ex),
                "bed": '--input-bed '+str(chrstem)+'.bed '+str(chrstem)+'.bim '+str(chrstem)+'.fam',
-               "map": '--input-map '+str(args.map_dir)+'/genetic_map_chr${chrom}_combined_b37.txt',
-               "ref": '--input-ref '+str(args.refstem)+'_chr${chrom}.hap.gz '+str(args.refstem)+'_chr${chrom}.legend.gz '+str(args.refstem)+'.sample',
+               "map": '--input-map '+str(args.ref_maps).replace('###','${chrom}'),
+               "ref": '--input-ref '+str(args.ref_haps).replace('###','${chrom}')+' '+str(args.ref_legs).replace('###','${chrom}')+' '+str(args.ref_samps).replace('###','${chrom}'),
                "window": '--window '+str(extra_args.window),
                "duo_txt": str(duo_txt),
                "thread_str": '--thread '+str(extra_args.threads),
@@ -382,9 +380,9 @@ jobdict = {"jname": 'imp.chunks.'+str(outdot),
            "cfile": str(outdot)+'.chunks.txt',
            "impute_ex": str(impute_ex),
            "in_haps": str(shape_dir)+'/'+str(outdot)+'.chr${cchr}.phased.haps',
-           "ref_haps": str(args.refstem)+'_chr${cchr}.hap.gz',
-           "ref_leg": str(args.refstem)+'_chr${cchr}.legend.gz',
-           "map": str(args.map_dir)+'/genetic_map_chr${cchr}_combined_b37.txt',
+           "ref_haps": str(args.ref_haps).replace('###','${cchr}'),
+           "ref_leg": str(args.ref_legs).replace('###','${cchr}'),
+           "map": str(args.ref_maps).replace('###','${cchr}'),
            "Ne": str(args.Ne),
            "buffer": str(args.buffer),
            "out": str(outdot)+'.imp.${cname}',
