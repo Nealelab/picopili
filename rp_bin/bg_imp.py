@@ -57,11 +57,15 @@ if args.hard_call_th is None:
 else:
     hard_call_th = float(args.hard_call_th)
     if args.bg_th > 1.0-hard_call_th:
-        if args.bg_th == .8:
+        if args.bg_th == 0.8:
             warn("Default value of --bg-th (0.8) overridden by less strict value for --hard-call-th (%f)." % hard_call_th)
         else:
             hard_call_th = 1.0 - float(args.bg_th)
             warn("Both --hard-call-th and --bg_th specified. Using stricter value (==> hard-call-th %f)" % hard_call_th)
+    elif args.bg_th < 1.0-hard_call_th:
+        if args.bg_th != 0.8:
+	    warn("Both --hard-call-th and --bg_th specified. Using stricter value (==> hard-call-th %f)" % hard_call_th)
+
 
 assert float(hard_call_th) > 0
 assert float(hard_call_th) < 1
