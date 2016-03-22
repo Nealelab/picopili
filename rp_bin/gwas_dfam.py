@@ -75,6 +75,9 @@ print '--out '+str(args.out)
 print '--addout '+str(args.addout)
 if args.no_cleanup:
     print '--no-cleanup '+str(args.no_cleanup)
+    
+if args.pheno is not None and str(args.pheno) != "None":
+    print '--pheno '+str(args.pheno)
 
 print '\nAnalysis Subset:'
 if args.keep is not None:
@@ -119,6 +122,8 @@ if args.extract is not None:
     assert os.path.isfile(args.extract), "SNP inclusion file does not exist (%r)" % args.extract
 if args.exclude is not None:
     assert os.path.isfile(args.exclude), "SNP exclusion file does not exist (%r)" % args.exclude
+if args.pheno is not None:
+    assert os.path.isfile(args.pheno), "Phenotype file does not exist (%r)" % args.pheno
 
 
 print '\n'
@@ -131,6 +136,11 @@ print '\n...Running GWAS...'
 #############
 
 # setup text for keep/remove, extract/exclude
+if args.pheno is not None and str(args.pheno) != "None":
+    pheno_txt = ['--pheno', str(args.pheno)]
+else:
+    pheno_txt = ['']
+
 if args.keep is not None:
     keep_txt = ['--keep', str(args.keep)]
 elif args.remove is not None:
@@ -156,6 +166,7 @@ dfam_call = [str(args.rplink_ex)] + \
                 ['--bfile', str(args.bfile)] + \
                 keep_txt + \
                 extract_txt + \
+                pheno_txt + \
                 ['--dfam', '--prune'] + \
                 ['--silent', '--memory', str(2000)] + \
                 ['--out', outstem]

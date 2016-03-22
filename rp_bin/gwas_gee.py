@@ -90,7 +90,7 @@ if (args.extract is not None) and (args.exclude is not None):
     raise ValueError('Specifying both \'--extract\' and \'--exclude\' is redundant. Please verify.')
 
 # get R if not provided
-if args.r_ex == None or args.rscript_ex == "None":
+if args.r_ex == None or args.r_ex == "None":
     args.r_ex = find_from_path('R', 'R')
 
 ### print settings in use
@@ -105,6 +105,8 @@ print '\nCovariates:'
 print '--covar '+str(args.covar)
 if args.covar is not None:
     print ' '.join(cov_num_txt)
+if args.pheno is not None and str(args.pheno) != "None":
+    print '--pheno '+str(args.pheno)
 
 print '\nAnalysis Subset:'
 if args.keep is not None:
@@ -167,7 +169,8 @@ if args.extract is not None:
     assert os.path.isfile(args.extract), "SNP inclusion file does not exist (%r)" % args.extract
 if args.exclude is not None:
     assert os.path.isfile(args.exclude), "SNP exclusion file does not exist (%r)" % args.exclude
-
+if args.pheno is not None:
+    assert os.path.isfile(args.pheno), "Phenotype file does not exist (%r)" % args.pheno
 
 # warn if data is large
 if args.extract is not None:
@@ -206,6 +209,11 @@ if args.covar is not None:
 else:
     covar_txt = ['']
 
+if args.pheno is not None and str(args.pheno) != "None":
+    pheno_txt = ['--pheno', str(args.pheno)]
+else:
+    pheno_txt = ['']
+
 if args.keep is not None:
     keep_txt = ['--keep', str(args.keep)]
 elif args.remove is not None:
@@ -233,6 +241,7 @@ gee_call = [str(args.rplink_ex)] + \
                 keep_txt + \
                 extract_txt + \
                 covar_txt + \
+                pheno_txt + \
                 ['--family'] + \
                 ['--R', str(R_gee)] + \
                 ['--R-port', str(rport)] + \
