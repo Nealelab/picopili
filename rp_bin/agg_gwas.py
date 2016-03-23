@@ -284,6 +284,7 @@ if args.info_file is not None:
         ngt_info[str(snp)] = gt
 
     info_in.close()
+    print 'info loaded'
 
 
 ### create output files
@@ -329,11 +330,9 @@ for ch in chnames:
         nu = n_u_info.pop(str(snp))
         
         # info_info will be empty if no file specified
-        if str(snp) in info_info.keys():
-            info = info_info[str(snp)]
-            ngt = ngt_info[str(snp)]
-            info_info.pop(str(snp))
-            ngt_info.pop(str(snp))
+        if str(snp) in info_info:
+            info = info_info.pop(str(snp))
+            ngt = ngt_info.pop(str(snp))
         else:
             info = 'NA'
             ngt = 'NA'
@@ -341,15 +340,15 @@ for ch in chnames:
  
         # filter on meta info
         # note: do here so SNPs popped off all relevant info dicts
-        if float(frqa) < args.maf_a_th:
+        if float(frqa) < float(args.maf_a_th):
             continue
-        elif float(frqa) > 1.0 - args.maf_a_th:
+        elif float(frqa) > 1.0 - float(args.maf_a_th):
             continue
-        elif float(frqu) > args.maf_u_th:
+        elif float(frqu) < float(args.maf_u_th):
             continue
-        elif float(frqu) > 1.0 - args.maf_u_th:
+        elif float(frqu) > 1.0 - float(args.maf_u_th):
             continue
-        elif str(info) != 'NA' and float(info) < args.info_th:
+        elif str(info) != 'NA' and float(info) < float(args.info_th):
             continue
             
  
