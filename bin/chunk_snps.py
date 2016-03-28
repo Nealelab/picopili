@@ -68,7 +68,8 @@ else:
 # retrieve default chromosome info if needed
 if args.chr_info_file == 'hg19_ucsc_chrinfo.txt':
     rp_bin = os.path.dirname(os.path.realpath(__file__))
-    chrinfo = str(rp_bin)+'/lib/hg19_ucsc_chrinfo.txt'
+    rp_dir = os.path.dirname(rp_bin)
+    chrinfo = str(rp_dir)+'/lib/hg19_ucsc_chrinfo.txt'
 else:
     chrinfo = args.chr_info_file
 

@@ -94,7 +94,7 @@ plinkx = configs['p2loc']+"plink"
 # get directory containing current script
 # (hack to help find ld region text file)
 rp_bin = os.path.dirname(os.path.realpath(__file__))
-
+rp_dir = os.path.dirname(rp_bin)
 
 #############
 print '\n...Checking dependencies...'
@@ -105,15 +105,15 @@ print '\n...Checking dependencies...'
 test_exec(plinkx, 'Plink')
 
 # ld region file, if needed
-# try in rp_bin/lib/ in addition to cwd
+# try in rp_dir/lib/ in addition to cwd
 if args.extra_ld_regions != None and args.extra_ld_regions != "None":
     if os.path.isfile(args.extra_ld_regions):
         print "LD region file found: %s" %  args.extra_ld_regions
-    elif os.path.isfile(str(rp_bin + '/lib/' + args.extra_ld_regions)):
-        args.extra_ld_regions = str(rp_bin + '/lib/' + args.extra_ld_regions)
+    elif os.path.isfile(str(rp_dir + '/lib/' + args.extra_ld_regions)):
+        args.extra_ld_regions = str(rp_dir + '/lib/' + args.extra_ld_regions)
         print "LD region file found: %s" %  args.extra_ld_regions
     else:
-        raise IOError("LD region file %s not found in current directory or %s." % (args.extra_ld_regions, str(rp_bin + '/lib/')))
+        raise IOError("LD region file %s not found in current directory or %s." % (args.extra_ld_regions, str(rp_dir + '/lib/')))
 
 
 
