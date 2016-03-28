@@ -1,8 +1,8 @@
-rp_bin/py_helpers.pyc
-rp_bin/args_pca.pyc
-rp_bin/args_ped.pyc
-rp_bin/args_qc.pyc
-rp_bin/args_gwas.pyc
-rp_bin/args_chunks.pyc
-rp_bin/args_impute.pyc
+bin/py_helpers.pyc
+bin/args_pca.pyc
+bin/args_ped.pyc
+bin/args_qc.pyc
+bin/args_gwas.pyc
+bin/args_chunks.pyc
+bin/args_impute.pyc
 

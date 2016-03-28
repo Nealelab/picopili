@@ -1,0 +1,1 @@
+./bin/gwas_rel.py
