@@ -2,7 +2,7 @@
 
 ### Purpose
 
-* Provide a pipeline for GWAS of family data with arbitrary pedigrees, from sib-pairs to extended pedigrees, to work in parallel to [ricopili](https://github.com/Nealelab/ricopili) for case/control and trio dataa
+* Provide a pipeline for GWAS of family data with arbitrary pedigrees, from sib-pairs to extended pedigrees, to work in parallel to [ricopili](https://github.com/Nealelab/ricopili) for case/control and trio data
 
 ### Primary Functions
 
