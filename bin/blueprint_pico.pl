@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 use strict;
 
 my $version = "3.1.0";
@@ -51,6 +51,9 @@ if ($qloc eq "qsub_b"){
 my $bsub =1 if ($qloc eq "bsub");
 my $msub =1 if ($qloc eq "msub");
 my $slurm =1 if ($qloc eq "slurm");
+
+
+my $startjob_script ="blue_start_job.pl";
 
 
 ##########################################
@@ -482,7 +485,7 @@ if ($job){
 #	    my $pretext = "";
 	    my $pretext = "$sla_deadline $wallstr -q $time $Rusage";
 
-	    my $sys = 'bsub -P unspecified--broadfolk '.$pretext.' -J "'.$NOJ.'[1-'.$job_bn_th.']" -o "errandout/'.$NOJ.'..%J.%I"  my.start_job --n n\$LSB_JOBINDEX  --jobfile '.$jobarray;
+	    my $sys = 'bsub -P unspecified--broadfolk '.$pretext.' -J "'.$NOJ.'[1-'.$job_bn_th.']" -o "errandout/'.$NOJ.'..%J.%I"  '.$startjob_script.' --n n\$LSB_JOBINDEX  --jobfile '.$jobarray;
 
 	    if ($maxpar > 0) {	  
 
@@ -493,7 +496,7 @@ if ($job){
 
 
 		  
-		$sys = 'bsub -P unspecified--broadfolk '.$pretext.' -J "'.$NOJ.'[1-'.$job_bn_th.']%'.$maxpar.'" -o "errandout/'.$NOJ.'..%J.%I"  my.start_job --n n\$LSB_JOBINDEX  --jobfile '.$jobarray;
+		$sys = 'bsub -P unspecified--broadfolk '.$pretext.' -J "'.$NOJ.'[1-'.$job_bn_th.']%'.$maxpar.'" -o "errandout/'.$NOJ.'..%J.%I"  '.$startjob_script.' --n n\$LSB_JOBINDEX  --jobfile '.$jobarray;
 		print "$sys\n";
 	    }
 #	    exit;
@@ -709,7 +712,7 @@ if ($job){
 
 #	    my $pretext = "";
 	    my $pretext = "$sla_deadline $wallstr -q $time $Rusage";
-	    my $sys = 'bsub  '.$pretext.' -J "'.$NOJ.'[1-'.$job_bn_th.']" -o "errandout/'.$NOJ.'..%J.%I"  my.start_job --n n\$LSB_JOBINDEX  --jobfile '.$jobarray;  
+	    my $sys = 'bsub  '.$pretext.' -J "'.$NOJ.'[1-'.$job_bn_th.']" -o "errandout/'.$NOJ.'..%J.%I"  '.$startjob_script.' --n n\$LSB_JOBINDEX  --jobfile '.$jobarray;  
 
 
 #	    print "$sys\n";
@@ -1003,7 +1006,7 @@ if ($job){
 	    print JOB "#SBATCH --time $wallstr\n";
 	    
 #	    print JOB "dispatch -r $jobarray\n";
-	    print JOB "my.start_job --n \$SLURM_ARRAY_TASK_ID  --jobfile $jobarray\n";
+	    print JOB "$startjob_script --n \$SLURM_ARRAY_TASK_ID  --jobfile $jobarray\n";
 	    close (JOB);
 	}
 #	print "debug: $jobfile\n";
@@ -1100,7 +1103,7 @@ if ($job){
 	    print JOB "#PBS -lnodes=1:ppn=1\n";
 	    print JOB "#PBS -lwalltime=$wallstr\n";
 	    print JOB "cd $rootdir\n";
-	    print JOB "my.start_job -n ".'$SGE_TASK_ID'." --jobfile $jobarray\n";
+	    print JOB "$startjob_script -n ".'$SGE_TASK_ID'." --jobfile $jobarray\n";
 	    close JOB;
 	    
 	    my $qsub_cmd = "qsub -l m_mem_free=".$mem_str."g $qlong_str -v PATH,rp_perlpackages -t 1-$job_bn_th -e $rootdir/$errname/ -o $rootdir/$errname/ $name_of_job $hhmm $jobname";
@@ -1197,7 +1200,7 @@ if ($job){
 	    print JOB "#PBS -lmem=".$mem_str."gb\n";
 	    print JOB "#PBS -lwalltime=$wallstr\n";
 	    print JOB "cd $rootdir\n";
-	    print JOB "my.start_job -n ".'$PBS_ARRAYID'." --jobfile $jobarray\n";
+	    print JOB "startjob_script -n ".'$PBS_ARRAYID'." --jobfile $jobarray\n";
 	    close JOB;
 	    
 
@@ -1309,7 +1312,7 @@ if ($job){
 #	}
 	print JOB "#PBS -lwalltime=$wallstr\n";
 	print JOB "cd $rootdir\n";
-	print JOB "my.start_job --parn $cores -n ".'$PBS_ARRAYID'." --jobfile $jobarray\n";
+	print JOB "$startjob_script --parn $cores -n ".'$PBS_ARRAYID'." --jobfile $jobarray\n";
 	close JOB;
 	
 	#PBS -lnodes=1:cores16:ppn=16 -lwalltime=1:00:00
@@ -1423,7 +1426,7 @@ if ($job){
 	print JOB "#PBS -lnodes=1:cores$cores:ppn=$cores\n";
 	print JOB "#PBS -lwalltime=$wallstr\n";
 	print JOB "cd $rootdir\n";
-	print JOB "my.start_job --parn $cores -n ".'$PBS_ARRAYID'." --jobfile $jobname.jobarray\n";
+	print JOB "$startjob_script --parn $cores -n ".'$PBS_ARRAYID'." --jobfile $jobname.jobarray\n";
 	close JOB;
 	
 	#PBS -lnodes=1:cores16:ppn=16 -lwalltime=1:00:00

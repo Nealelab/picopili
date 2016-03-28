@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 use strict;
 
 my $version = "1.0.0";
@@ -49,6 +49,8 @@ push @li_files, "$liloc/hg16ToHg19.over.chain.gz";
 push @li_files, "$liloc/hg17ToHg19.over.chain.gz";
 push @li_files, "$liloc/hg18ToHg19.over.chain.gz";
 push @li_files, "$liloc/hg19ToHg19.over.chain.gz"; ## fake
+
+my $lift_script = "lift_to_hg19.pl";
 
 
 ##### help message
@@ -221,7 +223,7 @@ close NC;
 my $cmd_out = "no liftover necessary to get to hg19\n";
 if ($lift19){
     if ($licount < 3) {
-	my $sys_str = "lift18219 --noex --lilofile $li_files[$licount] $bim_file";
+	my $sys_str = "$lift_script --noex --lilofile $li_files[$licount] $bim_file";
 	#	print "$sys_str\n";
 	$cmd_out = $sys_str;
 	&mysystem($sys_str);

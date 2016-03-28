@@ -181,12 +181,12 @@ if ($sleep_sw) {
 my @test_scripts;
 
 my $readref_script = "readref_pico.pl";    ### my.pipeline_tar
-my $readrefsum_script = "my.readref_sum";  ### my.pipeline_tar
-my $buigue_script = "buigue";              ### my.pipeline_tar
-my $checkpos_script = "checkpos6";         ### my.pipeline_tar
-my $checkflip_script = "checkflip4";       ### my.pipeline_tar
+my $readrefsum_script = "readrefsum_pico.pl";  ### my.pipeline_tar
+my $buigue_script = "buigue_pico.pl";              ### my.pipeline_tar
+my $checkpos_script = "checkpos_pico.pl";         ### my.pipeline_tar
+my $checkflip_script = "checkflip_pico.pl";       ### my.pipeline_tar
 my $mutt_script = "mutt";                  ### my.pipeline_tar
-my $blue_script = "blueprint";             ### my.pipeline_tar
+my $blue_script = "blueprint_pico.pl";             ### my.pipeline_tar
 
 push @test_scripts, $readref_script;
 push @test_scripts, $readrefsum_script;
