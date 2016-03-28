@@ -1,4 +1,4 @@
-The following scripts are adapted from ricopili ([https://github.com/Nealelab/ricopili]) with very minor changes:
+The following scripts are adapted from ricopili (https://github.com/Nealelab/ricopili) with very minor changes:
 
 * `blue_start_job.pl`, from `my.start_job`
 * `blueprint_pico.pl`, from `blueprint`
