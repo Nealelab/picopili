@@ -31,10 +31,7 @@ Note additional dependencies may exist for some modules (e.g. Admixture, REAP, P
 mkdir ~/github
 cd ~/github
 git clone https://github.com/Nealelab/picopili.git
-git checkout dev
 ```
-
-Note: the 'dev' branch is currently intended to be the stable picopili branch, with the 'master' branch reserved for pulling updates from new releases of ricopili.
 
 ##### 3. Add picopili to search path
 
