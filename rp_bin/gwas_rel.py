@@ -78,6 +78,8 @@ if args.addout is not None:
 
 print '\nAssociation Testing:'
 print '--model '+str(args.model)
+if args.pheno is not None:
+    print '--pheno '+str(args.pheno)
 print '--covar '+str(args.covar)
 if args.covar_number is not None:
     print '--covar-number '+str(args.covar_number)
@@ -87,23 +89,30 @@ if args.keep is not None:
     print '--keep '+str(args.keep)
 else:
     print '--remove '+str(args.remove)
+print '--maf-a-th '
+print '--maf-u-th '
+if args.info_file is not None:
+    print '--info-th '+str(args.info_th)
+    print '--info-file '+str(args.info_file)
 
 print '\nParallel Jobs:'
 print '--snp-chunk '+str(args.snp_chunk)
 
 print '\nCluster Settings:'
 print '--sleep '+str(args.sleep)
-
+print '--r-ex '+str(args.r_ex)
+print '--rplink-ex '+str(args.rplink_ex)
 
 # TODO: these
+# note extract/exclude work in gwas scripts, but need to be handled here pre-chunking
+# info score, maf thresholds left until agg since we read that data there anyway
 print '\nWARNING: THESE ARGUMENTS ARE NOT CURRENTLY FUNCTIONAL FROM gwas_rel.py:'
 print '--no-cleanup'
 print '--extract'
 print '--exclude'
-print '--info-th'
+# print '--info-th'
 # print '--rserve-active'
-print '--r-ex'
-print '--rplink-ex'
+
 print '\n'
 
 
@@ -148,6 +157,12 @@ link(wd+'/'+str(args.bfile)+'.fam', str(args.bfile)+'.fam', 'input plink fam fil
 
 if args.covar is not None and str(args.covar) != "None":
     link(wd+'/'+str(args.covar), str(args.covar), 'covariate file')
+
+if args.pheno is not None and str(args.pheno) != "None":
+    link(wd+'/'+str(args.pheno), str(args.pheno), 'phenotype file')
+    
+if args.info_file is not None and str(args.info_file) != "None":
+    link(wd+'/'+str(args.info_file), str(args.info_file), 'info score file')
 
 # TODO: need to also propogate keep/exclude files, either here or in later args
 # TODO: allow SNP extract/exclude exclusion before chunking
@@ -279,6 +294,8 @@ if args.addout is not None:
     gwasargs = gwasargs + ' --addout '+str(args.addout)+'.${cname}'
 else:
     gwasargs = gwasargs + ' --addout ${cname}'
+if args.pheno is not None:
+    gwasargs = gwasargs + ' --pheno '+str(args.pheno)
 if args.covar is not None:
     gwasargs = gwasargs + ' --covar '+str(args.covar)
 if args.covar_number is not None:
@@ -287,7 +304,9 @@ if args.keep is not None:
     gwasargs = gwasargs + ' --keep '+str(args.keep)
 if args.remove is not None:
     gwasargs = gwasargs + ' --remove '+str(args.remove)
-# TODO: pass through cleanup/Rserve/executables
+
+gwasargs = gwasargs + ' --r-ex '+str(args.r_ex)+' --rplink-ex '+str(args.rplink_ex)
+# TODO: pass through cleanup
     
 nchunk = len(chunks.keys())
 jobdict = {"jname": 'gwas.chunks.'+str(outdot),
@@ -336,6 +355,8 @@ if args.keep is not None:
     frq_call.extend(['--keep',str(args.keep)])
 elif args.remove is not None:
     frq_call.extend(['--remove',str(args.remove)])
+if args.pheno is not None and str(args.pheno) != "None":
+    frq_call.extend(['--pheno',str(args.pheno)])
 
 freqname = 'freqinfo.'+str(outdot)+'.frq.cc'
 
@@ -347,8 +368,12 @@ frq_log.close()
 ######################
 print '\n...Queuing GWAS results aggregation script...'
 # call to agg_gwas.py
-# TODO: info score file
 ######################
+
+if args.info_file is not None and str(args.info_file) != "None":
+    info_file_txt = ['--info-file',str(args.info_file),'--info-th',str(args.info_th)]
+else:
+    info_file_txt = ['','','','']
 
 agg_log = 'agg.'+str(outdot)+'.qsub.log'
 agg_call = [str(rp_bin)+'/agg_gwas.py',
@@ -360,6 +385,8 @@ agg_call = [str(rp_bin)+'/agg_gwas.py',
             '--p-th2',str(args.p_th2),
             '--chunk-file',str(chunk_file.name),
             '--freq-file',str(freqname),
+            info_file_txt[0],info_file_txt[1],info_file_txt[2],info_file_txt[3],
+            '--max-se',str(args.max_se),
             '--model',str(args.model)]
 agg_call = filter(None,agg_call)
 

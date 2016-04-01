@@ -174,20 +174,20 @@ if len(mis_chunks) > 0:
     for line in orig_uger_file:
         if '#$ -t ' in line:
             new_uger_file.write('#$ -t 1-'+str(nummiss)+'\n')
-            next
-#	elif '#$ -tc ' in line:
-#	    if nummiss < 20:
-#	        new_uger_file.write('#$ -tc 5 \n')
-#	    elif nummiss < 50:
-#	        new_uger_file.write('#$ -tc 10 \n')
-#	    elif nummiss < 100:
-#	        new_uger_file.write('#$ -tc 25 \n')
-#	    else:
-#	        new_uger_file.write('#$ -tc 40 \n')
-#	    new_uger_file.write('#$ -tc 5 \n')
-	elif '#$ -l m_mem_free' in line:
+            continue
+#        elif '#$ -tc ' in line:
+#            if nummiss < 20:
+#                new_uger_file.write('#$ -tc 5 \n')
+#            elif nummiss < 50:
+#                new_uger_file.write('#$ -tc 10 \n')
+#            elif nummiss < 100:
+#                new_uger_file.write('#$ -tc 25 \n')
+#            else:
+#                new_uger_file.write('#$ -tc 40 \n')
+#            new_uger_file.write('#$ -tc 5 \n')
+        elif '#$ -l m_mem_free' in line:
 	    new_uger_file.write('#$ -l m_mem_free=8g \n')
-	else:
+        else:
             line=line.replace(args.chunk_file, tmp_chunk_file.name)
             line=line.replace('.$TASK_ID.','.tmp'+str(nummiss)+'.$TASK_ID.')
             line=line.replace('#$ -N gwas.chunks.'+str(outdot), '#$ -N gwas.chunks.'+str(outdot)+'.resub_'+str(nummiss))
@@ -272,9 +272,19 @@ for line in frq:
 frq.close()
 print 'frq loaded'
 
-# TODO: info, ngt
+# info, ngt if available
 info_info = {}
 ngt_info = {}
+if args.info_file is not None:
+    info_in = open(str(args.info_file), 'r')
+    dumphead = info_in.readline()
+    for line in info_in:
+        (snp, old_snpid, chrom, bp, a1, a2, info, exp_a1, gt) = line.split()
+        info_info[str(snp)] = info
+        ngt_info[str(snp)] = gt
+
+    info_in.close()
+    print 'info loaded'
 
 
 ### create output files
@@ -318,21 +328,37 @@ for ch in chnames:
         frqu = maf_u_info.pop(str(snp))
         na = n_a_info.pop(str(snp))
         nu = n_u_info.pop(str(snp))
-
-        if args.info_file is None:
+        
+        # info_info will be empty if no file specified
+        if str(snp) in info_info:
+            info = info_info.pop(str(snp))
+            ngt = ngt_info.pop(str(snp))
+        else:
             info = 'NA'
             ngt = 'NA'
  
  
+        # filter on meta info
+        # note: do here so SNPs popped off all relevant info dicts
+        if float(frqa) < float(args.maf_a_th):
+            continue
+        elif float(frqa) > 1.0 - float(args.maf_a_th):
+            continue
+        elif float(frqu) < float(args.maf_u_th):
+            continue
+        elif float(frqu) > 1.0 - float(args.maf_u_th):
+            continue
+        elif str(info) != 'NA' and float(info) < float(args.info_th):
+            continue
+            
+ 
         # construct output
         if args.model == 'gee':
             # ditch gee results with implausible SEs (likely errors / numerical instability)
-            if se != 'NA' and float(se) > 100:
-                se = 'NA'
-                beta = 'NA'
-                chisq = 'NA'
-                p = 'NA'
-            outline = [chrom, snp, bp, a1, a2, frqa, frqu, info, beta, se, chisq, p, na, nu, ngt]
+            if str(se) == 'NA' or float(se) > float(args.max_se):
+                continue
+            else:
+                outline = [chrom, snp, bp, a1, a2, frqa, frqu, info, beta, se, chisq, p, na, nu, ngt]
             
         elif args.model == 'dfam':
             outline = [chrom, snp, bp, a1, a2, frqa, frqu, info, obs, exp, chisq, p, na, nu, ngt]
@@ -340,12 +366,10 @@ for ch in chnames:
         outline = [str(val) for val in outline]        
         
         # output
-        # TODO: include info
-        if float(frqa) > args.maf_a_th and float(frqu) > args.maf_u_th and float(frqa) < 1-args.maf_a_th and float(frqu) < 1-args.maf_u_th: # and float(info) > info_th:
-            out_file.write('\t'.join(outline)+'\n')
+        out_file.write('\t'.join(outline)+'\n')
             
-            if p != 'NA' and float(p) < args.p_th2:
-                filt_file.write('\t'.join(outline)+'\n')
+        if p != 'NA' and float(p) < args.p_th2:
+            filt_file.write('\t'.join(outline)+'\n')
 
     chunk_res.close()
     print 'chunk %s complete' % str(ch) 

@@ -65,9 +65,14 @@ arg_subset = parsergwas.add_argument_group('Analysis Subset')
 arg_test.add_argument('--model', 
                     type=str.lower,
                     choices=['dfam','gee'],
-                    help='Which GWAS testing method to use for family data. Current options are plink \'--dfam\' (generalized TDT-alike) or GEE (generalized estimating equations)',
+                    help='which GWAS testing method to use for family data. Current options are plink \'--dfam\' (generalized TDT-alike) or GEE (generalized estimating equations)',
                     required=False,
                     default='gee')
+arg_test.add_argument('--pheno', 
+                    type=str,
+                    metavar='FILE',
+                    help='file containing alternate phenotype. Passed directly to plink. If unspecified, phenotype from fam file is used.',
+                    required=False)
 arg_test.add_argument('--covar', 
                     type=str,
                     metavar='FILE',
@@ -155,7 +160,12 @@ arg_agg.add_argument('--p-th2',
                     help='p-value threshold for inclusion in the p-sorted top results output',
                     required=False,
                     default=1e-3)
-
+arg_agg.add_argument('--max-se', 
+                    type=float,
+                    metavar='FLOAT',
+                    help='Maximum SE allowed for GWAS results. Only applies to GEE model. Useful for filtering out numerically unstable results.',
+                    required=False,
+                    default=100.0)
 
 ############
 #
