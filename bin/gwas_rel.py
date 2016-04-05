@@ -116,6 +116,10 @@ print '--exclude'
 print '\n'
 
 
+if int(args.snp_chunk) % 100 == 0:
+    warn("Setting --snp-chunk to a multiple of 100 is NOT recommended currently, due to potential plink --R errors.")
+
+
 #############
 print '\n...Reading ricopili config file...'
 #############

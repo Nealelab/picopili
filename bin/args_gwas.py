@@ -118,7 +118,7 @@ arg_snpchunk.add_argument('--snp-chunk',
                     metavar='INT',
                     help='Number of SNPs to analyze in each parallel chunk',
                     required=False,
-                    default=10000)
+                    default=9950)
 
 
 

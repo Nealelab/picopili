@@ -271,7 +271,7 @@ ps_txt = [s.strip().split() for s in ps.splitlines()][1:]
 pid = [x[0] for x in ps_txt if x[-1]==str(rport)]
 
 # kill
-subprocess.check_call(['kill',str(pid)])
+subprocess.check_call(['kill',str(pid[0])])
 
 
 #############
