@@ -33,6 +33,13 @@ Rplink <- function(PHENO, GENO, CLUSTER, COVAR){
 	}
 	
 	f1 <- function(snp){
+
+		# init
+		beta <- NA
+		se <- NA
+		chi <- NA
+		p <- NA
+
 		# index exclude missing SNP, pheno
 		idx <- !is.na(snp) & !excl
 		n <- sum(idx)
@@ -77,8 +84,9 @@ Rplink <- function(PHENO, GENO, CLUSTER, COVAR){
 		
 		out <- c(beta, se, chi, p, n, m)
 		 
-		return(c( length(out), out ))
+		return(c( 6, out ))
 	}
 	
 	apply(GENO, 2, f1)
 }
+

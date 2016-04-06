@@ -171,21 +171,23 @@ for ch in xrange(1,23):
         curr_snps = {k: v for k, v in snps.items() if (str(v[0]) == str(ch) and int(v[1]) >= int(reg_start) and int(v[1]) <= int(reg_end))}
         first = reg_start
         last = 0
-        snps_left = len(curr_snps.keys())
+        snps_left = len(curr_snps)
         
         while snps_left > 0 and idx <= args.max_chunks:
 
             # debug:
             # print 'chr = %s, snps left = %s' % (str(ch),str(snps_left))
 
+            bp_sort_keys = sorted(curr_snps.keys(), key=lambda x: curr_snps[x][1])
+
             # catch unlikely error mode        
             if snps_left < args.snp_size:
-                nth_snp = sorted(curr_snps.keys(), key=lambda x: curr_snps[x][1])[snps_left-1]
+                nth_snp = bp_sort_keys[snps_left-1]
                 if not args.allow_small_chunks:
                     warnings.warn('Starting with too few SNPs (%d) at chr %d, bp %d. Check for sparse data or misaligned chromosome info?' % (snps_left, int(ch), first))                    
             else:
             # get bp of (minsnp)th SNP in curr_snps
-                nth_snp = sorted(curr_snps.keys(), key=lambda x: curr_snps[x][1])[args.snp_size-1]            
+                nth_snp = bp_sort_keys[args.snp_size-1]            
 
             nth_snp_bp = curr_snps[nth_snp][1]
     
@@ -196,7 +198,7 @@ for ch in xrange(1,23):
             curr_snps = {k: v for k, v in curr_snps.items() if v[1] > last}
             
             # check if enough SNPs left
-            snps_left_new = len(curr_snps.keys())
+            snps_left_new = len(curr_snps)
             if snps_left_new < args.snp_size:
                 
                 # if not, then extend current chunk to end
