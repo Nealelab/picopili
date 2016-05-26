@@ -115,7 +115,7 @@ if(testing){
 }
 
 # return NA for non-converged results
-f0[!f0$converged,c("BETA","SE","PVAL")] <- NA
+f0[!f0$converged | is.na(f0$converged),c("BETA","SE","PVAL")] <- NA
 
 # format output
 # flip beta since gmmat returns results for A2 instead of A1
