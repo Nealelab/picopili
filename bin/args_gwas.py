@@ -64,7 +64,7 @@ arg_subset = parsergwas.add_argument_group('Analysis Subset')
 
 arg_test.add_argument('--model', 
                     type=str.lower,
-                    choices=['dfam','gee'],
+                    choices=['dfam','gee','gmmat','gmmat-fam'],
                     help='which GWAS testing method to use for family data. Current options are plink \'--dfam\' (generalized TDT-alike) or GEE (generalized estimating equations)',
                     required=False,
                     default='gee')
@@ -191,6 +191,12 @@ arg_exloc.add_argument('--r-ex',
                     type=str,
                     metavar='PATH',
                     help='path to R executable, tries reading from PATH if unspecified',
+                    required=False,
+                    default=None)
+arg_exloc.add_argument('--rscript-ex',
+                    type=str,
+                    metavar='PATH',
+                    help='path to Rscript executable, tries reading from PATH if unspecified',
                     required=False,
                     default=None)
 arg_exloc.add_argument('--rplink-ex',

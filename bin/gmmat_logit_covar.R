@@ -130,7 +130,7 @@ out <- data.frame(CHR=f0$CHR,
 		  M_COV=ncol(dat)-1)
 
 # return
-outfile = paste(outstem,".gmmat.R.txt",sep="")
+outfile = paste("gmmatfam.",outstem,".R.txt",sep="")
 write.table(format(out,digits=8), file=outfile, col.names=TRUE, row.names=FALSE, quote=FALSE, sep = ' ')
 
 if(testing){

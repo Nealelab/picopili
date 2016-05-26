@@ -237,7 +237,7 @@ chnames = [k for k, v in sorted(chunks.iteritems(), key=lambda (key,value): floa
 # bim
 # for gee: a2
 # for dfam: bp
-if args.model == 'gee':
+if args.model == 'gee' or args.model == 'gmmat' or args.model == 'gmmat-fam':
     a2_info = {}
 elif args.model == 'dfam':
     bp_info = {}
@@ -246,7 +246,7 @@ bim = open(bim_file, 'r')
 for line in bim:
     (chrom, snp, cm, bp, a1, a2) = line.split()
     
-    if args.model == 'gee':
+    if args.model == 'gee' or args.model == 'gmmat' or args.model == 'gmmat-fam':
         a2_info[str(snp)] = str(a2)
     elif args.model == 'dfam':
         bp_info[str(snp)] = int(bp)
@@ -291,12 +291,13 @@ if args.info_file is not None:
 out_file = gzip.open(outname, 'wb')
 filt_file = gzip.open(filtoutname+'.tmp.gz', 'wb')
 
-if args.model == 'gee':
+if args.model == 'gee' or args.model == 'gmmat' or args.model == 'gmmat-fam':
     out_head = ['CHR', 'SNP', 'BP', 'A1', 'A2', 'FRQ_A', 'FRQ_U', 'INFO', 'BETA', 'SE', 'CHISQ', 'P', 'N_CAS', 'N_CON', 'ngt']
     filt_head = out_head
 elif args.model == 'dfam':
     out_head = ['CHR', 'SNP', 'BP', 'A1', 'A2', 'FRQ_A', 'FRQ_U', 'INFO', 'OBSERVED', 'EXPECTED', 'CHISQ', 'P', 'N_CAS', 'N_CON', 'ngt']
-    filt_head = out_head  
+    filt_head = out_head
+
 
 # header
 out_file.write('\t'.join(out_head) + '\n')
@@ -311,10 +312,16 @@ for ch in chnames:
     elif args.model == 'dfam':
         chunk_res = open('dfam.'+str(outdot)+'.'+str(ch)+'.dfam', 'r')
         dumphead = chunk_res.readline()
+    elif args.model == 'gmmat':
+        chunk_res = open('gmmat.'+str(outdot)+'.'+str(ch)+'.R.txt', 'r')
+        dumphead = chunk_res.readline()          
+    elif args.model == 'gmmat-fam':
+        chunk_res = open('gmmatfam.'+str(outdot)+'.'+str(ch)+'.R.txt', 'r')
+        dumphead = chunk_res.readline()       
     
     for line in chunk_res:
         # read results
-        if args.model == 'gee':
+        if args.model == 'gee' or args.model == 'gmmat' or args.model == 'gmmat-fam':
             (chrom, snp, bp, a1, beta, se, chisq, p, n, m) = line.split()
             a2 = a2_info.pop(str(snp))
             
@@ -353,7 +360,7 @@ for ch in chnames:
             
  
         # construct output
-        if args.model == 'gee':
+        if args.model == 'gee' or args.model == 'gmmat' or args.model == 'gmmat-fam':
             # ditch gee results with implausible SEs (likely errors / numerical instability)
             if str(se) == 'NA' or float(se) > float(args.max_se):
                 continue
