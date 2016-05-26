@@ -247,8 +247,8 @@ for line in bim:
     (chrom, snp, cm, bp, a1, a2) = line.split()
 
     # reocrd novel chrs
-    if chrom not in chrs:
-        chrs.append(chrom)
+    if int(chrom) not in chrs:
+        chrs.append(int(chrom))
 
     # find matching chunk    
     snp_chunk = find_chunk(chrom, bp, last_chunk)
@@ -290,14 +290,14 @@ if args.model == 'gmmat' or args.model == 'gmmat-fam':
             continue
 
         # verify file doesn't already exist        
-        grm_file = 'grm.'+str(outdot)+'.loco_chr'+str(chr)+'.rel.gz'
+        grm_file = 'grm.'+str(outdot)+'.loco_chr'+str(ch)+'.rel.gz'
         if not os.path.isfile(str(grm_file)):
             grm_call = [plinkx,
                         '--bfile',str(args.bfile),
                         '--make-rel','square','gz',
                         '--autosome',
                         '--not-chr',str(ch),
-                        '--out','grm.'+str(outdot)+'.loco_chr'+str(chr)]
+                        '--out','grm.'+str(outdot)+'.loco_chr'+str(ch)]
     
             if args.keep is not None:
                 grm_call.extend(['--keep',str(args.keep)])
@@ -305,10 +305,14 @@ if args.model == 'gmmat' or args.model == 'gmmat-fam':
                 grm_call.extend(['--remove',str(args.remove)])     
 
             # run plink, keep log
-            grm_log = open('grm.'+str(outdot)+'.loco_chr'+str(chr)+'.plink.log', 'w')
-            subprocess.check_call(frq_call, stderr=subprocess.STDOUT, stdout=grm_log)
+            grm_log = open('grm.'+str(outdot)+'.loco_chr'+str(ch)+'.plink.log', 'w')
+            subprocess.check_call(grm_call, stderr=subprocess.STDOUT, stdout=grm_log)
             grm_log.close()
             print 'Created GRM omitting chr %d: %s' % (int(ch), str(grm_file))
+
+            # verify successfully created
+            if not os.path.isfile(str(grm_file)):
+                raise IOError('Failed to create GRM omitting chr %d: %s' % (int(ch), str(grm_file)))
         
         # log in case existing file found
         else:
@@ -439,7 +443,7 @@ sleep {sleep}
 cname=`awk -v a=${{SGE_TASK_ID}} 'NR==a+1{{print $4}}' {cfile}`
 chrnum=`awk -v a=${{SGE_TASK_ID}} 'NR==a+1{{print $1}}' {cfile}`
 
-{plinkx} --bfile {bfile} --extract {outdot}.snps.${{cname}}.txt {optargs} --make-bed {outdot}.${{cname}}
+{plinkx} --bfile {bfile} --extract {outdot}.snps.${{cname}}.txt {optargs} --make-bed --out {outdot}.${{cname}}
 
 {rsc} --no-save --no-restore {gwas_ex} {outdot}.${{cname}} grm.{outdot}.loco_chr${{chrnum}}.rel.gz {covarsub} {outdot}.${{cname}} > {outdot}.${{cname}}.gmmat.R.log
 

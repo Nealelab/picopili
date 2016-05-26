@@ -12,7 +12,7 @@
 #
 #####################
 
-testing <- TRUE
+testing <- FALSE
 
 require("GMMAT",lib="~/Rlibs")
 
