@@ -34,6 +34,12 @@ arg_base.add_argument('--bfile',
                     metavar='FILESTEM',
                     help='file stem for input plink bed/bim/fam',
                     required=True)
+arg_base.add_argument('--strict-bfile', 
+                    type=str,
+                    metavar='FILESTEM',
+                    help='(GMMAT model only) file stem for input plink bed/bim/fam used to compute GRM. ' + \
+                    'Defaults to using --bfile with MAF > .01, missing < .01 if unspecified.',
+                    required=True)
 arg_base.add_argument('--out',
                     type=str,
                     metavar='OUTNAME',

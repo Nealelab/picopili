@@ -72,10 +72,14 @@ else:
     addout_txt = ['','']
     outdot = str(args.out)
 
+if args.strict_bfile is None or str(args.strict_bfile) == "None":
+    args.strict_bfile = str(args.bfile)
 
 # report settings in use
 print '\nBasic settings:'
 print '--bfile '+str(args.bfile)
+if args.model == 'gmmat' or args.model == 'gmmat-fam':
+    print '--strict-bfile '+str(args.strict_bfile)
 print '--out '+str(args.out)
 if args.addout is not None:
     print '--addout '+str(args.addout)
@@ -167,6 +171,11 @@ os.chdir(outdir)
 link(wd+'/'+str(args.bfile)+'.bed', str(args.bfile)+'.bed', 'input plink bed file')
 link(wd+'/'+str(args.bfile)+'.bim', str(args.bfile)+'.bim', 'input plink bim file')
 link(wd+'/'+str(args.bfile)+'.fam', str(args.bfile)+'.fam', 'input plink fam file')
+
+if str(args.strict_bfile) != str(args.bfile):
+    link(wd+'/'+str(args.strict_bfile)+'.bed', str(args.strict_bfile)+'.bed', 'plink bed file for GRM')
+    link(wd+'/'+str(args.strict_bfile)+'.bim', str(args.strict_bfile)+'.bim', 'plink bim file for GRM')
+    link(wd+'/'+str(args.strict_bfile)+'.fam', str(args.strict_bfile)+'.fam', 'plink fam file for GRM')
 
 if args.covar is not None and str(args.covar) != "None":
     link(wd+'/'+str(args.covar), str(args.covar), 'covariate file')
@@ -293,8 +302,11 @@ if args.model == 'gmmat' or args.model == 'gmmat-fam':
         grm_file = 'grm.'+str(outdot)+'.loco_chr'+str(ch)+'.rel.gz'
         if not os.path.isfile(str(grm_file)):
             grm_call = [plinkx,
-                        '--bfile',str(args.bfile),
+                        '--bfile',str(args.strict_bfile),
+                        '--maf',str(.01),
+                        '--geno', str(.01),                        
                         '--make-rel','square','gz',
+                        '--make-founders',
                         '--autosome',
                         '--not-chr',str(ch),
                         '--out','grm.'+str(outdot)+'.loco_chr'+str(ch)]
