@@ -81,43 +81,58 @@ if(testing){
 
 # build fam_clust
 # block diagonal matrix, indicating IDs in same FID
-fam_clust <- matrix(NA,nrow(fam),nrow(fam))
-for(i in 1:nrow(fam)){
-	for(j in 1:i){
-		if(fam[i,1]==fam[j,1]){
-			fam_clust[i,j] <- 1
-		}else{
-			fam_clust[i,j] <- 0
-		}
-	}
-}
-fam_clust[upper.tri(fam_clust)] <- t(fam_clust)[upper.tri(fam_clust)]
-diag(fam_clust) <- 1
+# fam_clust <- matrix(NA,nrow(fam),nrow(fam))
+# for(i in 1:nrow(fam)){
+#	for(j in 1:i){
+#		if(fam[i,1]==fam[j,1]){
+#			fam_clust[i,j] <- 1
+#		}else{
+#			fam_clust[i,j] <- 0
+#		}
+#	}
+# }
+# fam_clust[upper.tri(fam_clust)] <- t(fam_clust)[upper.tri(fam_clust)]
+# diag(fam_clust) <- 1
 
 if(testing){
 	print(date())
 }
 
-# fit null model
-f0 <- glmmkin(fixed = Y~.,data=dat,kins=list(GRM,fam_clust),family=binomial(link="logit"))
+# fit model
+f0 <- glmm.wald(fixed = Y~.,
+		data=dat,
+#		kins=list(GRM, fam_clust),
+		kins=GRM,
+		family=binomial(link="logit"),
+		infile=bfile,
+		snps=snplist,
+		missing.method="omit")
 
 if(testing){
-        print(date())
+	print(date())
+	print(head(f0))
+	print(summary(f0$converged))
 }
-print(f0$theta)
-print(f0$coefficients)
 
-# get select vector for NA phenos
-sel <- rep(NA,nrow(dat))
-sel[is.na(dat$Y)] <- 0
-sel[!is.na(dat$Y)] <- 1:sum(!is.na(dat$Y))
+# return NA for non-converged results
+f0[!f0$converged | is.na(f0$converged),c("BETA","SE","PVAL")] <- NA
 
-# run score tests
-glmm.score(f0,
-	infile = bfile,
-	select = sel,
-	missing.method="omit",
-	outfile = paste("gmmatfam_score.",outstem,".R.txt",sep=""))
+# format output
+# flip beta since gmmat returns results for A2 instead of A1
+out <- data.frame(CHR=f0$CHR, 
+		  SNP=f0$SNP, 
+		  POS=f0$POS, 
+		  A1=f0$A1, 
+		  BETA=-1*f0$BETA, 
+		  SE=f0$SE, 
+		  CHISQ=(f0$BETA/f0$SE)^2, 
+		  P=f0$PVAL, 
+		  N=f0$N, 
+		  M_COV=ncol(dat)-1)
+
+# return
+outfile = paste("gmmat.",outstem,".R.txt",sep="")
+write.table(format(out,digits=8), file=outfile, col.names=TRUE, row.names=FALSE, quote=FALSE, sep = ' ')
 
 if(testing){
 	print(date())
