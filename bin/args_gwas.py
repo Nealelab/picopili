@@ -89,6 +89,12 @@ arg_test.add_argument('--covar-number',
                     metavar='COL',
                     help='which columns to use from covariate file (numbered from third column). Passed directly to plink.',
                     required=False)
+arg_test.add_argument('--strict-bfile',
+                      type=str,
+		      metavar='FILESTEM',
+		      help='(GMMAT model only) file stem for input plink bed/bim/fam used to compute GRM. ' + \
+		           'Defaults to using --bfile with MAF > .01, missing < .01 if unspecified.',
+		      required=True)
 arg_subset.add_argument('--keep',
                     type=str,
                     metavar='FILE',

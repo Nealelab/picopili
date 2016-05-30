@@ -71,8 +71,8 @@ arg_file.add_argument('--freq-file',
 
 arg_other.add_argument('--model', 
                     type=str.lower,
-                    choices=['dfam','gee'],
-                    help='Which GWAS testing method was used. Current options are plink \'--dfam\' (generalized TDT-alike) or GEE (generalized estimating equations)',
+                    choices=['dfam','gee','gmmat','gmmat-fam'],
+                    help='Which GWAS testing method was used. Current options are plink \'--dfam\' (generalized TDT-alike), GEE (generalized estimating equations), GMMAT (logistic mixed model with GRM for variance component), or GMMAT-fam (logistic mixed model with GRM and family clusters).',
                     required=False,
                     default='gee')
 
