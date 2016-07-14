@@ -38,7 +38,7 @@ import argparse
 import gzip
 # from warnings import warn
 # from glob import glob
-from math import log10
+from math import log10, sqrt
 from args_gwas import *
 from py_helpers import unbuffer_stdout, file_len
 # , read_conf, link
@@ -127,6 +127,10 @@ for line in chunks_in:
         ch_out = 'gee.'+str(outdot)+'.'+str(chname)+'.auto.R'
     elif args.model == 'dfam':
         ch_out = 'dfam.'+str(outdot)+'.'+str(chname)+'.dfam'
+    elif args.model == 'gmmat':
+    	ch_out = 'gmmat_score.'+str(outdot)+'.'+str(chname)+'.R.txt'
+    elif args.model == 'gmmat-fam':
+   	ch_out = 'gmmatfam_score.'+str(outdot)+'.'+str(chname)+'.R.txt'
     
     # record chunks with no output
     if not os.path.isfile(ch_out):
