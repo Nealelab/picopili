@@ -97,8 +97,8 @@ if args.keep is not None:
     print '--keep '+str(args.keep)
 else:
     print '--remove '+str(args.remove)
-print '--maf-a-th '
-print '--maf-u-th '
+print '--maf-a-th '+str(args.maf_a_th)
+print '--maf-u-th '+str(args.maf_u_th)
 if args.info_file is not None:
     print '--info-th '+str(args.info_th)
     print '--info-file '+str(args.info_file)
