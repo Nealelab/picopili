@@ -38,7 +38,7 @@ import argparse
 import gzip
 # from warnings import warn
 # from glob import glob
-from math import log10, sqrt
+from math import log10
 from args_gwas import *
 from py_helpers import unbuffer_stdout, file_len
 # , read_conf, link
@@ -71,8 +71,8 @@ arg_file.add_argument('--freq-file',
 
 arg_other.add_argument('--model', 
                     type=str.lower,
-                    choices=['dfam','gee','gmmat','gmmat-fam'],
-                    help='Which GWAS testing method was used. Current options are plink \'--dfam\' (generalized TDT-alike), GEE (generalized estimating equations), GMMAT (logistic mixed model with GRM for variance component), or GMMAT-fam (logistic mixed model with GRM and family clusters).',
+                    choices=['dfam','gee'],
+                    help='Which GWAS testing method was used. Current options are plink \'--dfam\' (generalized TDT-alike) or GEE (generalized estimating equations)',
                     required=False,
                     default='gee')
 
@@ -127,10 +127,6 @@ for line in chunks_in:
         ch_out = 'gee.'+str(outdot)+'.'+str(chname)+'.auto.R'
     elif args.model == 'dfam':
         ch_out = 'dfam.'+str(outdot)+'.'+str(chname)+'.dfam'
-    elif args.model == 'gmmat':
-    	ch_out = 'gmmat_score.'+str(outdot)+'.'+str(chname)+'.R.txt'
-    elif args.model == 'gmmat-fam':
-   	ch_out = 'gmmatfam_score.'+str(outdot)+'.'+str(chname)+'.R.txt'
     
     # record chunks with no output
     if not os.path.isfile(ch_out):
@@ -241,24 +237,22 @@ chnames = [k for k, v in sorted(chunks.iteritems(), key=lambda (key,value): floa
 # bim
 # for gee: a2
 # for dfam: bp
-# gmmat: nothing
 if args.model == 'gee':
     a2_info = {}
 elif args.model == 'dfam':
     bp_info = {}
 
-if args.model == 'gee' or args.model == 'dfam':
-	bim = open(bim_file, 'r')
-	for line in bim:
-	    (chrom, snp, cm, bp, a1, a2) = line.split()
+bim = open(bim_file, 'r')
+for line in bim:
+    (chrom, snp, cm, bp, a1, a2) = line.split()
     
-	    if args.model == 'gee':
-	        a2_info[str(snp)] = str(a2)
-	    elif args.model == 'dfam':
-	        bp_info[str(snp)] = int(bp)
+    if args.model == 'gee':
+        a2_info[str(snp)] = str(a2)
+    elif args.model == 'dfam':
+        bp_info[str(snp)] = int(bp)
 
-	bim.close()
-	print 'bim loaded'
+bim.close()
+print 'bim loaded'
 
 # frq.cc
 # for both: maf_a, maf_u, n_a, n_u
@@ -299,12 +293,10 @@ filt_file = gzip.open(filtoutname+'.tmp.gz', 'wb')
 
 if args.model == 'gee':
     out_head = ['CHR', 'SNP', 'BP', 'A1', 'A2', 'FRQ_A', 'FRQ_U', 'INFO', 'BETA', 'SE', 'CHISQ', 'P', 'N_CAS', 'N_CON', 'ngt']
+    filt_head = out_head
 elif args.model == 'dfam':
     out_head = ['CHR', 'SNP', 'BP', 'A1', 'A2', 'FRQ_A', 'FRQ_U', 'INFO', 'OBSERVED', 'EXPECTED', 'CHISQ', 'P', 'N_CAS', 'N_CON', 'ngt']
-elif args.model == 'gmmat' or args.model == 'gmmat-fam':
-    out_head = ['CHR', 'SNP', 'BP', 'A1', 'A2', 'FRQ_A', 'FRQ_U', 'INFO', 'SCORE', 'VAR', 'Z', 'CHISQ', 'P', 'N_CAS', 'N_CON', 'ngt']
-
-filt_head = out_head
+    filt_head = out_head  
 
 # header
 out_file.write('\t'.join(out_head) + '\n')
@@ -319,12 +311,6 @@ for ch in chnames:
     elif args.model == 'dfam':
         chunk_res = open('dfam.'+str(outdot)+'.'+str(ch)+'.dfam', 'r')
         dumphead = chunk_res.readline()
-    elif args.model == 'gmmat':
-        chunk_res = open('gmmat_score.'+str(outdot)+'.'+str(ch)+'.R.txt', 'r')
-        dumphead = chunk_res.readline()          
-    elif args.model == 'gmmat-fam':
-        chunk_res = open('gmmatfam_score.'+str(outdot)+'.'+str(ch)+'.R.txt', 'r')
-        dumphead = chunk_res.readline()       
     
     for line in chunk_res:
         # read results
@@ -332,13 +318,11 @@ for ch in chnames:
             (chrom, snp, bp, a1, beta, se, chisq, p, n, m) = line.split()
             a2 = a2_info.pop(str(snp))
             
+            
         elif args.model == 'dfam':
             (chrom, snp, a1, a2, obs, exp, chisq, p) = line.split()
             bp = bp_info.pop(str(snp))
-        
-        elif args.model == 'gmmat' or args.model == 'gmmat-fam':
-	    (chrom, snp, cm, bp, a1, a2, n, af2, scoretest, scorevar, p) = line.split()
-
+            
         # get meta info
         frqa = maf_a_info.pop(str(snp))
         frqu = maf_u_info.pop(str(snp))
@@ -379,14 +363,6 @@ for ch in chnames:
         elif args.model == 'dfam':
             outline = [chrom, snp, bp, a1, a2, frqa, frqu, info, obs, exp, chisq, p, na, nu, ngt]
         
-	elif args.model == 'gmmat' or args.model == 'gmmat-fam':
-	    if str(p) == "NA":
-	        continue
-	    else:
-	        z = -1.0*float(scoretest)/sqrt(float(scorevar))
-		chisq = float(z)*float(z)
-                outline = [chrom, snp, bp, a1, a2, frqa, frqu, info, -1.0*float(scoretest), scorevar, z, chisq, p, na, nu, ngt]
-
         outline = [str(val) for val in outline]        
         
         # output
@@ -403,19 +379,15 @@ filt_file.close()
 # final file data
 # gee: chr, snp, bp, a1, a2, frq_a, frq_u, info, beta, se, chi, p, nca, nco, ngt
 # dfam: chr, snp, bp, a1, a2, frq_a, frq_u, info, obs, exp, chi, p, nca, nco, ngt
-# gmmat: chr, snp, bp, a1, a2, frq_a, frq_u, info, score, var, z, chi, p, nca, nco, ngt
+
 
 
 # sort filtered file
-if args.model == 'dfam' or args.model == 'gee':
-    pcol = '12,12'
-elif args.model == 'gmmat' or args.model == 'gmmat-fam':
-    pcol = '13,13'
 subprocess.check_call(' '.join([
                             'zless',
                             filtoutname+'.tmp.gz',
                             '|',
-                            'sort','-g','-k',pcol,
+                            'sort','-g','-k','12,12',
                             '|',
                             'gzip',
                             '>', filtoutname]), shell=True)
