@@ -214,7 +214,7 @@ for line in snp_in:
         if (chrom==8) and (bp > 7000000) and (bp < 13000000):
             snp_out.write(snp + ' chr8inv_region\n')
         
-    elif args.extra_ld_regions != None:
+    if args.extra_ld_regions != None:
         if any([chrom==int(ld_chr) and int(ld_bp_start) < bp < int(ld_bp_end) for (ld_chr, ld_bp_start, ld_bp_end) in ld_reg]):
             snp_out.write(snp + ' longLD_region\n')
             
