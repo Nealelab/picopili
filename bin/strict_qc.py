@@ -147,6 +147,7 @@ subprocess.check_call([str(plinkx),
                "--silent",
                "--memory", str(2000),
                "--allow-no-sex",
+               "--make-founders","require-2-missing",
                "--out", sumstat_out])
 
 
@@ -355,6 +356,7 @@ subprocess.check_call([str(plinkx),
                "--silent",
                "--memory", str(2000),
                "--allow-no-sex",
+               "--make-founders","require-2-missing",
                "--out", args.out + '.prune' + str(i) + '.tmp' ])
 
 # tracking number of SNPs before, after altest round of pruning
@@ -375,6 +377,7 @@ while nprune_old > nprune_new:
                "--silent",
                "--memory", str(2000),
                "--allow-no-sex",
+               "--make-founders","require-2-missing",
                "--out", args.out + '.prune' + str(i) + '.tmp' ])
 
     nprune_old = nprune_new
