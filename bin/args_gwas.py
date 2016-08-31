@@ -88,7 +88,7 @@ arg_test.add_argument('--strict-bfile',
 		      metavar='FILESTEM',
 		      help='(GMMAT model only) file stem for input plink bed/bim/fam used to compute GRM. ' + \
 		           'Defaults to using --bfile with MAF > .01, missing < .01 if unspecified.',
-		      required=True)
+		      required=False)
 arg_subset.add_argument('--keep',
                     type=str,
                     metavar='FILE',
