@@ -147,6 +147,7 @@ subprocess.check_call([str(plinkx),
                "--silent",
                "--memory", str(2000),
                "--allow-no-sex",
+               "--make-founders","require-2-missing",
                "--out", sumstat_out])
 
 
@@ -213,7 +214,7 @@ for line in snp_in:
         if (chrom==8) and (bp > 7000000) and (bp < 13000000):
             snp_out.write(snp + ' chr8inv_region\n')
         
-    elif args.extra_ld_regions != None:
+    if args.extra_ld_regions != None:
         if any([chrom==int(ld_chr) and int(ld_bp_start) < bp < int(ld_bp_end) for (ld_chr, ld_bp_start, ld_bp_end) in ld_reg]):
             snp_out.write(snp + ' longLD_region\n')
             
@@ -355,6 +356,7 @@ subprocess.check_call([str(plinkx),
                "--silent",
                "--memory", str(2000),
                "--allow-no-sex",
+               "--make-founders","require-2-missing",
                "--out", args.out + '.prune' + str(i) + '.tmp' ])
 
 # tracking number of SNPs before, after altest round of pruning
@@ -375,6 +377,7 @@ while nprune_old > nprune_new:
                "--silent",
                "--memory", str(2000),
                "--allow-no-sex",
+               "--make-founders","require-2-missing",
                "--out", args.out + '.prune' + str(i) + '.tmp' ])
 
     nprune_old = nprune_new
