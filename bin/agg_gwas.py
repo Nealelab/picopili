@@ -190,7 +190,7 @@ if len(mis_chunks) > 0:
 #                new_uger_file.write('#$ -tc 40 \n')
 #            new_uger_file.write('#$ -tc 5 \n')
         elif '#$ -l m_mem_free' in line:
-	    new_uger_file.write('#$ -l m_mem_free=8g \n')
+	    new_uger_file.write('#$ -l m_mem_free=24g,h_vmem=24g \n')
         else:
             line=line.replace(args.chunk_file, tmp_chunk_file.name)
             line=line.replace('.$TASK_ID.','.tmp'+str(nummiss)+'.$TASK_ID.')
@@ -211,7 +211,7 @@ if len(mis_chunks) > 0:
     uger_agg = ' '.join(['qsub',
                             '-hold_jid','gwas.chunks.'+str(outdot)+'.resub_'+str(nummiss),
                             '-q', 'long',
-                            '-l', 'm_mem_free=4g',
+                            '-l', 'm_mem_free=24g,h_vmem=24g',
                             '-N', 'agg_'+str(outdot),
                             '-o', agg_log,
                             str(rp_bin)+'/uger.sub.sh',

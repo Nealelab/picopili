@@ -191,7 +191,7 @@ if bad_chr:
     #$ -V
     #$ -N {jname}
     #$ -q long
-    #$ -l m_mem_free={mem}g
+    #$ -l m_mem_free={mem}g,h_vmem={mem}g
     #$ -pe smp {threads}
     #$ -t 1-{nchr}
     #$ -o {outlog}
@@ -265,7 +265,7 @@ if bad_chr:
     uger_imp = ' '.join(['qsub',
                             '-hold_jid','imp.chunks.'+str(outdot),
                             '-q', 'short',
-                            '-l', 'm_mem_free=8g',
+                            '-l', 'm_mem_free=8g,h_vmem=8g',
                             '-N', 'imp.chunks.'+str(outdot),
                             '-o', imp_log,
                             str(rp_bin)+'/uger.sub.sh',
@@ -351,7 +351,7 @@ uger_imp_template = """#!/usr/bin/env sh
 #$ -V
 #$ -N {jname}
 #$ -q short
-#$ -l m_mem_free=8g
+#$ -l m_mem_free=8g,h_vmem=8g
 #$ -t 1-{nchunk}
 #$ -o {outlog}
 
@@ -417,7 +417,7 @@ if args.full_pipe:
     uger_bg = ' '.join(['qsub',
                             '-hold_jid','imp.chunks.'+str(outdot),
                             '-q', 'short',
-                            '-l', 'm_mem_free=4g',
+                            '-l', 'm_mem_free=4g,h_vmem=8g',
                             '-N', 'bg.chunks.'+str(outdot),
                             '-o', bg_log,
                             str(rp_bin)+'/uger.sub.sh',
