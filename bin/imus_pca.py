@@ -241,6 +241,9 @@ pedind = open(str(args.bfile)+'.pca.pedind', 'w')
 # init dict for converting back
 id_dict = {}
 
+# track sex to add to pca output
+sex_dict = {}
+
 # process fam file by line
 bfile_fam = open(str(args.bfile+'.fam'), 'r')
 idnum=0
@@ -268,6 +271,7 @@ for line in bfile_fam:
     
     # record id pair in dict for converting back
     id_dict[pca_id] = bfile_id
+    sex_dict[pca_id] = sex
 
 pedind.close()
 id_conv.close()
@@ -331,7 +335,7 @@ pc_out = open(str(args.out+'.pca.txt'), 'w')
 
 # init header
 # ouput is FID, IID, PCs 1-npcs; all space sep.
-pc_out.write('FID IID ' + ' '.join( [str('PC'+str(i)) for i in xrange(1,args.npcs+1)] ) + '\n')
+pc_out.write('FID IID ' + ' '.join( [str('PC'+str(i)) for i in xrange(1,args.npcs+1)] ) + ' SEX\n')
 
 # read in smartpca output, strip header, convert back fid:iid, remove pop designation
 with open(str(args.bfile+'.pca.raw.txt'), 'r') as evec:
@@ -347,12 +351,15 @@ with open(str(args.bfile+'.pca.raw.txt'), 'r') as evec:
         matched_id = id_dict[pc_in[0]]
         out_id = matched_id.split(':')
         
+        # get sex
+        matched_sex = str(sex_dict[pc_in[0]])
+        
         # verify nothing weird with resulting match
         if len(out_id) != 2:
             raise ValueError("Problem parsing fid:iid for %r, check %s?" % (pc_in[0], str(args.bfile+'.pca.pedind.ids.txt')))
         
         # print
-        pc_out.write( out_id[0] +' '+ out_id[1] +' '+ ' '.join(pc_in[1:(int(args.npcs)+1) ]) + '\n' )
+        pc_out.write( out_id[0] +' '+ out_id[1] +' '+ ' '.join(pc_in[1:(int(args.npcs)+1) ]) +' '+ matched_sex + '\n' )
 
 pc_out.close()
 
