@@ -125,18 +125,27 @@ for line in chunks_in:
     # verify output file exists
     if args.model == 'gee':
         ch_out = 'gee.'+str(outdot)+'.'+str(chname)+'.auto.R'
+        out_len = 10
     elif args.model == 'dfam':
         ch_out = 'dfam.'+str(outdot)+'.'+str(chname)+'.dfam'
+        out_len = 8
     elif args.model == 'gmmat':
-    	ch_out = 'gmmat_score.'+str(outdot)+'.'+str(chname)+'.R.txt'
+        ch_out = 'gmmat_score.'+str(outdot)+'.'+str(chname)+'.R.txt'
+        out_len = 11
     elif args.model == 'gmmat-fam':
-   	ch_out = 'gmmatfam_score.'+str(outdot)+'.'+str(chname)+'.R.txt'
+        ch_out = 'gmmatfam_score.'+str(outdot)+'.'+str(chname)+'.R.txt'
+        out_len = 11
     
-    # record chunks with no output
+    # record chunks with no/partial/broken output
     if not os.path.isfile(ch_out):
         mis_chunks[str(chname)] = [str(chrom), int(start), int(end)]
-    elif not file_len(ch_out) > 10:
+    elif file_len(ch_out) != file_len(str(outdot)+'.snps.'+str(chname)+'.txt'):
         mis_chunks[str(chname)] = [str(chrom), int(start), int(end)]
+    else:
+        ft = file_tail(ch_out)
+        if len(ft.split()) != out_len:
+            mis_chunks[str(chname)] = [str(chrom), int(start), int(end)]
+            
 
 chunks_in.close()
 
