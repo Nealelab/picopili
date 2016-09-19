@@ -142,7 +142,7 @@ next_call = str(rp_bin) + '/shape_rel.py '+' '.join(sys.argv[1:])+' --full-pipe'
 shape_log = 'shape.'+str(outdot)+'.qsub.log'
 uger_shape = ' '.join(['qsub',
                         '-q', 'long',
-                        '-l', 'm_mem_free='+str(args.mem_req)+'g',
+                        '-l', 'm_mem_free='+str(args.mem_req)+'g,h_vmem='+str(args.mem_req)+'g',
                         '-N', 'shape.'+str(outdot),
                         '-o', shape_log,
                         str(rp_bin)+'/uger.sub.sh',
