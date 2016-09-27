@@ -40,7 +40,7 @@ import gzip
 # from glob import glob
 from math import log10, sqrt
 from args_gwas import *
-from py_helpers import unbuffer_stdout, file_len
+from py_helpers import unbuffer_stdout, file_len, file_tail
 # , read_conf, link
 unbuffer_stdout()
 
