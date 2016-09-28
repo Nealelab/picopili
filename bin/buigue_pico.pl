@@ -1,6 +1,15 @@
 #!/usr/bin/env perl
 use strict;
 
+#############################
+# load utility functions
+#############################
+
+use FindBin;
+use lib "$FindBin::Bin";
+use rp_perl::Utils qw(trans);
+
+
 my $version = "1.0.0";
 my $progname = $0;
 $progname =~ s!^.*/!!;
@@ -10,31 +19,13 @@ $progname =~ s!^.*/!!;
 # read config file
 #############################
 
-my $conf_file = $ENV{HOME}."/ricopili.conf";
-my %conf = ();
-
-die $!."($conf_file)" unless open FILE, "< $conf_file";
-while (my $line = <FILE>){
-    my @cells = split /\s+/, $line;
-    $conf{$cells[0]} = $cells[1];
-}
-close FILE;
-
-sub trans {
-    my ($expr)=@_;
-    unless (exists $conf{$expr}) {
-	die "config file without entry: $expr\n";
-    }
-    $conf{$expr};
-}
-
 my $liloc = &trans("liloc");
 
-
-
+my $perlpack = &trans("perlpack");
+use lib $perlpack;
 
 #####################################################
-use lib $ENV{rp_perlpackages};
+# use lib $ENV{rp_perlpackages};
 
 
 

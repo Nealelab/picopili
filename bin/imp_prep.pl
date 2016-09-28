@@ -23,6 +23,14 @@ use strict;
 #### 
 
 
+#############################
+# load utility functions
+#############################
+
+use FindBin;
+use lib "$FindBin::Bin";
+use Ricopili::Utils qw(trans);
+
 my $version = "1.0.24";
 my $progname = $0;
 $progname =~ s!^.*/!!;
@@ -44,24 +52,6 @@ my $host = hostname;
 #############################
 # read config file
 #############################
-
-my $conf_file = $ENV{HOME}."/ricopili.conf";
-my %conf = ();
-
-die $!."($conf_file)" unless open FILE, "< $conf_file";
-while (my $line = <FILE>){
-    my @cells = split /\s+/, $line;
-    $conf{$cells[0]} = $cells[1];
-}
-close FILE;
-
-sub trans {
-    my ($expr)=@_;
-    unless (exists $conf{$expr}) {
-	die "config file without entry: $expr\n";
-    }
-    $conf{$expr};
-}
 
 my $ploc = &trans("p2loc");
 my $homedir = &trans("home");
@@ -289,12 +279,12 @@ print "------------------------------------\n";
 # "testing environment variable rp_perlpackages
 ####################################
 
-print "testing environment variable rp_perlpackages....\n";
-unless (exists $ENV{rp_perlpackages}) {
-    print "Error: no environment variable for perl-packages, please re-install ricopili and make sure to follow all instructions\n";
-    print "------------------------------------\n";
-    exit;
-}
+# print "testing environment variable rp_perlpackages....\n";
+# unless (exists $ENV{rp_perlpackages}) {
+#     print "Error: no environment variable for perl-packages, please re-install ricopili and make sure to follow all instructions\n";
+#     print "------------------------------------\n";
+#     exit;
+# }
 print "....all set....\n";
 print "------------------------------------\n";
 
@@ -408,7 +398,7 @@ if ($qloc eq "qsub") {
 my $sjainfofile = "$loloc/impute_dir_info";
 unless (-e $sjainfofile) {
     print "log-file ($sjainfofile) is not existing\n";
-    print "please check loloc in ~/ricopili.conf\n";
+    print "please check loloc in ~/picopili.conf\n";
     exit;
 }
 #my $sjainfofile = "$homedir/impute_dir_info_35_test";

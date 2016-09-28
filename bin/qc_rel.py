@@ -130,7 +130,7 @@ if not args.skip_platform:
     # get directory containing current script
     # (hack to get plague script location)
     rp_bin = os.path.dirname(os.path.realpath(__file__))
-    plague_ex = rp_bin + '/plague.pl'
+    plague_ex = rp_bin + '/plague_pico.pl'
 
 
 #############
