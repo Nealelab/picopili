@@ -186,7 +186,7 @@ my $buigue_script = "buigue_pico.pl";              ### my.pipeline_tar
 my $checkpos_script = "checkpos_pico.pl";         ### my.pipeline_tar
 my $checkflip_script = "checkflip_pico.pl";       ### my.pipeline_tar
 my $mutt_script = "mutt";                  ### my.pipeline_tar
-my $blue_script = "blueprint_pico.pl";             ### my.pipeline_tar
+my $blue_script = "blueprint.py";             ### my.pipeline_tar
 
 push @test_scripts, $readref_script;
 push @test_scripts, $readrefsum_script;
@@ -572,27 +572,27 @@ sub send_jobarray {
     $command_line =~ s/--force1//;
 
 
-    my $wt_file = "$sjadir/blueprint_joblist_file-$sjaname.$outname";
+#    my $wt_file = "$sjadir/blueprint_joblist_file-$sjaname.$outname";
     chdir "$rootdir" or die "something strange";
-    if ($qloc eq "bsub") {
-	$wt_file =~ s/.*blueprint_joblist_file-//;
-    }
-
-    if ($qloc eq "slurm") {
-	$wt_file = "$sjadir/$jobfile.script.id";
-    }
-
-    if ($qloc eq "qsub") {
-	$wt_file = "$sjadir/j.$sjaname.$outname.id";
-    }
-    if ($qloc eq "qsub_c") {
-	$wt_file = "$sjadir/j.$sjaname.$outname.id";
-    }
-    if ($qloc eq "qsub_b") {
-	$wt_file = "$sjadir/j.$sjaname.$outname.id";
-    }
+#    if ($qloc eq "bsub") {
+#	$wt_file =~ s/.*blueprint_joblist_file-//;
+#    }
+#
+#    if ($qloc eq "slurm") {
+#	$wt_file = "$sjadir/$jobfile.script.id";
+#    }
+#
+#    if ($qloc eq "qsub") {
+#	$wt_file = "$sjadir/j.$sjaname.$outname.id";
+#    }
+#    if ($qloc eq "qsub_c") {
+#	$wt_file = "$sjadir/j.$sjaname.$outname.id";
+#    }
+#    if ($qloc eq "qsub_b") {
+#	$wt_file = "$sjadir/j.$sjaname.$outname.id";
+#    }
     
-
+    my $wt_name = "$sjaname.$outname";
 
     if ($serial) {
 	my $sys_re = "$command_line";
@@ -600,7 +600,7 @@ sub send_jobarray {
 	exit;
     }
     else {
-	my $sys_re = "$blue_script --njob $job_bn_th -b \"$command_line\" --wa 2 --di -j --fwt $wt_file --na _if_$outname";
+	my $sys_re = "$blue_script --njob $job_bn_th -b \"$command_line\" --wa 2 --di -j --wait-name $wt_name --na _if_$outname";
 	&mysystem ($sys_re);
     }
 
