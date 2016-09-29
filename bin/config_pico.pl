@@ -279,12 +279,10 @@ while (1) {
 }
 print "\n";
 
-print "Please enter your email address:\n";
+print "Please enter your email address (optional, can enter \"None\"):\n";
 my $email = <>;
 chomp $email;
 print "\n";
-
-
 
 
 #############################
@@ -312,7 +310,12 @@ my %longvar = ("p2loc","PLINK2",
 	       "i2loc","IMPUTE2",
 	       "liloc","Liftover",
 	       "eloc","Eigenstrat",
-#	       "rloc","R",
+		   "admloc","ADMIXTURE",
+		   "reaploc","REAP",
+		   "priloc","PRIMUS",
+	       "rloc","R",
+		   "rscloc","Rscript",
+		   "rplloc","R-enabled Plink (e.g. v1.07, or a dev build of 1.90)",
 	       "hmloc","HapMap reference",
 	       "perlpack","Perl packages (for Compress::Zlib)",
     );
@@ -323,7 +326,12 @@ my %variables = ("p2loc", "",
 		 "i2loc","",
 		  "liloc","",
 		  "eloc","",
-#		  "rloc","",
+		  "admloc","",
+		  "reaploc","",
+		  "priloc","",
+		  "rloc","",
+		  "rscloc","",
+		  "rplloc","",
 		  "hmloc","",
 		  "perlpack","",
     );
@@ -331,164 +339,204 @@ my %variables = ("p2loc", "",
     
 if ($clusters{broad}){
     %variables = (
-		  # "ploc", "/home/unix/sripke/plink_src/src/",
-		  "p2loc","/home/unix/sripke/plink_src/plink_1.9_newest/",
-		  "shloc","/home/unix/sripke/shapeit/",
-		  "i2loc", "/psych/genetics_data/ripke/references_from_debakkerscratch/impute_v2/impute_v2/impute_2.2.7_beta/",
-		  "liloc","/home/unix/sripke/liftover/",
-		  "eloc","/home/unix/sripke/eigensoft/bin",
-#		  "ldloc","/psych/genetics_data/ripke/ldsc/",
-#		  "rloc","broadinstitute",
-#		  "rpac","NA",
-		  "hmloc","/psych/genetics_data/ripke/references_outdated/hapmap_ref/",
-#		  "meloc","/psych/genetics_data/ripke/references_from_debakkerscratch/metal/",
-#		  "hvloc","/home/radon01/sripke/bakker_ripke/haploview/",
+		  "p2loc","/home/unix/sripke/plink_src/plink_1.9_newest",
+		  "shloc","/home/unix/sripke/shapeit/bin",
+		  "i2loc", "/psych/genetics_data/ripke/references_from_debakkerscratch/impute_v2/impute_v2/impute_2.2.7_beta",
+		  "liloc","/home/unix/sripke/liftover",
+		  "eloc","/humgen/atgu1/fs03/shared_resources/shared_software/EIG6.0beta_noreq/bin",
+		  "admloc","/humgen/atgu1/fs03/shared_resources/shared_software/admixture_linux-1.23",
+		  "reaploc","/humgen/atgu1/fs03/shared_resources/shared_software/REAP",
+		  "priloc","/humgen/atgu1/fs03/shared_resources/shared_software/PRIMUS_v1.8.0/bin",
+		  "rloc","/broad/software/free/Linux/redhat_6_x86_64/pkgs/r_3.0.1/bin",
+		  "rscloc","/broad/software/free/Linux/redhat_6_x86_64/pkgs/r_3.0.1/bin",
+		  "rplloc","/home/unix/sripke/plink_src/src/",
+		  "hmloc","/psych/genetics_data/ripke/references_outdated/hapmap_ref",
 		  "perlpack","/home/unix/sripke/perl_modules",
 	);
 }
 
+		  # "ploc", "/home/unix/sripke/plink_src/src/",
+#		  "ldloc","/psych/genetics_data/ripke/ldsc/",
+#		  "rloc","broadinstitute",
+#		  "rpac","NA",
+#		  "meloc","/psych/genetics_data/ripke/references_from_debakkerscratch/metal/",
+#		  "hvloc","/home/radon01/sripke/bakker_ripke/haploview/",
+
+
 elsif ($clusters{lisa}){
     %variables = (
-#		  "ploc", "/home/gwas/plink/1.08/src",
 		  "p2loc","/home/gwas/plink2/plink_1.9_newest",
-		  "shloc","/home/gwas/shapeit",
+		  "shloc","/home/gwas/shapeit/bin",
 		  "i2loc","/home/gwas/bin_impute_v2/impute_v2.2.2_x86_64_static",
 		  "liloc","/home/gwas/liftover",
-#		  "ldloc","/home/gwas/ldsc/",
 		  "eloc","/home/gwas/eigensoft",
-#		  "rloc","/sara/sw/R-3.1.2/bin/",
-#		  "rpac","NA",
-		  "hmloc","/home/gwas/pgc-samples/hapmap_ref/",
-#		  "meloc","/home/gwas/metal",
-#		  "hvloc","./",
+		  "admloc","",
+		  "reaploc","",
+		  "priloc","",
+		  "rloc","/sara/sw/R-3.1.2/bin",
+		  "rscloc","/sara/sw/R-3.1.2/bin",
+		  "rplloc","/home/gwas/plink/1.08/src",
+		  "hmloc","/home/gwas/pgc-samples/hapmap_ref",
 		  "perlpack","/home/gwas/perl_modules",
 	);
 }
 
+#		  "ploc", "/home/gwas/plink/1.08/src",
+#		  "ldloc","/home/gwas/ldsc/",
+#		  "rloc","/sara/sw/R-3.1.2/bin/",
+#		  "rpac","NA",
+#		  "meloc","/home/gwas/metal",
+#		  "hvloc","./",
 
 
 elsif ($clusters{computerome}){
     %variables = (
-#		  "ploc", "/home/people/sripke/rp_external_bins/plink/",
-		  "p2loc","/home/people/sripke/rp_external_bins/plink_1.9_newest/",
-		  "shloc","/home/people/sripke/rp_external_bins/shapeit/",
-		  "i2loc","/home/people/sripke/rp_external_bins/impute2/",
-		  "liloc","/home/people/sripke/rp_external_bins/liftover/",
-#		  "ldloc","/home/people/sripke/rp_external_bins/ldsc/",
-		  "eloc","/home/people/sripke/rp_external_bins/EIG6.0beta/",
-#		  "rloc","/services/tools/R-3.1.2/bin/",
-#		  "rpac","/home/people/sripke/rp_external_bins/Rpackages/",
-		  "hmloc","/home/people/sripke/imputation_references/",
-#		  "meloc","/home/people/sripke/rp_external_bins/metal/",
-#		  "hvloc","./",
+		  "p2loc","/home/people/sripke/rp_external_bins/plink_1.9_newest",
+		  "shloc","/home/people/sripke/rp_external_bins/shapeit/bin",
+		  "i2loc","/home/people/sripke/rp_external_bins/impute2",
+		  "liloc","/home/people/sripke/rp_external_bins/liftover",
+		  "eloc","/home/people/sripke/rp_external_bins/EIG6.0beta",
+		  "admloc","",
+		  "reaploc","",
+		  "priloc","",
+		  "rloc","/services/tools/R-3.1.2/bin",
+		  "rscloc","/services/tools/R-3.1.2/bin",
+		  "rplloc","/services/tools/R-3.1.2/bin",
+		  "hmloc","/home/people/sripke/imputation_references",
 		  "perlpack","/home/people/sripke/rp_external_bins/perl_packages",
 	);
 }
 
+#		  "ploc", "/home/people/sripke/rp_external_bins/plink/",
+#		  "ldloc","/home/people/sripke/rp_external_bins/ldsc/",
+#		  "rloc","/services/tools/R-3.1.2/bin/",
+#		  "rpac","/home/people/sripke/rp_external_bins/Rpackages/",
+#		  "meloc","/home/people/sripke/rp_external_bins/metal/",
+#		  "hvloc","./",
+
 
 elsif ($clusters{co_ipsych}){
     %variables = (
-#		  "ploc", "/data/tools/plink-1.07/",
-		  "p2loc","/data/tools/plink2_sept2015/",
-		  "shloc","/data/tools/shapeit_sept_2015/",
+		  "p2loc","/data/tools/plink2_sept2015",
+		  "shloc","/data/tools/shapeit_sept_2015/bin",
 		  "i2loc","/data/tools/impute-2.3.2/",
-		  "liloc","/data/user_tools/rp_external_bins/liftover/",
-#		  "ldloc","/data/user_tools/rp_external_bins/ldsc/",
-		  "eloc","/data/tools/eigensoft-6.0.1/bin/",
-#		  "rloc","/data/tools/R-3.2.1/bin/",
-#		  "rpac","/data/user_tools/rp_external_bins/Rpackages/",
-		  "hmloc","/data/user_tools/imputation_references/",
-#		  "meloc","/data/tools/metal-20110325/",
-#		  "hvloc","./",
+		  "liloc","/data/user_tools/rp_external_bins/liftover",
+		  "eloc","/data/tools/eigensoft-6.0.1/bin",
+		  "admloc","",
+		  "reaploc","",
+		  "priloc","",
+		  "rloc","/data/tools/R-3.2.1/bin",
+		  "rscloc","/data/tools/R-3.2.1/bin",
+		  "rplloc","/data/tools/plink-1.07",
+		  "hmloc","/data/user_tools/imputation_references",
 		  "perlpack","/data/user_tools/rp_external_bins/perl_packages",
 	);
 }
 
+#		  "ploc", "/data/tools/plink-1.07/",
+#		  "ldloc","/data/user_tools/rp_external_bins/ldsc/",
+#		  "rloc","/data/tools/R-3.2.1/bin/",
+#		  "rpac","/data/user_tools/rp_external_bins/Rpackages/",
+#		  "meloc","/data/tools/metal-20110325/",
+#		  "hvloc","./",
+
+
 elsif ($clusters{genomedk}){
     %variables = (
-#		  "ploc", "/project/ricopili/plink_src/",
-		  "p2loc","/project/ricopili/plink_1.9_jul4/",
-		  "shloc","/project/ricopili/3rd_bins/shapeit/",
-		  "i2loc","/project/ricopili/3rd_bins/impute2/",
-		  "liloc","/project/ricopili/3rd_bins/liftover/",
-		  "eloc","/project/ricopili/3rd_bins/eigenstrat/bin/",
-#		  "rloc","/com/extra/R/3.1.0/bin",
-#		  "rpac","NA",
-		  "hmloc","/project/ricopili/reference_dir/",
-#		  "meloc","/project/ricopili/3rd_bins/metal/",
-#		  "hvloc","./",
+		  "p2loc","/project/ricopili/plink_1.9_jul4",
+		  "shloc","/project/ricopili/3rd_bins/shapeit/bin",
+		  "i2loc","/project/ricopili/3rd_bins/impute2",
+		  "liloc","/project/ricopili/3rd_bins/liftover",
+		  "eloc","/project/ricopili/3rd_bins/eigenstrat/bin",
+		  "admloc","",
+		  "reaploc","",
+		  "priloc","",
+		  "rloc","/com/extra/R/3.1.0/bin",
+		  "rscloc","/com/extra/R/3.1.0/bin",
+		  "rplloc","/project/ricopili/plink_src",
+		  "hmloc","/project/ricopili/reference_dir",
 		  "perlpack","/project/ricopili/perl_packages/",
 	);
 }
 
+#		  "ploc", "/project/ricopili/plink_src/",
+#		  "rloc","/com/extra/R/3.1.0/bin",
+#		  "rpac","NA",
+#		  "meloc","/project/ricopili/3rd_bins/metal/",
+#		  "hvloc","./",
+
+
 elsif ($clusters{mssm}){
     %variables = (
-#		  "ploc", "/hpc/users/xripkes01/ricopili/3rd_binaries/plink-1.07-src-sripke/",
-		  "p2loc","/hpc/users/xripkes01/ricopili/3rd_binaries/plink-1.09-src-aug4/",
-		  "shloc","/hpc/users/xripkes01/ricopili/3rd_binaries/shapeit/",
-		  "i2loc","/hpc/users/xripkes01/ricopili/3rd_binaries/impute2/",
-		  "liloc","/hpc/users/xripkes01/ricopili/3rd_binaries/liftover/",
-		  "eloc","/hpc/packages/minerva-common/eigensoft/5.0.1/bin/",
-#		  "rloc","/hpc/packages/minerva-common/R/2.15.3/lib64/R/bin/",
-#		  "rpac","NA",
-		  "hmloc","/hpc/users/xripkes01/ricopili/reference_dir/",
-#		  "meloc","/hpc/users/xripkes01/ricopili/3rd_binaries/metal/",
-#		  "hvloc","./",
-		  "perlpack","/hpc/users/xripkes01/perl_modules/",
+		  "p2loc","/hpc/users/xripkes01/ricopili/3rd_binaries/plink-1.09-src-aug4",
+		  "shloc","/hpc/users/xripkes01/ricopili/3rd_binaries/shapeit/bin",
+		  "i2loc","/hpc/users/xripkes01/ricopili/3rd_binaries/impute2",
+		  "liloc","/hpc/users/xripkes01/ricopili/3rd_binaries/liftover",
+		  "eloc","/hpc/packages/minerva-common/eigensoft/5.0.1/bin",
+		  "admloc","",
+		  "reaploc","",
+		  "priloc","",
+		  "rloc","/hpc/packages/minerva-common/R/2.15.3/lib64/R/bin",
+		  "rscloc","/hpc/packages/minerva-common/R/2.15.3/lib64/R/bin",
+		  "rplloc","/hpc/users/xripkes01/ricopili/3rd_binaries/plink-1.07-src-sripke",
+		  "hmloc","/hpc/users/xripkes01/ricopili/reference_dir",
+		  "perlpack","/hpc/users/xripkes01/perl_modules",
 	);
 }
 
+#		  "ploc", "/hpc/users/xripkes01/ricopili/3rd_binaries/plink-1.07-src-sripke/",
+#		  "rloc","/hpc/packages/minerva-common/R/2.15.3/lib64/R/bin/",
+#		  "rpac","NA",
+#		  "meloc","/hpc/users/xripkes01/ricopili/3rd_binaries/metal/",
+#		  "hvloc","./",
 
 
 foreach (keys %variables){
 
-    if ($variables{$_} eq "broadinstitute" && $longvar{$_} eq "R") {
-	print "You are running R on broad, took the default value\n\n";
-    }
-    elsif ($variables{$_} eq "NA" && $longvar{$_} eq "Rpackages") {
-	print "assuming library rmeta is installed on standard R\n\n";
-    }
-    else {
 	if ($variables{$_} ne '' && (-d $variables{$_})){
-	    print "For $longvar{$_}, do you want to use the default location (y or n)?\n\t$variables{$_}\n";
+	    print "Default location for $longvar{$_} is: \n\t$variables{$_}\n\n";
 	    if ($defall == 0) {
-		while (1) {
-		    my $answer = lc <>;
-		    chomp $answer;
-		    if ($answer eq "y") {
-			print "Using $variables{$_} for $longvar{$_}.\n\n";
-			last;
-		    }
-		    elsif ($answer eq "n") {print "Please enter a new location to use for $longvar{$_}:\n";
-					    my $input = <>;
-					    chomp $input;
-					    $input =~ s/^~/$ENV{HOME}/g;
-					    $input =~ s/^\./$cd/g;
-					    unless ( -d $input ){print "Not a valid directory. Please try again.\n";next;}
-					    print "\n";
-					    last;}
-		    else {print "Please answer with y or n.\n";}
+			print "Do you want to use this location (y or n)?\n";
+			while (1) {
+		    	my $answer = lc <>;
+				chomp $answer;
+				if ($answer eq "y") {
+					print "Using $variables{$_} for $longvar{$_}.\n\n";
+					last;
+				}
+				elsif ($answer eq "n") {print "Please enter a new location to use for $longvar{$_}:\n";
+					my $input = <>;
+					chomp $input;
+					$input =~ s/^~/$ENV{HOME}/g;
+					$input =~ s/^\./$cd/g;
+					unless ( -d $input ){print "Not a valid directory. Please try again.\n";next;
+				}
+				print "\n";
+				last;
+			}
+		    else {
+				print "Please answer with y or n.\n";
+			}
 		}
 	    }
 	}
 	else {
 	    while (1){
 			unless($clusters{other} == 1){
-				print "No default value available for:\n";
+				print "No default value available for $longvar{$_}\n";
 			}
-		print "Please enter a location for $longvar{$_}:\n";
-		my $input = "";
-		$input = <>;
-		chomp $input;
-		$input =~ s/^~/$ENV{HOME}/g;
-		$input =~ s/^\./$cd/g;
-		unless ( -d $input ){print "Not a valid directory. Please try again.\n";next;}
-		$variables{$_} = $input;
-		print "\n";
-		last;
+			print "Please enter a location:\n";
+			my $input = "";
+			$input = <>;
+			chomp $input;
+			$input =~ s/^~/$ENV{HOME}/g;
+			$input =~ s/^\./$cd/g;
+			unless ( -d $input ){print "Not a valid directory. Please try again.\n";next;}
+			$variables{$_} = $input;
+			print "\n";
+			last;
 	    }
 	}
-    }
 }
 
 foreach (keys %variables){
@@ -500,14 +548,17 @@ push (@text, "init $initials");
 push (@text, "email $email");
 
 ### define queue depending on cluster
-#if ($clusters{broad}){push (@text, "queue bsub")}
 
 if ($clusters{broad}){push (@text, "queue broad_uger")}
-if ($clusters{lisa}){push (@text, "queue qsub")}
-if ($clusters{computerome} || $clusters{co_ipsych}){push (@text, "queue qsub_c")}
-if ($clusters{genomedk}){push (@text, "queue slurm")}
-if ($clusters{mssm}){push (@text, "queue msub")}
-}
+if ($clusters{lisa}){push (@text, "queue lisa")}
+if ($clusters{computerome}){push (@text, "queue computerome")}
+if ($clusters{co_ipsych}){push (@text, "queue computerome_ipsych")}
+if ($clusters{genomedk}){push (@text, "queue genomedk")}
+if ($clusters{mssm}){push (@text, "queue mssm")}
+
+
+} # end if block for getting conf file info
+
 
 unless ( -e $conf_file && $ans_ow eq "n") {
     die $! unless open FILE, "> $conf_file";
@@ -518,7 +569,7 @@ unless ( -e $conf_file && $ans_ow eq "n") {
 
 
 #############################
-# read picopili.config file with default parameters
+# read picopili.conf file with default parameters
 #############################
 my %conf = (); ## hash with config parameters
 
@@ -537,18 +588,19 @@ print "\n";
 ############################
 my @fail_path = ();
 my %locs = ( 
-# 	"ploc","",
-	"p2loc","",
-	"shloc","",
-	"i2loc","",
-	"liloc","",
-	"eloc","",
-# 	"rloc","",
-	"hmloc","",
-# 	"meloc","",
-# 	"ldloc","",
-# 	"rpac","",
-	"perlpack",""
+		  "p2loc", "",
+		  "shloc","",
+		  "i2loc","",
+		  "liloc","",
+		  "eloc","",
+		  "admloc","",
+		  "reaploc","",
+		  "priloc","",
+		  "rloc","",
+		  "rscloc","",
+		  "rplloc","",
+		  "hmloc","",
+		  "perlpack","",
 );
 
 die $!."($conf_file)" unless open FILE, "< $conf_file";
@@ -566,46 +618,27 @@ close FILE;
 # print finish statement
 #############################
 
-my $fail = 0;
+my $email_on = 0;
+if ($conf{'email'} =~ m/\@/) {
+	$email_on = 1;
+}
+
 if ($#fail_path != -1) { 
 
-   
-#    foreach (@fail_path) {
-#        unless ($_ eq "rloc" && $clusters{broad} == 1) {
+	print "You will need to install the binaries as described here (https://sites.google.com/a/broadinstitute.org/ricopili/resources) and use a text editor (emacs,vim,etc.) to edit the file paths listed in $home/picopili.conf for the following variables:\n";
 
-    foreach my $confvar (@fail_path) {
-	if ($confvar eq "rloc" && $clusters{broad} == 1) {
-            next;
+	foreach (@fail_path) {
+		print "\t$_\n";
 	}
-	elsif ($confvar eq "rpac" && $clusters{lisa} != 1 && $clusters{other} != 1) {
-            next;
-	}
-	else{
-            $fail += 1;            
-        }
-    }
-    if ($fail != 0) {
-        print "You will need to install the binaries as described here (https://sites.google.com/a/broadinstitute.org/ricopili/resources) and use a text editor (emacs,vim,etc.) to edit the file paths listed in $home/picopili.conf for the following variables:\n";
-        foreach (@fail_path) {
-            unless ($_ eq "rloc" && $clusters{broad} == 1) {
-                print "\t$_\n";            
-            }
-        }
-    }
-    else {
-        print "Setup has been completed successfully!\n";
-        print "If you do not receive an email with the subject rp_config, please check your email address is entered correctly at $conf_file\n"; 
-        &mysystem("echo \"Configuration for RP was successful.\" | mail -s rp_config  $conf{'email'}");           
-    }
 }
 else {
-    print "Setup has been completed successfully!\n";
-    print "If you do not receive an email with the subject rp_config, please check your email address is entered correctly at $conf_file\n";   
-    &mysystem("echo \"Configuration for RP was successful.\" | mail -s rp_config  $conf{'email'}");    
+	print "Configuration completed successfully! Settings are stored in $conf_file\n";
+	
+	if ($email_on){
+		print "If you do not receive an email with the subject picopili_config, please check your address is entered correctly at $conf_file\n";
+		&mysystem("echo \"Configuration for picopili was successful.\" | mail -s picopili_config  $conf{'email'}");
+	}
 }
-
-
-
 
 
 
@@ -706,9 +739,10 @@ if ($status_bin != 0) {
 	}
 }
 else{
-	print "Successfully found picopili directory in search path!\n";	
+	print "Successfully found picopili directory in search path!\n\n";	
 }
 
+print "### Finished ###\n\n";
     
 exit;
 ########## Done ##########

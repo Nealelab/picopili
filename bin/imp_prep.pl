@@ -61,6 +61,10 @@ my $qloc = &trans("queue");
 my $liloc = &trans("liloc");
 my $email = &trans("email");
 
+my $email_on = 0;
+if ($email =~ m/\@/){
+	$email_on = 1;
+}
 
 ###############################################
 
@@ -183,7 +187,7 @@ push @test_scripts, $readrefsum_script;
 push @test_scripts, $buigue_script;
 push @test_scripts, $checkpos_script;
 push @test_scripts, $checkflip_script;
-push @test_scripts,  $blue_script;
+push @test_scripts, $blue_script;
 
 #push @test_scripts, $mutt_script ;
 
@@ -232,42 +236,43 @@ if (@miss_scripts > 0) {
 
 
 
+if($email_on){
 
+	print ".......testing email program....\n";
 
-print ".......testing email program....\n";
-
-my $err_scr = 0;
-{
-    my $scr_path = '';
+	my $err_scr = 0;
+	{
+	    my $scr_path = '';
     
-    for my $path ( split /:/, $ENV{PATH} ) {
-	if ( -f "$path/$mutt_script" && -x _ ) {
-	    print "$mutt_script\tfound in $path\n";
-	    $scr_path = "$path/$mutt_script";
-	    last;
-	}
-    }
-    unless ( $scr_path ) {
-
-	print "!!Warning!! : No $mutt_script command available, trying mail\n" ;
-
-	$mutt_script = "mail";
-	for my $path ( split /:/, $ENV{PATH} ) {
-	    if ( -f "$path/$mutt_script" && -x _ ) {
-		print "$mutt_script\tfound in $path\n";
-		$scr_path = "$path/$mutt_script";
-		last;
+	    for my $path ( split /:/, $ENV{PATH} ) {
+		if ( -f "$path/$mutt_script" && -x _ ) {
+		    print "$mutt_script\tfound in $path\n";
+		    $scr_path = "$path/$mutt_script";
+		    last;
+		}
 	    }
-	}
-	unless ( $scr_path ) {
-	    $err_scr = 1;
-	    print "!!Error!! : No $mutt_script command available\n" ;
-	}
-    }
- 
-}
-die if $err_scr == 1;
+	    unless ( $scr_path ) {
 
+		print "!!Warning!! : No $mutt_script command available, trying mail\n" ;
+
+		$mutt_script = "mail";
+		for my $path ( split /:/, $ENV{PATH} ) {
+		    if ( -f "$path/$mutt_script" && -x _ ) {
+			print "$mutt_script\tfound in $path\n";
+			$scr_path = "$path/$mutt_script";
+			last;
+		    }
+		}
+		unless ( $scr_path ) {
+		    $err_scr = 1;
+		    print "!!Error!! : No $mutt_script command available\n" ;
+		}
+	    }
+ 
+	}
+	die if $err_scr == 1;
+
+}
 
 print "....all necessary binaries found....\n";
 print "------------------------------------\n";
@@ -395,7 +400,7 @@ if ($qloc eq "qsub") {
 }
 
 
-my $sjainfofile = "$rootdir/impute_dir_info.log";
+my $sjainfofile = "$rootdir/imp_prep_job_info.log";
 unless (-e $sjainfofile) {
 	&mysystem ("touch $sjainfofile");
 }
@@ -435,7 +440,9 @@ sub send_jobarray {
 	print SUC $fini_message."\n";
 	close SUC;
 
-	&mysystem ('cat success_file | '.$mutt_script.' -s RP_pipeline_finished '.$email) ;
+	if($email_on){
+		&mysystem ('cat success_file | '.$mutt_script.' -s RP_pipeline_finished '.$email) ;
+	}
 
 	my $sjarow      = $sjainfotxt."\t$sjaname\t$now";
 	&a2filenew_app("$sjainfofile",$sjarow);
@@ -543,8 +550,9 @@ sub send_jobarray {
 	    print ERR $err_message."\n";
 	    close ERR;
 
-
-	    &mysystem ('cat error_file | '.$mutt_script.' -s RP_pipeline_error '.$email) ;
+		if($email_on){
+			&mysystem ('cat error_file | '.$mutt_script.' -s RP_pipeline_error '.$email) ;
+		}
 
 	    unless ($serial) {
 		exit;
