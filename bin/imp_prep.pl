@@ -29,14 +29,17 @@ use strict;
 
 use FindBin;
 use lib "$FindBin::Bin";
-use Ricopili::Utils qw(trans);
+use rp_perl::Utils qw(trans);
 
 my $version = "1.0.24";
 my $progname = $0;
 $progname =~ s!^.*/!!;
 my $command_line = "$progname @ARGV";
 
-
+use Cwd;
+use File::Path;
+my $rootdir = &Cwd::cwd();
+my $sjainfotxt = "$rootdir\t$command_line";
 
 my $jnum = 7; ### number of imputation job per node
 
@@ -54,16 +57,13 @@ my $host = hostname;
 #############################
 
 my $ploc = &trans("p2loc");
-my $homedir = &trans("home");
 my $qloc = &trans("queue");
 my $liloc = &trans("liloc");
 my $email = &trans("email");
-my $loloc = &trans("loloc");
 
 
 ###############################################
 
-my $rootdir = "";
 my $iname = "" ;
 
 my $suminfo = "infosum_pos";
@@ -395,14 +395,10 @@ if ($qloc eq "qsub") {
 }
 
 
-my $sjainfofile = "$loloc/impute_dir_info";
+my $sjainfofile = "$rootdir/impute_dir_info.log";
 unless (-e $sjainfofile) {
-    print "log-file ($sjainfofile) is not existing\n";
-    print "please check loloc in ~/picopili.conf\n";
-    exit;
+	&mysystem ("touch $sjainfofile");
 }
-#my $sjainfofile = "$homedir/impute_dir_info_35_test";
-my $sjainfotxt = "";
 my $sjamulti = 0;
 
 
@@ -617,12 +613,6 @@ sub send_jobarray {
 #############  BEGIN
 ##############################################
 ##############################################
-
-
-use Cwd;
-use File::Path;
-$rootdir = &Cwd::cwd();
-$sjainfotxt = "$rootdir\t$command_line";
 
 
 unless (-e $impute_dir){

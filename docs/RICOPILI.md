@@ -3,9 +3,10 @@ The following scripts are adapted from ricopili (https://github.com/Nealelab/ric
 * `buigue_pico.pl`, from `buigue`
 * `checkflip_pico.pl`, from `checkflip4`
 * `checkpos_pico.pl`, from `checkpos6`
-* `config`, from `rp_config`
+* `config_pico.pl`, from `rp_config`
 * `lift_to_hg19.pl`, from `lift18219`
 * `plague_pico.pl`, from `plague_2`
+* `bin_check_pico`, from `bin_check`
 * `./rp_perl/Utils.pm`, from `./Ricopili/Utils.pm`
 
 In addition, the following scripts are adapted from ricopili with more substantial changes as indicated:

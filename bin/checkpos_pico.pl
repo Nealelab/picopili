@@ -50,7 +50,6 @@ sub trans {
 
 my $sloc = &trans("sloc");
 my $hmloc = &trans("hmloc");
-#my $ploc = &trans("ploc");
 my $p2loc = &trans("p2loc");
 
 
