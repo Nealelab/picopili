@@ -41,7 +41,7 @@ import subprocess
 import argparse
 # from glob import glob
 from args_gwas import *
-from py_helpers import unbuffer_stdout, test_exec
+from py_helpers import unbuffer_stdout, test_exec, find_exec
 # , read_conf, link
 unbuffer_stdout()
 
@@ -93,21 +93,16 @@ print '\nSoftware Settings:'
 print '--rplink-ex '+str(args.rplink_ex)
 
 
-##############
-#print '\n...Reading ricopili config file...'
-##############
-#
-#### read plink loc from config
-#conf_file = os.environ['HOME']+"/ricopili.conf"
-#configs = read_conf(conf_file)
-
 
 #############
 print '\n...Checking dependencies...'
 # check exists, executable
 #############
 
-# verify executables
+# R-compatible plink
+if args.rplink_ex is None or args.rplink_ex == "None":
+    args.rplink_ex = find_exec('plink',key='rplloc')
+
 test_exec(args.rplink_ex, 'Plink')
 
 # verify bfiles are files, not paths

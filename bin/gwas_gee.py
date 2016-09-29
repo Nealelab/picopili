@@ -44,7 +44,7 @@ import argparse
 from warnings import warn
 # from glob import glob
 from args_gwas import *
-from py_helpers import unbuffer_stdout, test_exec, find_from_path, file_len
+from py_helpers import unbuffer_stdout, test_exec, find_from_path, file_len, find_exec
 # , read_conf, link
 unbuffer_stdout()
 
@@ -127,20 +127,17 @@ print '--rplink-ex '+str(args.rplink_ex)
 print '--port '+str(args.port)
 
 
-##############
-#print '\n...Reading ricopili config file...'
-##############
-#
-#### read plink loc from config
-#conf_file = os.environ['HOME']+"/ricopili.conf"
-#configs = read_conf(conf_file)
-
-
 #############
 print '\n...Checking dependencies...'
 # check exists, executable
 #############
 
+if args.rplink_ex is None or args.rplink_ex == "None":
+    args.rplink_ex = find_exec('plink',key='rpllloc')
+
+if args.r_ex is None or args.r_ex == "None":
+    args._ex = find_exec('R',key='rloc')
+    
 # verify executables
 test_exec(args.rplink_ex, 'Plink')
 #if not args.rserve_active:

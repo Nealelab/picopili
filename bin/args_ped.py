@@ -187,7 +187,7 @@ arg_prefWt.add_argument('--seed',
 ############
 #
 # Software Executables
-# Locations for software dependencies not in ricopili config file
+# Locations for software dependencies not previously in ricopili config file
 #
 ############
 parserexloc = argparse.ArgumentParser(add_help=False)

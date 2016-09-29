@@ -30,7 +30,7 @@ use strict;
 # read config file
 #############################
 
-my $conf_file = $ENV{HOME}."/ricopili.conf";
+my $conf_file = $ENV{HOME}."/picopili.conf";
 my %conf = ();
 
 die $!."($conf_file)" unless open FILE, "< $conf_file";

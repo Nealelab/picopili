@@ -27,7 +27,7 @@ if not (('-h' in sys.argv) or ('--help' in sys.argv)):
 import os
 import subprocess
 from args_impute import *
-from py_helpers import unbuffer_stdout, file_len, link, read_conf
+from py_helpers import unbuffer_stdout, file_len, link, find_exec
 unbuffer_stdout()
 
 
@@ -87,35 +87,18 @@ print '--sleep '+str(args.sleep)
 
 
 #############
-print '\n...Reading ricopili config file...'
+print '\n...Checking dependencies...'
 #############
 
-### read plink loc from config
-conf_file = os.environ['HOME']+"/ricopili.conf"
-configs = read_conf(conf_file)
-
-impute_ex = configs['i2loc']+"impute2"
-shapeit_ex = configs['shloc'] + '/bin/shapeit'
+# from config
+impute_ex = find_exec('impute2',key='i2loc')
+shapeit_ex = find_exec('shapeit',key='shloc')
 
 # get directory containing current script
 # (to get absolute path for scripts)
 rp_bin = os.path.dirname(os.path.realpath(__file__))
 chunker_ex = rp_bin+'/chunk_snps.py'
-
-
-
-# directories
-wd = os.getcwd()
-shape_dir = wd + '/phase_chr'
-
-
-
-
-
-#############
-print '\n...Checking dependencies...'
-#############
-
+test_exec(chunker_ex)
 
 
 # TODO: here
@@ -124,7 +107,9 @@ print '\n...Checking dependencies...'
 # executables
 
 
-
+# directories
+wd = os.getcwd()
+shape_dir = wd + '/phase_chr'
 
 
 

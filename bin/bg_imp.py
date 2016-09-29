@@ -35,7 +35,7 @@ import os
 import subprocess
 import warnings
 from args_impute import *
-from py_helpers import unbuffer_stdout, read_conf, file_tail, link, warn_format
+from py_helpers import unbuffer_stdout, find_exec, file_tail, link, warn_format
 unbuffer_stdout()
 warnings.formatwarning = warn_format
 
@@ -181,25 +181,15 @@ print '--sleep '+str(args.sleep)
 
 
 #############
-print '\n...Reading ricopili config file...'
+print '\n...Checking dependencies...'
 #############
 
-### read plink loc from config
-conf_file = os.environ['HOME']+"/ricopili.conf"
-configs = read_conf(conf_file)
-
-plink_ex = configs['p2loc']+"plink"
+plink_ex = find_exec('plink',key='p2loc')
 
 # get directory containing current script
 # (to get absolute path for scripts)
 rp_bin = os.path.dirname(os.path.realpath(__file__))
 rs_ex = str(rp_bin)+'/rs_trans.py'
-
-#############
-print '\n...Checking dependencies...'
-#############
-
-
 
 
 # TODO: here

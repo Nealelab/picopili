@@ -44,7 +44,7 @@ import argparse
 # import random
 # import warnings
 from args_impute import *
-from py_helpers import unbuffer_stdout, link, read_conf #, test_exec
+from py_helpers import unbuffer_stdout, link, find_exec #, test_exec
 # file_len, read_conf, find_from_path, link, gz_confirm
 unbuffer_stdout()
 
@@ -106,24 +106,13 @@ else:
     outdot = str(args.out)
 
 
-#############
-print '\n...Reading ricopili config file...'
-#############
-
-### read plink, shapeit loc from config
-conf_file = os.environ['HOME']+"/ricopili.conf"
-configs = read_conf(conf_file)
-
-plinkx = configs['p2loc']+"plink"
-shapeit_ex = configs['shloc'] + '/bin/shapeit'
-
-
 
 #############
 print '\n...Checking dependencies...'
 #############
 
-
+plinkx = find_exec('plink',key='p2loc')
+shapeit_ex = find_exec('shapeit',key='shloc')
 
 # TODO: here
 

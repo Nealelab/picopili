@@ -35,7 +35,7 @@ import os
 import subprocess
 import argparse
 from glob import glob
-from py_helpers import read_conf, unbuffer_stdout, test_exec, find_from_path
+from py_helpers import find_exec, unbuffer_stdout, test_exec
 from args_pca import *
 unbuffer_stdout()
 
@@ -83,31 +83,28 @@ print '--rel-th '+str(args.rel_th)
 print '--npcs '+str(args.npcs)
 
 
- 
-#############
-print '\n...Reading ricopili config file...'
-#############
-
-### read plink loc from config
-# not getting R here since ricopili.conf currently relies on platform info
-conf_file = os.environ['HOME']+"/ricopili.conf"
-configs = read_conf(conf_file)
-
-plinkx = configs['p2loc']+"plink"
-smartpcax = configs['eloc']+"/smartpca"
-
 
 #############
 print '\n...Checking dependencies...'
 # check exists, executable
 #############
 
-# find required files
+# from config
+plinkx = find_exec('plink',key='p2loc')
+smartpcax = find_exec('smartpca',key='eloc')
+
+
+# if unspecified
 if args.rscript_ex == None or args.rscript_ex == "None":
-    args.rscript_ex = find_from_path("Rscript", 'Rscript')
+    args.rscript_ex = find_exec("Rscript", key='rscloc')
+    
+if args.primus_ex == None or args.primus_ex == "None":
+    args.primus_ex = find_exec("run_PRIMUS.pl", key='priloc')
 
-Rplotpcax = find_from_path("plot_pca.Rscript", 'PCA plotting script')
-
+# get directory containing current script
+# (to get absolute path for scripts)
+rp_bin = os.path.dirname(os.path.realpath(__file__))
+Rplotpcax = str(rp_bin)+'/plot_pca.Rscript'
 
 # test executables
 test_exec(args.primus_ex, 'PRIMUS')

@@ -27,7 +27,7 @@ import subprocess
 import os
 from warnings import warn
 from args_gwas import *
-from py_helpers import link, unbuffer_stdout, read_conf, find_from_path
+from py_helpers import link, unbuffer_stdout, find_exec
 unbuffer_stdout()
 
 
@@ -130,25 +130,14 @@ if int(args.snp_chunk) % 100 == 0:
 
 
 #############
-print '\n...Reading ricopili config file...'
-#############
-
-### read plink loc from config
-conf_file = os.environ['HOME']+"/ricopili.conf"
-configs = read_conf(conf_file)
-
-plinkx = configs['p2loc']+"plink"
-
-if args.model == 'gmmat' or args.model == 'gmmat-fam':
-    if args.rscript_ex == None or args.rscript_ex == "None":
-        args.rscript_ex = find_from_path('Rscript', 'Rscript')
-
-
-#############
 print '\n...Checking dependencies...'
 #############
 
+plinkx = find_exec('plink',key='p2loc')
 
+if args.model == 'gmmat' or args.model == 'gmmat-fam':
+    if args.rscript_ex == None or args.rscript_ex == "None":
+        args.rscript_ex = find_exec('Rscript', key='rscloc')
 
 # TODO: here
 

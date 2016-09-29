@@ -30,7 +30,7 @@ if not (('-h' in sys.argv) or ('--help' in sys.argv)):
 import os
 import subprocess
 from args_impute import *
-from py_helpers import unbuffer_stdout, read_conf, file_len #, file_tail, link, warn_format
+from py_helpers import unbuffer_stdout, find_exec, test_exec, file_len #, file_tail, link, warn_format
 unbuffer_stdout()
 # warnings.formatwarning = warn_format
 
@@ -73,30 +73,18 @@ else:
 
 
 
-
-
-
-#############
-print '\n...Reading ricopili config file...'
-#############
-
-### read plink loc from config
-conf_file = os.environ['HOME']+"/ricopili.conf"
-configs = read_conf(conf_file)
-
-plink_ex = configs['p2loc']+"plink"
-
-# get directory containing current script
-# (to get absolute path for scripts)
-rp_bin = os.path.dirname(os.path.realpath(__file__))
-
-
 #############
 print '\n...Checking dependencies...'
 #############
 
+plink_ex = find_exec('plink', key='p2loc')
 
+# get directory containing current script
+# (to get absolute path for scripts)
+rp_bin = os.path.dirname(os.path.realpath(__file__))
+uger_ex = +str(rp_bin)+'/uger.sub.sh'
 
+test_exec(uger_ex)
 
 # TODO: here
 
@@ -217,7 +205,7 @@ if len(mis_chunks) > 0:
                             '-l', 'm_mem_free=8g,h_vmem=8g',
                             '-N', 'agg.imp.'+str(outdot),
                             '-o', agg_log,
-                            str(rp_bin)+'/uger.sub.sh',
+                            str(uger_ex),
                             str(args.sleep),
                             ' '.join(sys.argv[:])])
     

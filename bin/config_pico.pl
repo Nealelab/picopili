@@ -518,7 +518,7 @@ unless ( -e $conf_file && $ans_ow eq "n") {
 
 
 #############################
-# read ricopili.config file with default parameters
+# read picopili.config file with default parameters
 #############################
 my %conf = (); ## hash with config parameters
 
@@ -585,7 +585,7 @@ if ($#fail_path != -1) {
         }
     }
     if ($fail != 0) {
-        print "You will need to install the binaries as described here (https://sites.google.com/a/broadinstitute.org/ricopili/resources) and use a text editor (emacs,vim,etc.) to edit the file paths listed in $home/ricopili.conf for the following variables:\n";
+        print "You will need to install the binaries as described here (https://sites.google.com/a/broadinstitute.org/ricopili/resources) and use a text editor (emacs,vim,etc.) to edit the file paths listed in $home/picopili.conf for the following variables:\n";
         foreach (@fail_path) {
             unless ($_ eq "rloc" && $clusters{broad} == 1) {
                 print "\t$_\n";            

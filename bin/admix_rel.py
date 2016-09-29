@@ -42,7 +42,7 @@ import argparse
 from string import ascii_uppercase
 from glob import glob
 from numpy import digitize
-from py_helpers import unbuffer_stdout, file_len, test_exec, read_conf, find_from_path, link, gz_confirm
+from py_helpers import unbuffer_stdout, file_len, test_exec, find_exec, link, gz_confirm
 unbuffer_stdout()
 
 
@@ -196,35 +196,28 @@ print '--min-rel '+str(args.min_rel)
 print '--plot-admix-pca '+str(args.plot_admix_pca)
 
 
-
-#############
-print '\n...Reading ricopili config file...'
-#############
-
-### read plink loc from config
-# not getting R here since ricopili.conf currently relies on platform info
-conf_file = os.environ['HOME']+"/ricopili.conf"
-configs = read_conf(conf_file)
-
-plinkx = configs['p2loc']+"plink"
-
-
 #############
 print '\n...Checking dependencies...'
-# check exists, executable
+# find, check exists, executable
 #############
 
-# get variables from path as needed
-# - Rscript (if unspecified)
-# - IBD plotting script
-# - PCA plotting script (optional)
-if args.rscript_ex == None or args.rscript_ex == "None":
-    args.rscript_ex = find_from_path('Rscript', 'Rscript')
+plinkx = find_exec('plink',key='p2loc')
 
-Rplotibdx = find_from_path('plot_reap_ibd.Rscript', 'IBD plotting script')
+if args.rscript_ex == None or args.rscript_ex == "None":
+    args.rscript_ex = find_exec('Rscript', key='rscloc')
+
+if args.admixture_ex == None or args.admixture_ex == "None":
+    args.admixture_ex = find_exec('admixture', key='admloc')
+
+if args.reap_ex == None or args.reap_ex == "None":
+    args.reap_ex = find_exec('REAP', key='reaploc')
+
+rp_bin = os.path.dirname(os.path.realpath(__file__))
+Rplotibdx = rp_bin+'/plot_reap_ibd.Rscript'
 
 if plot_pca:
-    Rplotpcax = find_from_path('plot_pca.Rscript', 'PCA plotting script')
+    Rplotibdx = rp_bin+'/plot_pca.Rscript'
+
 
 # verify executables
 test_exec(plinkx, 'Plink')

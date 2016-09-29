@@ -42,7 +42,7 @@ import os
 import subprocess
 import argparse
 from glob import glob
-from py_helpers import file_len, read_conf, unbuffer_stdout, test_exec
+from py_helpers import file_len, find_exec, unbuffer_stdout, test_exec
 from args_pca import *
 unbuffer_stdout()
 
@@ -79,22 +79,7 @@ print '--ld-th '+str(args.ld_th)
 print '--ld_wind '+str(args.ld_wind)
 print '--all_chr '+str(args.all_chr)
 
- 
-#############
-print '\n...Reading ricopili config file...'
-#############
 
-### read plink loc from config
-
-conf_file = os.environ['HOME']+"/ricopili.conf"
-configs = read_conf(conf_file)
-
-plinkx = configs['p2loc']+"plink"
-
-# get directory containing current script
-# (hack to help find ld region text file)
-rp_bin = os.path.dirname(os.path.realpath(__file__))
-rp_dir = os.path.dirname(rp_bin)
 
 #############
 print '\n...Checking dependencies...'
@@ -102,7 +87,13 @@ print '\n...Checking dependencies...'
 #############
 
 # plink
-test_exec(plinkx, 'Plink')
+plinkx = find_exec('plink',key='p2loc')
+
+# get directory containing current script
+# (hack to help find ld region text file)
+rp_bin = os.path.dirname(os.path.realpath(__file__))
+rp_dir = os.path.dirname(rp_bin)
+
 
 # ld region file, if needed
 # try in rp_dir/lib/ in addition to cwd
