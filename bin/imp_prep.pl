@@ -58,7 +58,6 @@ my $host = hostname;
 
 my $ploc = &trans("p2loc");
 my $qloc = &trans("queue");
-my $liloc = &trans("liloc");
 my $email = &trans("email");
 
 my $email_on = 0;
@@ -177,6 +176,7 @@ my @test_scripts;
 my $readref_script = "readref_pico.pl";    ### my.pipeline_tar
 my $readrefsum_script = "readrefsum_pico.pl";  ### my.pipeline_tar
 my $buigue_script = "buigue_pico.pl";              ### my.pipeline_tar
+my $lift_script = "lift_to_hg19.pl";
 my $checkpos_script = "checkpos_pico.pl";         ### my.pipeline_tar
 my $checkflip_script = "checkflip_pico.pl";       ### my.pipeline_tar
 my $mutt_script = "mutt";                  ### my.pipeline_tar
@@ -185,6 +185,7 @@ my $blue_script = "blueprint.py";             ### my.pipeline_tar
 push @test_scripts, $readref_script;
 push @test_scripts, $readrefsum_script;
 push @test_scripts, $buigue_script;
+push @test_scripts, $lift_script;
 push @test_scripts, $checkpos_script;
 push @test_scripts, $checkflip_script;
 push @test_scripts, $blue_script;

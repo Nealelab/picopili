@@ -44,11 +44,11 @@ use rp_perl::Utils qw(trans);
 my $ploc = &trans("p2loc");
 my $liloc = &trans("liloc");
 
-if ($ENV{SYS_TYPE} =~ /redhat_6/) {
-    print "running on gold\n";
-    $liloc .= "64bit/";
-    print "using $liloc\n";
-}
+# if ($ENV{SYS_TYPE} =~ /redhat_6/) {
+#     print "running on gold\n";
+#     $liloc .= "64bit/";
+#     print "using $liloc\n";
+# }
 #exit;
 
 #######################################

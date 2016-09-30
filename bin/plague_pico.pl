@@ -5,7 +5,9 @@ use strict;
 # load utility functions
 #############################
 
+use File::Basename;
 use FindBin;
+use Cwd 'abs_path';
 use lib "$FindBin::Bin";
 use rp_perl::Utils qw(trans);
 
@@ -13,12 +15,13 @@ my $version = "1.0.0";
 my $progname = $0;
 $progname =~ s!^.*/!!;
 
+my $picodir = dirname(dirname(abs_path($0)));
 
 #############################
 # read config file
 #############################
 
-my $hmloc = &trans("hmloc");
+my $hmloc = "$picodir/lib/plague";
 my $perlpack = &trans("perlpack");
 use lib $perlpack;
 

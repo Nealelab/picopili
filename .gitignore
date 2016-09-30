@@ -5,4 +5,5 @@ bin/args_qc.pyc
 bin/args_gwas.pyc
 bin/args_chunks.pyc
 bin/args_impute.pyc
-
+lib/plague*
+lib/buigue*

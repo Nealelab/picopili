@@ -15,7 +15,7 @@ my $progname = $0;
 
 $progname =~ s!^.*/!!;
 
-my $cdir = abs_path($0);
+my $cdir = dirname(abs_path($0));
 my $home = $ENV{HOME};
 my $conf_file = $ENV{HOME}."/picopili.conf";
 my $command_line = "$progname @ARGV";
@@ -316,7 +316,6 @@ my %longvar = ("p2loc","PLINK2",
 	       "rloc","R",
 		   "rscloc","Rscript",
 		   "rplloc","R-enabled Plink (e.g. v1.07, or a dev build of 1.90)",
-	       "hmloc","HapMap reference",
 	       "perlpack","Perl packages (for Compress::Zlib)",
     );
 	       
@@ -332,7 +331,6 @@ my %variables = ("p2loc", "",
 		  "rloc","",
 		  "rscloc","",
 		  "rplloc","",
-		  "hmloc","",
 		  "perlpack","",
     );
 
@@ -350,7 +348,6 @@ if ($clusters{broad}){
 		  "rloc","/broad/software/free/Linux/redhat_6_x86_64/pkgs/r_3.0.1/bin",
 		  "rscloc","/broad/software/free/Linux/redhat_6_x86_64/pkgs/r_3.0.1/bin",
 		  "rplloc","/home/unix/sripke/plink_src/src/",
-		  "hmloc","/psych/genetics_data/ripke/references_outdated/hapmap_ref",
 		  "perlpack","/home/unix/sripke/perl_modules",
 	);
 }
@@ -361,6 +358,7 @@ if ($clusters{broad}){
 #		  "rpac","NA",
 #		  "meloc","/psych/genetics_data/ripke/references_from_debakkerscratch/metal/",
 #		  "hvloc","/home/radon01/sripke/bakker_ripke/haploview/",
+#		  "hmloc","/psych/genetics_data/ripke/references_outdated/hapmap_ref",
 
 
 elsif ($clusters{lisa}){
@@ -376,7 +374,6 @@ elsif ($clusters{lisa}){
 		  "rloc","/sara/sw/R-3.1.2/bin",
 		  "rscloc","/sara/sw/R-3.1.2/bin",
 		  "rplloc","/home/gwas/plink/1.08/src",
-		  "hmloc","/home/gwas/pgc-samples/hapmap_ref",
 		  "perlpack","/home/gwas/perl_modules",
 	);
 }
@@ -387,6 +384,7 @@ elsif ($clusters{lisa}){
 #		  "rpac","NA",
 #		  "meloc","/home/gwas/metal",
 #		  "hvloc","./",
+#		  "hmloc","/home/gwas/pgc-samples/hapmap_ref",
 
 
 elsif ($clusters{computerome}){
@@ -402,7 +400,6 @@ elsif ($clusters{computerome}){
 		  "rloc","/services/tools/R-3.1.2/bin",
 		  "rscloc","/services/tools/R-3.1.2/bin",
 		  "rplloc","/services/tools/R-3.1.2/bin",
-		  "hmloc","/home/people/sripke/imputation_references",
 		  "perlpack","/home/people/sripke/rp_external_bins/perl_packages",
 	);
 }
@@ -413,7 +410,7 @@ elsif ($clusters{computerome}){
 #		  "rpac","/home/people/sripke/rp_external_bins/Rpackages/",
 #		  "meloc","/home/people/sripke/rp_external_bins/metal/",
 #		  "hvloc","./",
-
+#		  "hmloc","/home/people/sripke/imputation_references",
 
 elsif ($clusters{co_ipsych}){
     %variables = (
@@ -428,7 +425,6 @@ elsif ($clusters{co_ipsych}){
 		  "rloc","/data/tools/R-3.2.1/bin",
 		  "rscloc","/data/tools/R-3.2.1/bin",
 		  "rplloc","/data/tools/plink-1.07",
-		  "hmloc","/data/user_tools/imputation_references",
 		  "perlpack","/data/user_tools/rp_external_bins/perl_packages",
 	);
 }
@@ -439,6 +435,7 @@ elsif ($clusters{co_ipsych}){
 #		  "rpac","/data/user_tools/rp_external_bins/Rpackages/",
 #		  "meloc","/data/tools/metal-20110325/",
 #		  "hvloc","./",
+#		  "hmloc","/data/user_tools/imputation_references",
 
 
 elsif ($clusters{genomedk}){
@@ -454,7 +451,6 @@ elsif ($clusters{genomedk}){
 		  "rloc","/com/extra/R/3.1.0/bin",
 		  "rscloc","/com/extra/R/3.1.0/bin",
 		  "rplloc","/project/ricopili/plink_src",
-		  "hmloc","/project/ricopili/reference_dir",
 		  "perlpack","/project/ricopili/perl_packages/",
 	);
 }
@@ -464,6 +460,7 @@ elsif ($clusters{genomedk}){
 #		  "rpac","NA",
 #		  "meloc","/project/ricopili/3rd_bins/metal/",
 #		  "hvloc","./",
+#		  "hmloc","/project/ricopili/reference_dir",
 
 
 elsif ($clusters{mssm}){
@@ -479,7 +476,6 @@ elsif ($clusters{mssm}){
 		  "rloc","/hpc/packages/minerva-common/R/2.15.3/lib64/R/bin",
 		  "rscloc","/hpc/packages/minerva-common/R/2.15.3/lib64/R/bin",
 		  "rplloc","/hpc/users/xripkes01/ricopili/3rd_binaries/plink-1.07-src-sripke",
-		  "hmloc","/hpc/users/xripkes01/ricopili/reference_dir",
 		  "perlpack","/hpc/users/xripkes01/perl_modules",
 	);
 }
@@ -489,7 +485,7 @@ elsif ($clusters{mssm}){
 #		  "rpac","NA",
 #		  "meloc","/hpc/users/xripkes01/ricopili/3rd_binaries/metal/",
 #		  "hvloc","./",
-
+#		  "hmloc","/hpc/users/xripkes01/ricopili/reference_dir",
 
 foreach (keys %variables){
 
@@ -599,7 +595,6 @@ my %locs = (
 		  "rloc","",
 		  "rscloc","",
 		  "rplloc","",
-		  "hmloc","",
 		  "perlpack","",
 );
 
@@ -646,7 +641,7 @@ else {
 ###  Optional: Add bin to default search path
 ###################################################
 
-system("bin_check_pico"); # dummy script that doesn't do anything
+system("bin_check_pico.pl"); # dummy script that doesn't do anything
 my $status_bin = ($? >> 8);
 
 
@@ -742,7 +737,59 @@ else{
 	print "Successfully found picopili directory in search path!\n\n";	
 }
 
-print "### Finished ###\n\n";
-    
+
+##################
+#
+# Check whether reference files are present yet
+#
+##################
+
+my $picobin = dirname($cdir);
+my $plaguedir = "$picobin/lib/plague";
+my $buiguedir = "$picobin/lib/buigue";
+
+my $haveref = 0;
+if (-e $plaguedir && -e $buiguedir){
+
+	my @ref_files;
+	my $refcc = 0;
+	push @ref_files, "$buiguedir/snp.txt.pos.scz49.gz";
+	push @ref_files, "$buiguedir/snp125.txt.pos.scz49.gz";
+	push @ref_files, "$buiguedir/snp130.txt.pos.scz49.gz";
+	push @ref_files, "$buiguedir/snp138.txt.pos.scz49.gz";
+	push @ref_files, "$plaguedir/snp_platform_collection.txt.new.0815.gz";
+	push @ref_files, "$plaguedir/snp_platform_collection.txt.new.0416a.gz";
+	push @ref_files, "$plaguedir/snp_platform_collection.txt.new.0114.gz";
+
+	foreach my $fi (@ref_files){
+		if (-e $fi){
+			$refcc++;
+			next;
+		}else{
+			last;
+		}
+	}
+	
+	if ($refcc == scalar(@ref_files)){
+		$haveref = 1;
+	}
+
+}
+
+if ($haveref == 0){
+	print "\n----------------------------------------------------\n";
+	print "References files from ricopili for guessing genome build and \n";
+	print "genotyping platform have not been installed yet.\n\n";
+	print "Please run:\n";
+	print "\t$picobin/GET_REFS\n";
+	
+}else{
+	print "Successfully found ricopili plague and buigue reference files!\n"
+}
+
+if ($haveref == 1 && $statusbin == 0){
+	print "\n### Finished ###\n\n";
+}
+
 exit;
 ########## Done ##########
