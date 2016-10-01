@@ -24,7 +24,7 @@ def send_job(jobname,
 #             week=None,
              njobs=None,
              maxpar=10000,
-#             multi=None,
+             threads=None,
              wait_file=None,
              wait_name=None,
              cluster=None,
@@ -41,6 +41,9 @@ def send_job(jobname,
 
     if logloc is None:
         logloc = os.getcwd()
+    
+    if not os.path.isdir(logloc):
+        os.mkdir(logloc)
         
     if maxpar < 1:
         maxpar = 10000
@@ -49,7 +52,7 @@ def send_job(jobname,
     if cluster is None:
         conf_file = os.environ['HOME']+"/picopili.conf"
         configs = read_conf(conf_file)
-        cluster = configs['queue'] 
+        cluster = configs['cluster']
 
     # get queue template
     pico_bin = os.path.dirname(os.path.realpath(__file__))
@@ -61,11 +64,22 @@ def send_job(jobname,
     # - submission syntax, queue names, job holds
     clust_conf = read_conf(str(clust_dir)+'/'+str(cluster)+'.conf')
 
+    # basic template
+    with open(str(clust_dir)+'/'+str(cluster)+'.sub.sh','r') as single_templ:
+        templ = single_templ.read()
+
     # setup memory args
     if mem is None:
         mem = 2000
     mem_mb = str(int(mem))
-    mem_gb = str(int(mem)/1000)
+    if int(mem) > 1000:
+        mem_gb = str(int(mem)/1000)
+    else:
+        mem_gb = str(1)
+
+    # multithreading arguments
+    if threads is None:
+        threads = 1
 
     # queue picking from job length
     if walltime is None:
@@ -95,14 +109,15 @@ def send_job(jobname,
         hold_str = ""
         
 
+    # load base template
+    
 
-    # template for single jobs
+
+    # for single jobs
     if cmd is not None and (njobs is None or njobs <= 1):
-        
-        with open(str(clust_dir)+'/'+str(cluster)+'.single.sub.sh','r') as single_templ:
-            templ = single_templ.read()
-            
+                    
         njobs = 1
+        tot_threads = int(threads)
         
         # log name
         if logname is None:
@@ -116,13 +131,11 @@ def send_job(jobname,
         j_per_core = 1
 
 
-    # template for array jobs
+    # for array jobs
     else:
-        with open(str(clust_dir)+'/'+str(cluster)+'.array.sub.sh','r') as array_templ:
-            templ = array_templ.read()
 
         # setup indexing tasks
-        j_per_core = int(clust_conf['array_core'])
+        j_per_core = int(clust_conf['j_per_node'])
         if j_per_core == 1:
             task_index = str(clust_conf['task_id'])
         else:
@@ -131,11 +144,13 @@ def send_job(jobname,
         # cmd or array file spec
         if cmd is not None:
             cmd_line = cmd.format(task=task_index)
+            tot_threads = int(njobs)*int(threads)
         
         else:
             assert os.path.isfile(arrayfile), "Job array file %s not found." % str(arrayfile)
             
             njobs = file_len(arrayfile)
+            tot_threads = int(njobs)*int(threads)
             
             cmd_tmp = dedent("""\
                 cline=`head -n {task} {fi} | tail -n 1`
@@ -150,14 +165,15 @@ def send_job(jobname,
             from math import floor, ceil
             
             # max simul tasks with memory limit
-            node_mem = float(clust_conf['array_core'])
+            node_mem = float(clust_conf['array_mem_mb'])
             task_mem_lim = floor((node_mem-1.0)/float(mem))
             
-            if task_mem_lim < 1:
-                task_mem_lim=1
+            # max simul tasks with threading
+            if task_mem_lim > floor(int(j_per_core)/int(threads)):
+                task_mem_lim = floor(int(j_per_core)/int(threads))
             
-            if task_mem_lim > j_per_core:
-                task_mem_lim = j_per_core
+            if task_mem_lim < 1:
+                task_mem_lim=1            
             
             # number of jobs to cover all tasks
             array_jobs = ceil(float(njobs)/float(task_mem_lim))
@@ -215,9 +231,11 @@ def send_job(jobname,
     # fill in template
     jobdict = {"job_name": str(jobname),
                "cmd_string": cmd_str, # formatted elsewhere
-               "log_name": str(logname),
+               "log_name": str(logloc)+'/'+str(logname),
                "mem_in_mb": str(mem_mb),
                "mem_in_gb": str(mem_gb),
+               "threads": str(threads),
+               "total_threads": str(tot_threads),
                "wall_hours": str(walltime),
                "njobs": str(njobs),
                "array_jobs": str(array_jobs),
@@ -226,7 +244,8 @@ def send_job(jobname,
                "task_id": str(clust_conf['task_id']),
                "log_task_id": str(clust_conf['log_task_id']),
                "queue_name": str(queue_name),
-               "sleep_time": str(sleep)
+               "sleep_time": str(sleep),
+               "project": str(clust_conf['project'])
                }
 
             
@@ -235,6 +254,23 @@ def send_job(jobname,
     sub_file.write(templ.format(**jobdict))
     sub_file.close()
     
+    # finalize or remove optional lines
+    if njobs <= 1:
+        subprocess.check_call(['sed','-i','/^::PICO_ARRAY_ONLY::/d',str(sub_file.name)])
+    else:
+        subprocess.check_call(['sed','-i','s/^::PICO_ARRAY_ONLY:://',str(sub_file.name)])
+    
+    if threads <= 1:
+        subprocess.check_call(['sed','-i','/^::PICO_THREAD_ONLY::/d',str(sub_file.name)])
+    else:
+        subprocess.check_call(['sed','-i','s/^::PICO_THREAD_ONLY:://',str(sub_file.name)])
+    
+    if njobs <= 1 and threads <= 1:
+        subprocess.check_call(['sed','-i','/^::PICO_THREADARRAY_ONLY::/d',str(sub_file.name)])
+    else:
+        subprocess.check_call(['sed','-i','s/^::PICO_THREADARRAY_ONLY:://',str(sub_file.name)])        
+
+
     # command to run
     if hold_str != "":    
         launch_str = clust_conf['sub_cmd']+' '+hold_str+' '+str(sub_file.name)
@@ -250,16 +286,9 @@ def send_job(jobname,
         out, err = p.communicate()
         print out
         return(p.returncode)
-#
-#
-#        # manual error nhandling here because of Broad LD_LIBRARY_PATH warning
-#        if p.returncode != 0:
-#            if "LD_LIBRARY_PATH" in out:
-#                print out
-#            else:
-#                raise IOError("Job submission failed\nCode: %d\nError: %s\nOutput: %s\n" % p.returncode, err, out)
-             
-    return 0
+
+    else:          
+        return 0
 
 
 ####################################
@@ -372,9 +401,9 @@ if __name__ == "__main__":
     
     # set logfile name
     if args.noerr:
-        logloc = os.getcwd()+'/errandout/'
-    else:
         logloc = os.getcwd()
+    else:
+        logloc = os.getcwd()+'/errandout/'
     
     # ignore arguments for direct
     if args.direct:

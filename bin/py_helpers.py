@@ -47,7 +47,9 @@ def read_conf(fname):
     
     with open(fname, 'r') as f:
         for line in f:
-            (key, val) = line.split()
+            # strips '#' comments at end of line
+            # otherwise allows aribtrary content (spaces, etc)
+            (key,val) = line.split('#',1)[0].rstrip().split(None,1)
             configs[str(key)] = val  
     
     return configs

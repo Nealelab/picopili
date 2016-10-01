@@ -545,12 +545,12 @@ push (@text, "email $email");
 
 ### define queue depending on cluster
 
-if ($clusters{broad}){push (@text, "queue broad_uger")}
-if ($clusters{lisa}){push (@text, "queue lisa")}
-if ($clusters{computerome}){push (@text, "queue computerome")}
-if ($clusters{co_ipsych}){push (@text, "queue computerome_ipsych")}
-if ($clusters{genomedk}){push (@text, "queue genomedk")}
-if ($clusters{mssm}){push (@text, "queue mssm")}
+if ($clusters{broad}){push (@text, "cluster broad_uger")}
+if ($clusters{lisa}){push (@text, "cluster lisa")}
+if ($clusters{computerome}){push (@text, "cluster computerome")}
+if ($clusters{co_ipsych}){push (@text, "cluster computerome_ipsych")}
+if ($clusters{genomedk}){push (@text, "cluster genomedk")}
+if ($clusters{mssm}){push (@text, "cluster mssm")}
 
 
 } # end if block for getting conf file info

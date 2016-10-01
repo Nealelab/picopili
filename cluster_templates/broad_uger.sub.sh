@@ -13,6 +13,9 @@
 #$ -o {log_name}
 #$ -q {queue_name}
 #$ -l m_mem_free={mem_in_gb}g,h_vmem={mem_in_gb}g
+::PICO_ARRAY_ONLY::#$ -t 1-{array_jobs}
+::PICO_ARRAY_ONLY::#$ -tc {array_max}
+::PICO_THREAD_ONLY::#$ -pe smp {threads}
 
 # sleep option (for preventing race conditions on network file systems)
 sleep {sleep_time}

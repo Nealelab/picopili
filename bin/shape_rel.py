@@ -297,23 +297,21 @@ shape_call = [shapeit_ex,
 
 print ' '.join(shape_call)+'\n'
 
+# setup naming from task index
+configs = read_conf(os.environ['HOME']+'/picopili.conf')
+clust_confdir = os.path.dirname(str(rp_bin))+'/cluster_templates/'
+clust_conf = read_conf(clust_confdir+str(configs['cluster']+'.conf'))
+task_id = str(clust_conf['log_task_id'])
 
-uger_call = ' '.join(['qsub',
-                      '-q','long',
-                      '-N', 'shape.'+str(outdot),
-                      '-l', 'm_mem_free='+str(args.mem_req)+'g,h_vmem='+str(args.mem_req)+'g',
-                      '-pe','smp',str(args.threads),
-                      '-t', '1-22',
-                      '-o', '\'shape.'+str(outdot)+'.chr$TASK_ID.qsub.log\'',
-                      str(rp_bin)+'/uger_array.sub.sh',
-                      str(args.sleep),
-                      ' '.join(shape_call)])
-
-print uger_call
-subprocess.check_call(uger_call, shell=True)
-
-
-
+# submit
+send_job(jobname='shape.'+str(outdot),
+             cmd=' '.join(shape_call),
+             logname='shape.'+str(outdot)+'.chr'+task_id+'.sub.log',
+             mem=int(args.mem_req)*1000,
+             walltime=168, # week
+             njobs=22,
+             threads=int(args.threads),
+             sleep=str(args.sleep))
 
 
 ###
@@ -327,21 +325,16 @@ if args.full_pipe:
     os.chdir(wd)
     next_call = str(rp_bin) + '/imp2_rel.py '+' '.join(sys.argv[1:])
 
-    # TODO: consider queue/mem for agg
-    imp_log = 'imp_chunks.'+str(outdot)+'.qsub.log'
-    uger_imp = ' '.join(['qsub',
-                            '-hold_jid','shape.'+str(outdot),
-                            '-q', 'short',
-                            '-l', 'm_mem_free=8g,h_vmem=8g',
-                            '-N', 'imp.chunks.'+str(outdot),
-                            '-o', imp_log,
-                            str(rp_bin)+'/uger.sub.sh',
-                            str(args.sleep),
-                            next_call])
-    
-    print uger_imp + '\n'
-    subprocess.check_call(uger_imp, shell=True)
+    imp_log = 'imp_chunks.'+str(outdot)+'.sub.log'
 
+    # TODO: consider queue/mem
+    send_job(jobname='imp.chunks.'+str(outdot),
+             cmd=next_call,
+             logname=imp_log,
+             mem=8000,
+             walltime=2,
+             wait_name='shape.'+str(outdot),
+             sleep=str(args.sleep))
 
 
 
