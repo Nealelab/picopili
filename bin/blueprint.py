@@ -293,6 +293,62 @@ def send_job(jobname,
 
 ####################################
 #
+# Save / load job configurations
+# 
+####################################
+
+def init_sendjob_dict():
+    
+    sendjob_dict = {
+        "jobname": None,
+#        "arrayfile": None,
+#        "cmd": None,
+        "logname": None,
+        "logloc": None,
+        "mem": None,
+        "walltime": None,
+        "njobs": None,
+        "maxpar": None,
+        "threads": None,
+        "wait_file": None,
+        "wait_name": None,
+#        "cluster": None,
+        "sleep": None,
+#        "testonly": None
+    }
+    
+    return sendjob_dict
+
+
+
+def save_job(jfile, cmd_templ, job_dict, sendjob_dict):
+    
+    import cPickle as pickle
+    
+    with open(jfile, 'wb') as pickle_out:
+        pickle.dump(cmd_templ, pickle_out, -1)
+        pickle.dump(job_dict, pickle_out, -1)
+        pickle.dump(sendjob_dict, pickle_out, -1)
+
+    return 0
+
+
+
+def load_job(jfile):
+
+    import cPickle as pickle
+    
+    with open(jfile, 'rb') as pickle_in:
+        cmd_templ = pickle.load(pickle_in)
+        job_dict = pickle.load(pickle_in)
+        sendjob_dict = pickle.load(pickle_in)
+        
+    return cmd_templ, job_dict, sendjob_dict
+        
+    
+
+####################################
+#
 # Parse arguments from ricopili interface if invoked directly
 # 
 ####################################

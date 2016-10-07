@@ -38,7 +38,7 @@ unbuffer_stdout()
 
 
 # get directory containing current script
-# (to get absolute path for uger wrapper)
+# (to get absolute path for script directory)
 rp_bin = os.path.dirname(os.path.realpath(__file__))
 
 #############

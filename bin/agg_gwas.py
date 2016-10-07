@@ -179,39 +179,60 @@ if len(mis_chunks) > 0:
     tmp_chunk_file.close()
     
     print 'List of missing chunks: %s' % tmp_chunk_file.name
-    
-    # copy original submit script
-    # replace chunk list, name, number of tasks
-    orig_uger_file = open(str(outdot)+'.gwas_chunks.sub.sh', 'r')
-    new_uger_file = open(str(outdot)+'.gwas_chunks.resub_'+ str(nummiss)+'_chunks.sub.sh', 'w')
-    
-    for line in orig_uger_file:
-        if '#$ -t ' in line:
-            new_uger_file.write('#$ -t 1-'+str(nummiss)+'\n')
-            continue
-#        elif '#$ -tc ' in line:
-#            if nummiss < 20:
-#                new_uger_file.write('#$ -tc 5 \n')
-#            elif nummiss < 50:
-#                new_uger_file.write('#$ -tc 10 \n')
-#            elif nummiss < 100:
-#                new_uger_file.write('#$ -tc 25 \n')
-#            else:
-#                new_uger_file.write('#$ -tc 40 \n')
-#            new_uger_file.write('#$ -tc 5 \n')
-        elif '#$ -l m_mem_free' in line:
-	    new_uger_file.write('#$ -l m_mem_free=24g,h_vmem=24g \n')
-        else:
-            line=line.replace(args.chunk_file, tmp_chunk_file.name)
-            line=line.replace('.$TASK_ID.','.tmp'+str(nummiss)+'.$TASK_ID.')
-            line=line.replace('#$ -N gwas.chunks.'+str(outdot), '#$ -N gwas.chunks.'+str(outdot)+'.resub_'+str(nummiss))
-            new_uger_file.write(line)
-            
-    orig_uger_file.close()
-    new_uger_file.close()
 
-    print ' '.join(['qsub',new_uger_file.name]) + '\n'
-    subprocess.check_call(' '.join(['qsub',new_uger_file.name]), shell=True)
+
+    ###
+    # copy original submit script
+    # replace chunk list, name, number of tasks, memory spec
+    # resubmit
+    ###
+
+    # load pickle of job info
+    orig_job_conf = 'gwas.chunks.'+str(outdot)+'.pkl'
+    
+    if not os.path.isfile(orig_job_conf):
+        orig_job_file = str(outdot)+'.gwas_chunks.sub.sh'
+        raise IOError("Unable to find previous job configuration pickle %s.\
+            \nRefer to previous submit script %s to modify/resubmit.\n" % (str(orig_job_conf),str(orig_job_file)))
+
+    
+    cmd_templ, job_dict, sendjob_dict = load_job(orig_job_conf)
+
+    # rename resub
+    sendjob_dict['jobname'] = 'gwas.chunks.'+str(outdot)+'.resub_'+str(nummiss)
+    
+    sendjob_dict['logname'] = str('gwas.chunks.'+str(outdot)+'.resub_'+str(nummiss)+'.'+str(clust_conf['log_task_id'])+'.sub.log')
+
+    # increase memory and walltime
+    # TODO: consider how to scale mem/time here
+    oldmem = sendjob_dict['mem']
+    sendjob_dict['mem'] = int(oldmem)*2
+
+    oldtime = sendjob_dict['walltime']
+    sendjob_dict['walltime'] = int(oldtime)*4
+    
+    # replace chunk file and set number of new jobs
+    sendjob_dict['njobs'] = int(nummiss)
+
+    job_dict['cfile'] = tmp_chunk_file_name
+    
+    
+    # re-save new settings (primarily to track updating mem and walltime)
+    save_job(jfile=orig_job_conf, cmd_templ=cmd_templ, job_dict=job_dict, sendjob_dict=sendjob_dict)
+
+    
+    # submit
+    gwas_cmd = cmd_templ.format(**job_dict)
+
+    send_job(jobname=sendjob_dict['jobname'],
+             cmd=gwas_cmd,
+             logname=sendjob_dict['logname'],
+             mem=sendjob_dict['mem'],
+             walltime=sendjob_dict['walltime'],
+             njobs=sendjob_dict['njobs'],
+             maxpar=sendjob_dict['maxpar'],
+             sleep=sendjob_dict['sleep'])
+        
     print 'GWAS jobs resubmitted for %d chunks.\n' % nummiss
     
     

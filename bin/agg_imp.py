@@ -28,7 +28,7 @@ import os
 import subprocess
 from args_impute import *
 from py_helpers import unbuffer_stdout, find_exec, test_exec, file_len #, file_tail, link, warn_format
-from blueprint import send_job
+from blueprint import send_job, load_job
 unbuffer_stdout()
 # warnings.formatwarning = warn_format
 
@@ -80,9 +80,6 @@ plink_ex = find_exec('plink', key='p2loc')
 # get directory containing current script
 # (to get absolute path for scripts)
 rp_bin = os.path.dirname(os.path.realpath(__file__))
-uger_ex = +str(rp_bin)+'/uger.sub.sh'
-
-test_exec(uger_ex)
 
 # TODO: here
 
@@ -166,30 +163,59 @@ if len(mis_chunks) > 0:
     
     print 'List of missing chunks: %s' % tmp_chunk_file.name
     
+    ###
     # copy original submit script
-    # replace chunk list, name, number of tasks
-    orig_uger_file = open(str(outdot)+'.bg_chunks.sub.sh', 'r')
-    new_uger_file = open(str(outdot)+'.bg_chunks.resub_'+ str(nummiss)+'_chunks.sub.sh', 'w')
-    
-    for line in orig_uger_file:
-        if '#$ -t ' in line:
-            new_uger_file.write('#$ -t 1-'+str(nummiss)+'\n')
-        elif '#$ -l m_mem_free' in line:
-	    new_uger_file.write('#$ -l m_mem_free=8g,h_vmem=8g \n')     
-        elif '#$ -q short' in line:
-	    new_uger_file.write('#$ -q long \n')
-        else:
-            line=line.replace(chunk_file_name, tmp_chunk_file_name)
-            line=line.replace('.$TASK_ID.','.tmp'+str(nummiss)+'.$TASK_ID.')
-            line=line.replace('#$ -N bg.chunks.'+str(outdot), '#$ -N bg.chunks.'+str(outdot)+'.resub_'+str(nummiss))
-            new_uger_file.write(line)
-            
-    orig_uger_file.close()
-    new_uger_file.close()
+    # replace chunk list, name, number of tasks, memory spec
+    # resubmit
+    ###
 
-    print ' '.join(['qsub',new_uger_file.name]) + '\n'
-    subprocess.check_call(' '.join(['qsub',new_uger_file.name]), shell=True)
+    # load pickle of job info
+    orig_job_conf = 'bg.chunks.'+str(outdot)+'.pkl'
+    
+    if not os.path.isfile(orig_job_conf):
+        orig_job_file = str(outdot)+'.bg_chunks.sub.sh'
+        raise IOError("Unable to find previous job configuration pickle %s.\
+            \nRefer to previous submit script %s to modify/resubmit.\n" % (str(orig_job_conf),str(orig_job_file)))
+
+    
+    cmd_templ, job_dict, sendjob_dict = load_job(orig_job_conf)
+
+    # rename resub
+    sendjob_dict['jobname'] = 'bg.chunks.'+str(outdot)+'.resub_'+str(nummiss)
+    
+    sendjob_dict['logname'] = str('bg.chunks.'+str(outdot)+'.resub_'+str(nummiss)+'.'+str(clust_conf['log_task_id'])+'.sub.log')
+
+    # increase memory and walltime
+    # TODO: consider how to scale mem/time here
+    oldmem = sendjob_dict['mem']
+    sendjob_dict['mem'] = int(oldmem) + 4000
+
+    oldtime = sendjob_dict['walltime']
+    sendjob_dict['walltime'] = int(oldtime)*4
+    
+    # replace chunk file and set number of new jobs
+    sendjob_dict['njobs'] = int(nummiss)
+
+    job_dict['cfile'] = tmp_chunk_file_name
+    
+    
+    # re-save new settings (primarily to track updating mem and walltime)
+    save_job(jfile=orig_job_conf, cmd_templ=cmd_templ, job_dict=job_dict, sendjob_dict=sendjob_dict)
+
+    
+    # submit
+    bg_cmd = cmd_templ.format(**job_dict)
+
+    send_job(jobname=sendjob_dict['jobname'],
+             cmd=bg_cmd,
+             logname=sendjob_dict['logname'],
+             mem=sendjob_dict['mem'],
+             walltime=sendjob_dict['walltime'],
+             njobs=sendjob_dict['njobs'],
+             sleep=sendjob_dict['sleep'])
+        
     print 'Best-guess jobs resubmitted for %d chunks.\n' % nummiss
+    
     
     
     print '\n...Replacing this aggregation job in the queue...'

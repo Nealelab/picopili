@@ -294,7 +294,7 @@ arg_clust = parsercluster.add_argument_group('Cluster Settings')
 arg_clust.add_argument('--sleep', 
                     type=int,
                     metavar='SEC',
-                    help='Number of seconds to delay on start of UGER jobs',
+                    help='Number of seconds to delay on start of cluster jobs',
                     required=False,
                     default=30)
 arg_clust.add_argument('--full-pipe', 

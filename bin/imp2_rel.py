@@ -169,8 +169,8 @@ if bad_chr:
     os.chdir(shape_dir)
         
     # verify haven't already tried this resub
-    uger_phase_name = str(outdot)+'.shape.resub_'+str(num_chr)+'_chr.sub.sh'
-    if os.path.isfile(uger_phase_name):
+    phase_sub_name = 'shape.'+str(outdot)+'.resub_'+str(num_chr)+'.sub.sh'
+    if os.path.isfile(phase_sub_name):
         print '\n####################'
         print 'ERROR:'
         print 'Found previous attempt to resubmit %d failed chromosomes.' % int(num_chr)
@@ -342,12 +342,29 @@ jobdict = {"task": "{task}",
            "out": str(outdot)+'.imp.${cname}',
            "seedtxt": str(seedtxt)
            }
-cmd_imp = imp_templ.format(**jobdict)
+
 
 # get number of chunks (-1 is for header)
 nchunks = file_len(outdot+'.chunks.txt')-1
 
+
+# store job information for possible resubs
+job_store_file = 'imp.chunks.'+str(outdot)+'.pkl'
+
+clust_dict = init_sendjob_dict()
+clust_dict['jobname'] = 'imp.chunks.'+str(outdot)
+clust_dict['logname'] = str('imp.chunks.'+str(outdot)+'.'+str(clust_conf['log_task_id'])+'.sub.log')
+clust_dict['mem'] = 8000
+clust_dict['walltime'] = 2
+clust_dict['njobs'] = int(nchunks)
+clust_dict['sleep'] = args.sleep
+
+save_job(jfile=job_store_file, cmd_templ=imp_templ, job_dict=jobdict, sendjob_dict=clust_dict)
+
+
 # submit
+cmd_imp = imp_templ.format(**jobdict)
+
 send_job(jobname='imp.chunks.'+str(outdot),
          cmd=cmd_imp,
          logname=str('imp.chunks.'+str(outdot)+'.'+str(clust_conf['log_task_id'])+'.sub.log'),

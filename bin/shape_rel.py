@@ -16,7 +16,7 @@ Runs SHAPEIT for GWAS data with related individuals
 # 4) Split plink files by chr
 #    - use shortened IDs
 # 5) Run SHAPEIT
-#    - using UGER to parallelize
+#    - parallelize on cluster
 #
 ####################################
 

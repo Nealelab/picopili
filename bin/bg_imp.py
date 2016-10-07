@@ -37,7 +37,7 @@ import warnings
 from textwrap import dedent
 from args_impute import *
 from py_helpers import unbuffer_stdout, find_exec, file_tail, link, warn_format
-from blueprint import send_job
+from blueprint import send_job, init_sendjob_dict, save_job
 unbuffer_stdout()
 warnings.formatwarning = warn_format
 
@@ -278,30 +278,59 @@ if len(mis_chunks) > 0:
     
     print 'List of missing chunks: %s' % tmp_chunk_file.name
     
+    ###
     # copy original submit script
-    # replace chunk list, name, number of tasks
-    orig_uger_file = open(str(outdot)+'.imp_chunks.sub.sh', 'r')
-    new_uger_file = open(str(outdot)+'.imp_chunks.resub_'+ str(nummiss)+'_chunks.sub.sh', 'w')
-    
-    for line in orig_uger_file:
-        if '#$ -t ' in line:
-            new_uger_file.write('#$ -t 1-'+str(nummiss)+'\n')
-        elif '#$ -l m_mem_free' in line:
-	    new_uger_file.write('#$ -l m_mem_free=24g,h_vmem=24g \n')     
-        elif '#$ -q short' in line:
-	    new_uger_file.write('#$ -q long \n')
-        else:
-            line=line.replace(chunk_file_name, tmp_chunk_file_name)
-            line=line.replace('.$TASK_ID.','.tmp'+str(nummiss)+'.$TASK_ID.')
-            line=line.replace('#$ -N imp.chunks.'+str(outdot), '#$ -N imp.chunks.'+str(outdot)+'.resub_'+str(nummiss))
-            new_uger_file.write(line)
-            
-    orig_uger_file.close()
-    new_uger_file.close()
+    # replace chunk list, name, number of tasks, memory spec
+    # resubmit
+    ###
 
-    print ' '.join(['qsub',new_uger_file.name]) + '\n'
-    subprocess.check_call(' '.join(['qsub',new_uger_file.name]), shell=True)
+    # load pickle of job info
+    orig_job_conf = 'imp.chunks.'+str(outdot)+'.pkl'
+    
+    if not os.path.isfile(orig_job_conf):
+        orig_job_file = str(outdot)+'.imp_chunks.sub.sh'
+        raise IOError("Unable to find previous job configuration pickle %s.\
+            \nRefer to previous submit script %s to modify/resubmit.\n" % (str(orig_job_conf),str(orig_job_file)))
+
+    
+    cmd_templ, job_dict, sendjob_dict = load_job(orig_job_conf)
+
+    # rename resub
+    sendjob_dict['jobname'] = 'imp.chunks.'+str(outdot)+'.resub_'+str(nummiss)
+    
+    sendjob_dict['logname'] = str('imp.chunks.'+str(outdot)+'.resub_'+str(nummiss)+'.'+str(clust_conf['log_task_id'])+'.sub.log')
+
+    # increase memory and walltime
+    # TODO: consider how to scale mem/time here
+    oldmem = sendjob_dict['mem']
+    sendjob_dict['mem'] = int(oldmem)*2
+
+    oldtime = sendjob_dict['walltime']
+    sendjob_dict['walltime'] = int(oldtime)*4
+    
+    # replace chunk file and set number of new jobs
+    sendjob_dict['njobs'] = int(nummiss)
+
+    job_dict['cfile'] = tmp_chunk_file_name
+    
+    
+    # re-save new settings (primarily to track updating mem and walltime)
+    save_job(jfile=orig_job_conf, cmd_templ=cmd_templ, job_dict=job_dict, sendjob_dict=sendjob_dict)
+
+    
+    # submit
+    imp_cmd = cmd_templ.format(**job_dict)
+
+    send_job(jobname=sendjob_dict['jobname'],
+             cmd=imp_cmd,
+             logname=sendjob_dict['logname'],
+             mem=sendjob_dict['mem'],
+             walltime=sendjob_dict['walltime'],
+             njobs=sendjob_dict['njobs'],
+             sleep=sendjob_dict['sleep'])
+        
     print 'GWAS jobs resubmitted for %d chunks.\n' % nummiss
+
     
     
     print '\n...Replacing this best-guess job in the queue...'
@@ -367,7 +396,7 @@ bg_templ = dedent("""\
 # get number of chunks
 nchunks = len(chunks)
 
-# fill in template
+# info to fill in job template
 jobdict = {"task": "{task}",
            "sleep": str(args.sleep),
            "cfile": str(outdot)+'.chunks.txt',
@@ -390,11 +419,25 @@ jobdict = {"task": "{task}",
            "trans": str(shape_dir)+'/'+str(args.bfile)+'.hg19.ch.fl.fam.transl'
            }
 
-bg_cmd = bg_templ.format(**jobdict)
+
+# store job information for possible resubs
+job_store_file = 'bg.chunks.'+str(outdot)+'.pkl'
+
+clust_dict = init_sendjob_dict()
+clust_dict['jobname'] = 'bg.chunks.'+str(outdot)
+clust_dict['logname'] = str('bg.chunks.'+str(outdot)+'.'+str(clust_conf['log_task_id'])+'.sub.log')
+clust_dict['mem'] = 8000
+clust_dict['walltime'] = 2
+clust_dict['njobs'] = int(nchunks)
+clust_dict['sleep'] = args.sleep
+
+save_job(jfile=job_store_file, cmd_templ=bg_templ, job_dict=jobdict, sendjob_dict=clust_dict)
 
 
 # submit
 # TODO: flex queue/mem reqs
+bg_cmd = bg_templ.format(**jobdict)
+
 send_job(jobname='bg.chunks.'+str(outdot),
          cmd=bg_cmd,
          logname=str('bg.chunks.'+str(outdot)+'.'+str(clust_conf['log_task_id'])+'.sub.log'),

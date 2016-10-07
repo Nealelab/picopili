@@ -475,11 +475,26 @@ jobdict = {"task": "{task}",
            "rsc": str(args.rscript_ex)
            }
 
-gwas_cmd = gwas_templ.format(**jobdict)
+nchunk = len(chunks.keys())
+
+
+# store job information for possible resubs
+job_store_file = 'gwas.chunks.'+str(outdot)+'.pkl'
+
+clust_dict = init_sendjob_dict()
+clust_dict['jobname'] = 'gwas.chunks.'+str(outdot)
+clust_dict['logname'] = str('gwas.chunks.'+str(outdot)+'.'+str(clust_conf['log_task_id'])+'.sub.log')
+clust_dict['mem'] = 4000
+clust_dict['walltime'] = 2
+clust_dict['njobs'] = int(nchunk)
+clust_dict['maxpar'] = 200
+clust_dict['sleep'] = args.sleep
+
+save_job(jfile=job_store_file, cmd_templ=gwas_templ, job_dict=jobdict, sendjob_dict=clust_dict)
 
 
 # submit job
-nchunk = len(chunks.keys())
+gwas_cmd = gwas_templ.format(**jobdict)
 
 send_job(jobname='gwas.chunks.'+str(outdot),
          cmd=gwas_cmd,
