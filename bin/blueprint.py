@@ -293,6 +293,32 @@ def send_job(jobname,
 
 ####################################
 #
+# Get cluster configuration file
+# 
+####################################
+
+def read_clust_conf():
+    
+    import os
+    
+    conf_file = os.environ['HOME']+"/picopili.conf"
+    configs = read_conf(conf_file)
+    cluster = configs['cluster']
+    
+    pico_bin = os.path.dirname(os.path.realpath(__file__))
+    clust_dir = os.path.dirname(pico_bin) + '/cluster_templates'
+    
+    assert os.path.isdir(clust_dir), "Unable to find cluster job submission template directory %s" % str(clust_dir)
+
+    # load queue configuration info
+    # - submission syntax, queue names, job holds
+    clust_conf = read_conf(str(clust_dir)+'/'+str(cluster)+'.conf')   
+    
+    return clust_conf
+
+
+####################################
+#
 # Save / load job configurations
 # 
 ####################################

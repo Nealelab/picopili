@@ -54,8 +54,7 @@ import argparse
 import warnings
 from time import strftime
 start_time = strftime("%H:%M:%S %d-%B-%Y")
-# from glob import glob
-from args_qc import *
+from args_qc import parserbase, parserqc, parsermendel, parsertag
 from py_helpers import unbuffer_stdout, read_conf, test_exec, link, file_len, warn_format, find_exec
 unbuffer_stdout()
 warnings.formatwarning = warn_format

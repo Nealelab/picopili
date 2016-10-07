@@ -33,16 +33,11 @@ if not (('-h' in sys.argv) or ('--help' in sys.argv)):
 
 ### load requirements
 import os
-# import subprocess
 import argparse
-# from string import ascii_uppercase
-# from glob import glob
-# from numpy import digitize
 import random
 import warnings
-from args_ped import *
+from args_ped import parserbase, parsergeno, parseribd, parserweights
 from py_helpers import unbuffer_stdout
-# file_len, test_exec, read_conf, find_from_path, link, gz_confirm
 unbuffer_stdout()
 
 

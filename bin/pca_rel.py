@@ -31,7 +31,7 @@ if not (('-h' in sys.argv) or ('--help' in sys.argv)):
 import argparse
 import os
 from math import ceil
-from args_pca import *
+from args_pca import parserbase, parsergrid, parserqc, parserpca
 from py_helpers import file_len, unbuffer_stdout
 from blueprint import send_job
 unbuffer_stdout()

@@ -36,7 +36,7 @@ import subprocess
 import argparse
 from glob import glob
 from py_helpers import find_exec, unbuffer_stdout, test_exec
-from args_pca import *
+from args_pca import parserbase, parserpca
 unbuffer_stdout()
 
 #############

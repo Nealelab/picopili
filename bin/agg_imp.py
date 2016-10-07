@@ -26,11 +26,11 @@ if not (('-h' in sys.argv) or ('--help' in sys.argv)):
 ### load requirements
 import os
 import subprocess
-from args_impute import *
-from py_helpers import unbuffer_stdout, find_exec, test_exec, file_len #, file_tail, link, warn_format
-from blueprint import send_job, load_job
+import argparse
+from args_impute import parserbase, parsercluster
+from py_helpers import unbuffer_stdout, find_exec, file_len
+from blueprint import send_job, load_job, save_job, read_clust_conf
 unbuffer_stdout()
-# warnings.formatwarning = warn_format
 
 #############
 if not (('-h' in sys.argv) or ('--help' in sys.argv)):
@@ -80,6 +80,7 @@ plink_ex = find_exec('plink', key='p2loc')
 # get directory containing current script
 # (to get absolute path for scripts)
 rp_bin = os.path.dirname(os.path.realpath(__file__))
+clust_conf = read_clust_conf()
 
 # TODO: here
 

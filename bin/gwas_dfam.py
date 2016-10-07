@@ -39,10 +39,8 @@ if not (('-h' in sys.argv) or ('--help' in sys.argv)):
 import os
 import subprocess
 import argparse
-# from glob import glob
-from args_gwas import *
+from args_gwas import parserbase,parsergwas,parsersoft
 from py_helpers import unbuffer_stdout, test_exec, find_exec
-# , read_conf, link
 unbuffer_stdout()
 
 #############

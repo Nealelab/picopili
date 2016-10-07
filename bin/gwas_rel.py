@@ -27,9 +27,9 @@ import subprocess
 import os
 from warnings import warn
 from textwrap import dedent
-from args_gwas import *
-from py_helpers import link, unbuffer_stdout, find_exec
-from blueprint import send_job
+from args_gwas import parserbase, parsergwas, parserchunk, parseragg, parsersoft
+from py_helpers import link, unbuffer_stdout, find_exec, read_conf
+from blueprint import send_job, read_clust_conf, init_sendjob_dict, save_job
 unbuffer_stdout()
 
 
@@ -146,7 +146,7 @@ if args.model == 'gmmat' or args.model == 'gmmat-fam':
 conf_file = os.environ['HOME']+"/picopili.conf"
 configs = read_conf(conf_file)
 cluster = configs['cluster']
-clust_conf = read_conf(str(clust_dir)+'/'+str(cluster)+'.conf')
+clust_conf = read_clust_conf()
 
 # TODO: here
 

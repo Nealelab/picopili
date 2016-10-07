@@ -25,8 +25,10 @@ if not (('-h' in sys.argv) or ('--help' in sys.argv)):
 
 ### load requirements
 import os
-from args_impute import *
-from py_helpers import unbuffer_stdout #, read_conf, file_tail, link, warn_format
+import argparse
+
+from args_impute import parserbase, parserphase, parserimpute, parserchunk, parserref, parserbg, parsercluster
+from py_helpers import unbuffer_stdout
 from blueprint import send_job
 unbuffer_stdout()
 
@@ -96,7 +98,7 @@ print '\nBest-guess genotype calling:'
 if args.hard_call_th is None:
     print '--bg-th '+str(args.bg_th)
 else:
-    print '--hard-call-th '+str(hard_call_th)
+    print '--hard-call-th '+str(args.hard_call_th)
 print '--info-th '+str(args.info_th)
 print '--max-info-th '+str(args.max_info_th)
 if args.keep_mendel:

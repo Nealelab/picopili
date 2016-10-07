@@ -32,12 +32,13 @@ if not (('-h' in sys.argv) or ('--help' in sys.argv)):
 
 ### load requirements
 import os
-import subprocess
 import warnings
+import argparse
+from warnings import warn
 from textwrap import dedent
-from args_impute import *
-from py_helpers import unbuffer_stdout, find_exec, file_tail, link, warn_format
-from blueprint import send_job, init_sendjob_dict, save_job
+from args_impute import parserbase, parserbg, parsercluster
+from py_helpers import unbuffer_stdout, find_exec, file_tail, link, warn_format, read_conf
+from blueprint import send_job, init_sendjob_dict, save_job, load_job, read_clust_conf
 unbuffer_stdout()
 warnings.formatwarning = warn_format
 
@@ -197,8 +198,7 @@ rs_ex = str(rp_bin)+'/rs_trans.py'
 # needed for specifying logfile names with clust_conf['log_task_id']
 conf_file = os.environ['HOME']+"/picopili.conf"
 configs = read_conf(conf_file)
-cluster = configs['cluster']
-clust_conf = read_conf(str(clust_dir)+'/'+str(cluster)+'.conf')
+clust_conf = read_clust_conf()
 
 # TODO: here
 

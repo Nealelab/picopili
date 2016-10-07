@@ -36,13 +36,10 @@ import os
 import subprocess
 import argparse
 import gzip
-# from warnings import warn
-# from glob import glob
 from math import log10, sqrt
-from args_gwas import *
+from args_gwas import parserbase, parseragg
 from py_helpers import unbuffer_stdout, file_len, file_tail
-from blueprint import send_job
-# , read_conf, link
+from blueprint import send_job, save_job, load_job, read_clust_conf
 unbuffer_stdout()
 
 
@@ -103,7 +100,9 @@ filtoutname = outdot +'.gwas.'+str(args.model)+'.p'+str(logp_int)+'_sort.txt.gz'
 # TODO: check dependencies
 
 
-
+# get cluster configuration
+# needed for specifying logfile names with clust_conf['log_task_id']
+clust_conf = read_clust_conf()
 
 
 

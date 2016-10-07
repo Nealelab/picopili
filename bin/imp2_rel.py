@@ -26,10 +26,11 @@ if not (('-h' in sys.argv) or ('--help' in sys.argv)):
 ### load requirements
 import os
 import subprocess
+import argparse
 from textwrap import dedent
-from args_impute import *
-from py_helpers import unbuffer_stdout, file_len, link, find_exec
-from blueprint import send_job
+from args_impute import parserbase, parserimpute, parserref, parserchunk, parsercluster
+from py_helpers import unbuffer_stdout, file_len, link, find_exec, test_exec, read_conf
+from blueprint import send_job, read_clust_conf, init_sendjob_dict, save_job
 unbuffer_stdout()
 
 
@@ -97,7 +98,7 @@ print '\n...Checking dependencies...'
 conf_file = os.environ['HOME']+"/picopili.conf"
 configs = read_conf(conf_file)
 cluster = configs['cluster']
-clust_conf = read_conf(str(clust_dir)+'/'+str(cluster)+'.conf')
+clust_conf = read_clust_conf()
 
 # from config
 impute_ex = find_exec('impute2',key='i2loc')
@@ -199,7 +200,9 @@ if bad_chr:
 #                  '--output-max', outstem+'.phased.haps', outstem+'.phased.sample',
 #                  '--output-log', outstem+'.shape.log']
     
-    # manage duohmm arg
+    # manage additional arg pieces
+    chrstem = str(args.bfile)+'.hg19.ch.fl.chr${chrom}'
+    outstem = str(outdot)+'.chr${chrom}'
     if extra_args.no_duohmm:
         duo_txt = ''
     else:

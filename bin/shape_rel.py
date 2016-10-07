@@ -38,15 +38,9 @@ if not (('-h' in sys.argv) or ('--help' in sys.argv)):
 import os
 import subprocess
 import argparse
-# from string import ascii_uppercase
-# from glob import glob
-# from numpy import digitize
-# import random
-# import warnings
-from args_impute import *
-from py_helpers import unbuffer_stdout, link, find_exec #, test_exec
+from args_impute import parserbase, parserphase, parserref, parsercluster
+from py_helpers import unbuffer_stdout, link, find_exec, read_conf
 from blueprint import send_job
-# file_len, read_conf, find_from_path, link, gz_confirm
 unbuffer_stdout()
 
 
