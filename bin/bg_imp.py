@@ -34,6 +34,7 @@ if not (('-h' in sys.argv) or ('--help' in sys.argv)):
 import os
 import subprocess
 import warnings
+from textwrap import dedent
 from args_impute import *
 from py_helpers import unbuffer_stdout, find_exec, file_tail, link, warn_format
 from blueprint import send_job
@@ -192,6 +193,12 @@ plink_ex = find_exec('plink',key='p2loc')
 rp_bin = os.path.dirname(os.path.realpath(__file__))
 rs_ex = str(rp_bin)+'/rs_trans.py'
 
+# get cluster configuration
+# needed for specifying logfile names with clust_conf['log_task_id']
+conf_file = os.environ['HOME']+"/picopili.conf"
+configs = read_conf(conf_file)
+cluster = configs['cluster']
+clust_conf = read_conf(str(clust_dir)+'/'+str(cluster)+'.conf')
 
 # TODO: here
 
@@ -334,51 +341,34 @@ link(str(chunk_dir)+'/'+str(outdot)+'.chunks.txt', str(outdot)+'.chunks.txt', 'g
 print '\n...Generating best-guess genotypes...'
 ######################
 
-# TODO: flex queue/mem reqs
-uger_bg_template = """#!/usr/bin/env sh
-#$ -j y
-#$ -cwd
-#$ -V
-#$ -N {jname}
-#$ -q short
-#$ -l m_mem_free=4g,h_vmem=8g
-#$ -t 1-{nchunk}
-#$ -o {outlog}
-
-source /broad/software/scripts/useuse
-reuse -q Anaconda
-sleep {sleep}
-
-cname=`awk -v a=${{SGE_TASK_ID}} 'NR==a+1{{print $4}}' {cfile}`
-cchr=`awk -v a=${{SGE_TASK_ID}} 'NR==a+1{{print $1}}' {cfile}`
-
-{plink_ex} --gen {gen_in} --sample {samp_in} --oxford-single-chr ${{cchr}} --oxford-pheno-name plink_pheno --hard-call-threshold {hard_call_th} --missing-code -9,NA,na --allow-no-sex --silent --memory 4000 --out {out_str} 
-
-sleep {sleep}
-# note: Mendel errors checked after --update-parents, see https://www.cog-genomics.org/plink2/order
-{plink_ex} --bfile {out_str} {mendel_txt} --pheno {idnum} --mpheno 4 --update-parents {idnum} --allow-no-sex --make-bed --silent --memory 2000 --out {out_str2}
-rm {out_str}.bed
-rm {out_str}.bim
-rm {out_str}.fam
-
-sleep {sleep}
-{plink_ex} --bfile {out_str2} {maf_txt} {mac_txt} {geno_txt} {info_txt} --allow-no-sex --make-bed --silent --memory 2000 --out {out_str_filt}
-rm {out_str2}.bed
-rm {out_str2}.bim
-rm {out_str2}.fam
-
-{rs_ex} --chunk ${{cname}} --name {outdot} --imp-dir {imp_dir} --fam-trans {trans}
-
-# eof
-"""
+# best-guess job script for each chunk
+bg_templ = dedent("""\
+    cname=`awk -v a={task} 'NR==a+1{{print $4}}' {cfile}`
+    cchr=`awk -v a={task} 'NR==a+1{{print $1}}' {cfile}`
     
+    {plink_ex} --gen {gen_in} --sample {samp_in} --oxford-single-chr ${{cchr}} --oxford-pheno-name plink_pheno --hard-call-threshold {hard_call_th} --missing-code -9,NA,na --allow-no-sex --silent --memory 4000 --out {out_str} 
+    
+    sleep {sleep}
+    # note: Mendel errors checked after --update-parents, see https://www.cog-genomics.org/plink2/order
+    {plink_ex} --bfile {out_str} {mendel_txt} --pheno {idnum} --mpheno 4 --update-parents {idnum} --allow-no-sex --make-bed --silent --memory 2000 --out {out_str2}
+    rm {out_str}.bed
+    rm {out_str}.bim
+    rm {out_str}.fam
+    
+    sleep {sleep}
+    {plink_ex} --bfile {out_str2} {maf_txt} {mac_txt} {geno_txt} {info_txt} --allow-no-sex --make-bed --silent --memory 2000 --out {out_str_filt}
+    rm {out_str2}.bed
+    rm {out_str2}.bim
+    rm {out_str2}.fam
+    
+    {rs_ex} --chunk ${{cname}} --name {outdot} --imp-dir {imp_dir} --fam-trans {trans}
+""")
+
 # get number of chunks
 nchunks = len(chunks)
 
 # fill in template
-jobdict = {"jname": 'bg.chunks.'+str(outdot),
-           "nchunk": str(nchunks),
-           "outlog": str('bg.chunks.'+str(outdot)+'.$TASK_ID.qsub.log'),
+jobdict = {"task": "{task}",
            "sleep": str(args.sleep),
            "cfile": str(outdot)+'.chunks.txt',
            "plink_ex": str(plink_ex),
@@ -400,16 +390,20 @@ jobdict = {"jname": 'bg.chunks.'+str(outdot),
            "trans": str(shape_dir)+'/'+str(args.bfile)+'.hg19.ch.fl.fam.transl'
            }
 
-uger_bg = open(str(outdot)+'.bg_chunks.sub.sh', 'w')
-uger_bg.write(uger_bg_template.format(**jobdict))
-uger_bg.close()
+bg_cmd = bg_templ.format(**jobdict)
+
 
 # submit
-print ' '.join(['qsub',uger_bg.name]) + '\n'
-subprocess.check_call(' '.join(['qsub',uger_bg.name]), shell=True)
+# TODO: flex queue/mem reqs
+send_job(jobname='bg.chunks.'+str(outdot),
+         cmd=bg_cmd,
+         logname=str('bg.chunks.'+str(outdot)+'.'+str(clust_conf['log_task_id'])+'.sub.log'),
+         mem=8000,
+         walltime=2,
+         njobs=int(nchunks),
+         sleep=args.sleep)
+
 print 'Best-guess jobs submitted for %d chunks.\n' % nchunks
-
-
 
 
 ###

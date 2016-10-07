@@ -16,9 +16,6 @@ Aggregate best-guess calls and info scores
 # 
 ####################################
 
-# TODO: enable failed chunk check
-
-
 
 import sys
 #############
