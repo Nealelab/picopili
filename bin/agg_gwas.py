@@ -41,6 +41,7 @@ import gzip
 from math import log10, sqrt
 from args_gwas import *
 from py_helpers import unbuffer_stdout, file_len, file_tail
+from blueprint import send_job
 # , read_conf, link
 unbuffer_stdout()
 
@@ -216,19 +217,17 @@ if len(mis_chunks) > 0:
     
     print '\n...Replacing this agg job in the queue...'
 
-    agg_log = 'agg.'+str(outdot)+'.resub_'+str(nummiss)+'.qsub.log'
-    uger_agg = ' '.join(['qsub',
-                            '-hold_jid','gwas.chunks.'+str(outdot)+'.resub_'+str(nummiss),
-                            '-q', 'long',
-                            '-l', 'm_mem_free=24g,h_vmem=24g',
-                            '-N', 'agg_'+str(outdot),
-                            '-o', agg_log,
-                            str(rp_bin)+'/uger.sub.sh',
-                            str(10), # hardcoded since chunks shouldn't normally need a sleep argument
-                            ' '.join(sys.argv[:])])
-    
-    print uger_agg + '\n'
-    subprocess.check_call(uger_agg, shell=True)
+    # TODO: adjust memory setting here
+
+    agg_log = 'agg.'+str(outdot)+'.resub_'+str(nummiss)+'.sub.log'
+
+    send_job(jobname='agg_'+str(outdot),
+             cmd=' '.join(sys.argv[:]),
+             logname=agg_log,
+             mem=24000,
+             walltime=168, # week
+             wait_name='gwas.chunks.'+str(outdot)+'.resub_'+str(nummiss),
+             sleep=10)
 
     print '\n############'
     print '\n'

@@ -25,9 +25,9 @@ if not (('-h' in sys.argv) or ('--help' in sys.argv)):
 
 ### load requirements
 import os
-import subprocess
 from args_impute import *
 from py_helpers import unbuffer_stdout #, read_conf, file_tail, link, warn_format
+from blueprint import send_job
 unbuffer_stdout()
 
 #############
@@ -121,10 +121,8 @@ else:
 
 
 #############
-print '\n...Checking dependencies...'
+# print '\n...Checking dependencies...'
 #############
-
-
 
 
 # TODO: here
@@ -138,24 +136,15 @@ print '\n...Submitting first task...'
 rp_bin = os.path.dirname(os.path.realpath(__file__))
 next_call = str(rp_bin) + '/shape_rel.py '+' '.join(sys.argv[1:])+' --full-pipe'
 
-# TODO: consider queue/mem for agg
-shape_log = 'shape.'+str(outdot)+'.qsub.log'
-uger_shape = ' '.join(['qsub',
-                        '-q', 'long',
-                        '-l', 'm_mem_free='+str(args.mem_req)+'g,h_vmem='+str(args.mem_req)+'g',
-                        '-N', 'shape.'+str(outdot),
-                        '-o', shape_log,
-                        str(rp_bin)+'/uger.sub.sh',
-                        str(args.sleep),
-                        next_call])
+shape_log = 'shape.'+str(outdot)+'.sub.log'
 
-print uger_shape + '\n'
-subprocess.check_call(uger_shape, shell=True)
-
-
-# TODO: here
-
-
+# TODO: consider queue/mem
+send_job(jobname='shape.'+str(outdot),
+         cmd=next_call,
+         logname=shape_log,
+         mem=int(args.mem_req * 1000),
+         walltime=168, # week
+         sleep=args.sleep)
 
 
 # finish

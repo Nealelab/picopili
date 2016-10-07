@@ -540,10 +540,10 @@ sub send_jobarray {
 	    $err_message .= "##### step $sjaname has been done repeatedly without any progress\n";
 	    $err_message .= "##### imputation pipeline stopped: $command_line\n";
 	    $err_message .= "##### $sjainfotxt\n";
-	    $err_message .= "##### if reason does not appear obvious\n";
-	    $err_message .= "##### have a look at the wiki page\n"; 
-	    $err_message .= "##### https://sites.google.com/a/broadinstitute.org/ricopili/\n";
-	    $err_message .= "##### or contact the developers\n";
+#	    $err_message .= "##### if reason does not appear obvious\n";
+#	    $err_message .= "##### have a look at the wiki page\n"; 
+#	    $err_message .= "##### https://sites.google.com/a/broadinstitute.org/ricopili/\n";
+#	    $err_message .= "##### or contact the developers\n";
 	    $err_message .= "##################################################################\n";
 	    print "$err_message\n";
 
@@ -552,7 +552,7 @@ sub send_jobarray {
 	    close ERR;
 
 		if($email_on){
-			&mysystem ('cat error_file | '.$mutt_script.' -s RP_pipeline_error '.$email) ;
+			&mysystem ('cat error_file | '.$mutt_script.' -s Picopili_pipeline_error '.$email) ;
 		}
 
 	    unless ($serial) {

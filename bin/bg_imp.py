@@ -36,6 +36,7 @@ import subprocess
 import warnings
 from args_impute import *
 from py_helpers import unbuffer_stdout, find_exec, file_tail, link, warn_format
+from blueprint import send_job
 unbuffer_stdout()
 warnings.formatwarning = warn_format
 
@@ -298,21 +299,17 @@ if len(mis_chunks) > 0:
     
     print '\n...Replacing this best-guess job in the queue...'
 
-    # TODO: consider queue/mem for agg
     os.chdir(wd)
-    bg_log = 'bg.'+str(outdot)+'.resub_'+str(nummiss)+'.qsub.log'
-    uger_bg = ' '.join(['qsub',
-                            '-hold_jid','imp.chunks.'+str(outdot)+'.resub_'+str(nummiss),
-                            '-q', 'short',
-                            '-l', 'm_mem_free=4g,h_vmem=8g',
-                            '-N', 'bg.chunks.'+str(outdot),
-                            '-o', bg_log,
-                            str(rp_bin)+'/uger.sub.sh',
-                            str(args.sleep),
-                            ' '.join(sys.argv[:])])
-    
-    print uger_bg + '\n'
-    subprocess.check_call(uger_bg, shell=True)
+    bg_log = 'bg.'+str(outdot)+'.resub_'+str(nummiss)+'.sub.log'
+
+    # TODO: consider queue/mem for agg
+    send_job(jobname='bg.chunks.'+str(outdot),
+             cmd=' '.join(sys.argv[:]),
+             logname=bg_log,
+             mem=8000,
+             walltime=2, # week
+             wait_name='imp.chunks.'+str(outdot)+'.resub_'+str(nummiss),
+             sleep=args.sleep)
 
     print '\n############'
     print '\n'
@@ -426,22 +423,16 @@ if args.full_pipe:
     os.chdir(wd)
     next_call = str(rp_bin) + '/agg_imp.py '+' '.join(sys.argv[1:])
 
-    # TODO: consider queue/mem for agg
-    agg_log = 'agg_imp.'+str(outdot)+'.qsub.log'
-    uger_agg = ' '.join(['qsub',
-                            '-hold_jid','bg.chunks.'+str(outdot),
-                            '-q', 'long',
-                            '-l', 'm_mem_free=8g,h_vmem=8g',
-                            '-N', 'agg.imp.'+str(outdot),
-                            '-o', agg_log,
-                            str(rp_bin)+'/uger.sub.sh',
-                            str(args.sleep),
-                            next_call])
-    
-    print uger_agg + '\n'
-    subprocess.check_call(uger_agg, shell=True)
+    agg_log = 'agg_imp.'+str(outdot)+'.sub.log'
 
-    
+    # TODO: consider queue/mem for agg
+    send_job(jobname='agg.imp.'+str(outdot),
+             cmd=next_call,
+             logname=agg_log,
+             mem=8000,
+             walltime=168, # week
+             wait_name='bg.chunks.'+str(outdot),
+             sleep=args.sleep)
 
 # finish
 print '\n############'

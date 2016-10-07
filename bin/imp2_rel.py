@@ -26,8 +26,10 @@ if not (('-h' in sys.argv) or ('--help' in sys.argv)):
 ### load requirements
 import os
 import subprocess
+from textwrap import dedent
 from args_impute import *
 from py_helpers import unbuffer_stdout, file_len, link, find_exec
+from blueprint import send_job
 unbuffer_stdout()
 
 
@@ -90,6 +92,13 @@ print '--sleep '+str(args.sleep)
 print '\n...Checking dependencies...'
 #############
 
+# get cluster configuration
+# needed for specifying logfile names with clust_conf['log_task_id']
+conf_file = os.environ['HOME']+"/picopili.conf"
+configs = read_conf(conf_file)
+cluster = configs['cluster']
+clust_conf = read_conf(str(clust_dir)+'/'+str(cluster)+'.conf')
+
 # from config
 impute_ex = find_exec('impute2',key='i2loc')
 shapeit_ex = find_exec('shapeit',key='shloc')
@@ -99,6 +108,8 @@ shapeit_ex = find_exec('shapeit',key='shloc')
 rp_bin = os.path.dirname(os.path.realpath(__file__))
 chunker_ex = rp_bin+'/chunk_snps.py'
 test_exec(chunker_ex)
+
+
 
 
 # TODO: here
@@ -138,8 +149,8 @@ for chrom in xrange(1,22):
         bad_chr.append(chrom)
         
 
-# TODO: resub shapeit if failed
-# TODO: re-queue this job
+# if any shapeit jobs failed, 
+# resubmit them and re-queue this job
 if bad_chr:    
     num_chr = len(bad_chr)
     print 'Missing pre-phasing results for %d chromosomes.' % num_chr
@@ -168,30 +179,14 @@ if bad_chr:
         print 'Exiting...\n'
         exit(1)
 
-    # make submit script
-    # using this structure to get adaptive chromosome list
-    uger_phase_template = """#!/usr/bin/env sh
-    #$ -j y
-    #$ -cwd
-    #$ -V
-    #$ -N {jname}
-    #$ -q long
-    #$ -l m_mem_free={mem}g,h_vmem={mem}g
-    #$ -pe smp {threads}
-    #$ -t 1-{nchr}
-    #$ -o {outlog}
-    
-    source /broad/software/scripts/useuse
-    reuse -q Anaconda
-    sleep {sleep}
-    
+    # setup submit script
+    # with "chr_list" to get have adaptive chromosome list
+    cmd_templ = dedent("""\
     chrs=({chr_list})
-    chrom=${{chrs[${{SGE_TASK_ID}}-1]}}
+    chrom=${{chrs[{task}-1]}}
 
-    {shape_ex} {bed} {map} {ref} {window} {duo_txt} {thread_str} {seed_str} {outmax} {shapelog} 
-    
-    # eof
-    """
+    {shape_ex} {bed} {map} {ref} {window} {duo_txt} {thread_str} {seed_str} {outmax} {shapelog}    
+    """)
 
 #    shape_call = [shapeit_ex,
 #                  '--input-bed', chrstem+'.bed', chrstem+'.bim', chrstem+'.fam',
@@ -203,21 +198,15 @@ if bad_chr:
 #                  '--seed', str(args.shape_seed),
 #                  '--output-max', outstem+'.phased.haps', outstem+'.phased.sample',
 #                  '--output-log', outstem+'.shape.log']
-
     
-    # fill in template
-    chrstem = str(args.bfile)+'.hg19.ch.fl.chr${chrom}'
-    outstem = str(outdot)+'.chr${chrom}'
+    # manage duohmm arg
     if extra_args.no_duohmm:
         duo_txt = ''
     else:
         duo_txt = '--duohmm'
-    jobdict = {"jname": 'shape.'+str(outdot)+'.resub_'+str(num_chr),
-               "mem": str(extra_args.mem_req),
-               "threads": str(extra_args.threads),
-               "nchr": str(num_chr),
-               "outlog": 'shape.'+str(outdot)+'.resub_'+str(num_chr)+'.qsub.$TASK_ID.log',
-               "sleep": str(args.sleep),
+    
+    # fill in shapeit template
+    jobdict = {"task": "{task}",
                "chr_list": ' '.join(bad_chr),
                "shape_ex": str(shapeit_ex),
                "bed": '--input-bed '+str(chrstem)+'.bed '+str(chrstem)+'.bim '+str(chrstem)+'.fam',
@@ -229,15 +218,19 @@ if bad_chr:
                "seed_str": '--seed '+str(extra_args.shape_seed),
                "outmax": '--output-max '+str(outstem)+'.phased.haps '+str(outstem)+'.phased.sample',
                "shapelog": str(outstem)+'.shape.resub_'+str(num_chr)+'.log',
-               }
-    
-    uger_phase = open(uger_phase_name, 'w')
-    uger_phase.write(uger_phase_template.format(**jobdict))
-    uger_phase.close()
-    
+               }    
+    shape_cmd = cmd_templ.format(**jobdict)
+
     # submit
-    print ' '.join(['qsub',uger_phase_name]) + '\n'
-    subprocess.check_call(' '.join(['qsub',uger_phase_name]), shell=True)
+    send_job(jobname='shape.'+str(outdot)+'.resub_'+str(num_chr),
+             cmd=shape_cmd,
+             logname='shape.'+str(outdot)+'.resub_'+str(num_chr)+'.sub.'+str(clust_conf['log_task_id'])+'.log',
+             mem=int(extra_args.mem_req)*1000,
+             walltime=168, # week
+             njobs=int(num_chr),
+             threads=extra_args.threads,
+             sleep=args.sleep)
+
     print 'Pre-phasing jobs re-submitted for %d chromosomes.\n' % num_chr
 
 
@@ -246,19 +239,15 @@ if bad_chr:
     print '\n...Replacing this imputation job in the queue...'
     
     os.chdir(wd)
-    imp_log = 'imp_chunks.'+str(outdot)+'.qsub.log'
-    uger_imp = ' '.join(['qsub',
-                            '-hold_jid','imp.chunks.'+str(outdot),
-                            '-q', 'short',
-                            '-l', 'm_mem_free=8g,h_vmem=8g',
-                            '-N', 'imp.chunks.'+str(outdot),
-                            '-o', imp_log,
-                            str(rp_bin)+'/uger.sub.sh',
-                            str(args.sleep),
-                            ' '.join(sys.argv[:])])
-    
-    print uger_imp + '\n'
-    subprocess.check_call(uger_imp, shell=True)
+    imp_log = 'imp_chunks.'+str(outdot)+'.sub.log'
+
+    send_job(jobname='imp.chunks.'+str(outdot),
+             cmd=' '.join(sys.argv[:]),
+             logname=imp_log,
+             mem=8000,
+             walltime=2, # week
+             wait_name='shape.'+str(outdot)+'.resub_'+str(num_chr),
+             sleep=args.sleep)
 
     print '\n############'
     print '\n'
@@ -330,38 +319,18 @@ print '\n...Submitting IMPUTE2 job array...'
 os.chdir(imp_dir)
 link(str(chunk_dir)+'/'+str(outdot)+'.chunks.txt', str(outdot)+'.chunks.txt', 'genomic chunk results')
 
-uger_imp_template = """#!/usr/bin/env sh
-#$ -j y
-#$ -cwd
-#$ -V
-#$ -N {jname}
-#$ -q short
-#$ -l m_mem_free=8g,h_vmem=8g
-#$ -t 1-{nchunk}
-#$ -o {outlog}
+# job script
+imp_templ = dedent("""\
+    cchr=`awk -v a={task} 'NR==a+1{{print $1}}' {cfile}`
+    cstart=`awk -v a={task} 'NR==a+1{{print $2}}' {cfile}`
+    cend=`awk -v a={task} 'NR==a+1{{print $3}}' {cfile}`
+    cname=`awk -v a={task} 'NR==a+1{{print $4}}' {cfile}`
 
-source /broad/software/scripts/useuse
-reuse -q Anaconda
-sleep {sleep}
-
-cchr=`awk -v a=${{SGE_TASK_ID}} 'NR==a+1{{print $1}}' {cfile}`
-cstart=`awk -v a=${{SGE_TASK_ID}} 'NR==a+1{{print $2}}' {cfile}`
-cend=`awk -v a=${{SGE_TASK_ID}} 'NR==a+1{{print $3}}' {cfile}`
-cname=`awk -v a=${{SGE_TASK_ID}} 'NR==a+1{{print $4}}' {cfile}`
-
-{impute_ex} -use_prephased_g -known_haps_g {in_haps} -h {ref_haps} -l {ref_leg} -m {map} -int ${{cstart}} ${{cend}} -buffer {buffer} -Ne {Ne} -allow_large_regions -o_gz -o {out} {seedtxt}
-
-# eof
-"""
-    
-# get number of chunks (-1 is for header)
-nchunks = file_len(outdot+'.chunks.txt')-1
+    {impute_ex} -use_prephased_g -known_haps_g {in_haps} -h {ref_haps} -l {ref_leg} -m {map} -int ${{cstart}} ${{cend}} -buffer {buffer} -Ne {Ne} -allow_large_regions -o_gz -o {out} {seedtxt}
+""")
 
 # fill in template
-jobdict = {"jname": 'imp.chunks.'+str(outdot),
-           "nchunk": str(nchunks),
-           "outlog": str('imp.chunks.'+str(outdot)+'.$TASK_ID.qsub.log'),
-           "sleep": str(args.sleep),
+jobdict = {"task": "{task}",
            "cfile": str(outdot)+'.chunks.txt',
            "impute_ex": str(impute_ex),
            "in_haps": str(shape_dir)+'/'+str(outdot)+'.chr${cchr}.phased.haps',
@@ -373,16 +342,20 @@ jobdict = {"jname": 'imp.chunks.'+str(outdot),
            "out": str(outdot)+'.imp.${cname}',
            "seedtxt": str(seedtxt)
            }
+cmd_imp = imp_templ.format(**jobdict)
 
-uger_imp = open(str(outdot)+'.imp_chunks.sub.sh', 'w')
-uger_imp.write(uger_imp_template.format(**jobdict))
-uger_imp.close()
+# get number of chunks (-1 is for header)
+nchunks = file_len(outdot+'.chunks.txt')-1
 
 # submit
-print ' '.join(['qsub',uger_imp.name]) + '\n'
-subprocess.check_call(' '.join(['qsub',uger_imp.name]), shell=True)
+send_job(jobname='imp.chunks.'+str(outdot),
+         cmd=cmd_imp,
+         logname=str('imp.chunks.'+str(outdot)+'.'+str(clust_conf['log_task_id'])+'.sub.log'),
+         mem=8000,
+         walltime=2,
+         njobs=int(nchunks),
+         sleep=args.sleep)
 print 'Imputation jobs submitted for %d chunks.\n' % nchunks
-
 
 
 
@@ -397,23 +370,16 @@ if args.full_pipe:
     os.chdir(wd)
     next_call = str(rp_bin) + '/bg_imp.py '+' '.join(sys.argv[1:])
 
+    bg_log = 'bg_imp.'+str(outdot)+'.sub.log'
+
     # TODO: consider queue/mem for agg
-    bg_log = 'bg_imp.'+str(outdot)+'.qsub.log'
-    uger_bg = ' '.join(['qsub',
-                            '-hold_jid','imp.chunks.'+str(outdot),
-                            '-q', 'short',
-                            '-l', 'm_mem_free=4g,h_vmem=8g',
-                            '-N', 'bg.chunks.'+str(outdot),
-                            '-o', bg_log,
-                            str(rp_bin)+'/uger.sub.sh',
-                            str(args.sleep),
-                            next_call])
-    
-    print uger_bg + '\n'
-    subprocess.check_call(uger_bg, shell=True)
-
-
-
+    send_job(jobname='bg.chunks.'+str(outdot),
+             cmd=next_call,
+             logname=bg_log,
+             mem=8000,
+             walltime=2, # week
+             wait_name='imp.chunks.'+str(outdot),
+             sleep=args.sleep)
 
 
 

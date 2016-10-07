@@ -45,6 +45,7 @@ import argparse
 # import warnings
 from args_impute import *
 from py_helpers import unbuffer_stdout, link, find_exec #, test_exec
+from blueprint import send_job
 # file_len, read_conf, find_from_path, link, gz_confirm
 unbuffer_stdout()
 

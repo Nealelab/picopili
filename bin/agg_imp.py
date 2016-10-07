@@ -31,6 +31,7 @@ import os
 import subprocess
 from args_impute import *
 from py_helpers import unbuffer_stdout, find_exec, test_exec, file_len #, file_tail, link, warn_format
+from blueprint import send_job
 unbuffer_stdout()
 # warnings.formatwarning = warn_format
 
@@ -196,21 +197,17 @@ if len(mis_chunks) > 0:
     
     print '\n...Replacing this aggregation job in the queue...'
 
-    # TODO: consider queue/mem for agg
     os.chdir(wd)
-    agg_log = 'agg_imp.'+str(outdot)+'.resub_'+str(nummiss)+'.qsub.log'
-    uger_agg = ' '.join(['qsub',
-                            '-hold_jid','bg.chunks.'+str(outdot)+'.resub_'+str(nummiss),
-                            '-q', 'long',
-                            '-l', 'm_mem_free=8g,h_vmem=8g',
-                            '-N', 'agg.imp.'+str(outdot),
-                            '-o', agg_log,
-                            str(uger_ex),
-                            str(args.sleep),
-                            ' '.join(sys.argv[:])])
-    
-    print uger_agg + '\n'
-    subprocess.check_call(uger_agg, shell=True)
+    agg_log = 'agg_imp.'+str(outdot)+'.resub_'+str(nummiss)+'.sub.log'
+
+    # TODO: consider queue/mem for agg
+    send_job(jobname='agg.imp.'+str(outdot),
+             cmd=' '.join(sys.argv[:]),
+             logname=agg_log,
+             mem=8000,
+             walltime=168, # week
+             wait_name='bg.chunks.'+str(outdot)+'.resub_'+str(nummiss),
+             sleep=args.sleep)
 
     print '\n############'
     print '\n'
