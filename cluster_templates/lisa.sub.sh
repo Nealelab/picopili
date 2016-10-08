@@ -10,7 +10,7 @@
 sleep {sleep_time}
 
 # setup resources
-use R
+cd {workdir}
 
 # main command line
 {cmd_string}

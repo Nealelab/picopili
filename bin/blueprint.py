@@ -99,12 +99,12 @@ def send_job(jobname,
     
     # job dependencies
     if wait_name is not None:
-        hold_str = clust_conf['hold_flag'] + ' ' + str(wait_name)
+        hold_str = clust_conf['hold_flag'].format(hold_name=str(wait_name))
         
     elif wait_file is not None:
         with open(wait_file, 'r') as wait_fi:
             wait_name = wait_fi.readline()
-            hold_str = clust_conf['hold_flag'] + ' ' + str(wait_name)
+            hold_str = clust_conf['hold_flag'].format(hold_name=str(wait_name))
 
     else:
         hold_str = ""
@@ -254,7 +254,8 @@ def send_job(jobname,
                "log_task_id": str(clust_conf['log_task_id']),
                "queue_name": str(queue_name),
                "sleep_time": str(sleep),
-               "project": str(clust_conf['project'])
+               "project": str(clust_conf['project']),
+               "workdir": os.getcwd()
                }
 
             
