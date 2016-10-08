@@ -787,7 +787,7 @@ if ($haveref == 0){
 	print "Successfully found ricopili plague and buigue reference files!\n"
 }
 
-if ($haveref == 1 && $statusbin == 0){
+if ($haveref == 1 && $status_bin == 0){
 	print "\n### Finished ###\n\n";
 }
 

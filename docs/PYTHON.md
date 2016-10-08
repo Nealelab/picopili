@@ -25,6 +25,7 @@ please contact rwalters(at)broadinstitute.org and we would be happy to assist.
 * os 
 * random 
 * re 
+* stat
 * string 
 * subprocess 
 * sys 
