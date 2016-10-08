@@ -11,6 +11,7 @@ sleep {sleep_time}
 
 # setup resources
 cd {workdir}
+module load R
 
 # main command line
 {cmd_string}
