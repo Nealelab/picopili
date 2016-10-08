@@ -299,14 +299,14 @@ clust_conf = read_conf(clust_confdir+str(configs['cluster']+'.conf'))
 task_id = str(clust_conf['log_task_id'])
 
 # submit
-send_job(jobname='shape.'+str(outdot),
-             cmd=' '.join(shape_call),
-             logname='shape.'+str(outdot)+'.chr'+task_id+'.sub.log',
-             mem=int(args.mem_req)*1000,
-             walltime=168, # week
-             njobs=22,
-             threads=int(args.threads),
-             sleep=str(args.sleep))
+jobres = send_job(jobname='shape.'+str(outdot),
+                  cmd=' '.join(shape_call),
+                  logname='shape.'+str(outdot)+'.chr'+task_id+'.sub.log',
+                  mem=int(args.mem_req)*1000,
+                  walltime=168, # week
+                  njobs=22,
+                  threads=int(args.threads),
+                  sleep=str(args.sleep))
 
 
 ###
@@ -329,6 +329,7 @@ if args.full_pipe:
              mem=8000,
              walltime=2,
              wait_name='shape.'+str(outdot),
+             wait_num=jobres,
              sleep=str(args.sleep))
 
 

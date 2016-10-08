@@ -166,14 +166,14 @@ strictqc_call = ' '.join(['strict_qc.py',
                          strandambi_txt,
                          allchr_txt])
 
-send_job(jobname=str('strictqc_'+args.out),
-         arrayfile=None,
-         cmd=str(strictqc_call),
-         logname=str('strictqc_'+args.out+'.sub.log'),
-         mem=2000,
-         walltime=2,
-         sleep=0,
-         testonly=args.test_sub)
+jobres = send_job(jobname=str('strictqc_'+args.out),
+                  arrayfile=None,
+                  cmd=str(strictqc_call),
+                  logname=str('strictqc_'+args.out+'.sub.log'),
+                  mem=2000,
+                  walltime=2,
+                  sleep=0,
+                  testonly=args.test_sub)
 
 
 #####
@@ -193,14 +193,15 @@ imuspca_call = ' '.join(['imus_pca.py',
                          '--primus-ex', str(args.primus_ex)
                          ])
 
-send_job(jobname=str('imuspca_'+args.out),
-         cmd=str(imuspca_call),
-         logname=str('imuspca_'+args.out+'.sub.log'),
-         mem=int(imus_mem)*1000,
-         walltime=168, # one week
-         wait_name=str('strictqc_'+args.out),
-         sleep=args.sleep,
-         testonly=args.test_sub)
+jobres2 = send_job(jobname=str('imuspca_'+args.out),
+                   cmd=str(imuspca_call),
+                   logname=str('imuspca_'+args.out+'.sub.log'),
+                   mem=int(imus_mem)*1000,
+                   walltime=168, # one week
+                   wait_name=str('strictqc_'+args.out),
+                   wait_num=str(jobres),
+                   sleep=args.sleep,
+                   testonly=args.test_sub)
 
 
 #####
@@ -226,6 +227,7 @@ send_job(jobname=str('checkfinal_'+args.out),
          mem=100,
          walltime=1,
          wait_name=str('imuspca_'+args.out),
+         wait_num=str(jobres2),
          sleep=str(args.sleep),
          testonly=args.test_sub)
 

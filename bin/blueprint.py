@@ -28,6 +28,7 @@ def send_job(jobname,
              threads=None,
              wait_file=None,
              wait_name=None,
+             wait_num=None,
              cluster=None,
              sleep=30,
              testonly=False):
@@ -99,12 +100,12 @@ def send_job(jobname,
     
     # job dependencies
     if wait_name is not None:
-        hold_str = clust_conf['hold_flag'].format(hold_name=str(wait_name))
+        hold_str = clust_conf['hold_flag'].format(hold_name=str(wait_name),hold_num=str(wait_num))
         
     elif wait_file is not None:
         with open(wait_file, 'r') as wait_fi:
             wait_name = wait_fi.readline()
-            hold_str = clust_conf['hold_flag'].format(hold_name=str(wait_name))
+            hold_str = clust_conf['hold_flag'].format(hold_name=str(wait_name),hold_num=str(wait_num))
 
     else:
         hold_str = ""
@@ -294,9 +295,11 @@ def send_job(jobname,
     if not testonly:
         p = subprocess.Popen(launch_str.split(), stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
         out, err = p.communicate()
-        print out
-        return(p.returncode)
-
+        if p.returncode is None or p.returncode == 0:
+            return out
+        else
+            raise EnvironmentError((p.returncode,err))
+            
     else:          
         return 0
 
