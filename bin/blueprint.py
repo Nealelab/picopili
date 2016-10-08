@@ -10,6 +10,7 @@ manages job submission on different cluster architectures
 ####################################
 
 import os
+import stat
 import subprocess
 from textwrap import dedent
 from py_helpers import read_conf, file_len
@@ -178,6 +179,14 @@ def send_job(jobname,
             # number of jobs to cover all tasks
             array_jobs = ceil(float(njobs)/float(task_mem_lim))
             
+            # convert multi-line command to script
+            if len(cmd_line.splitlines()) > 1:
+                tmp_script = open('temp_cmd.'+str(jobname)+'.sh','w')
+                tmp_script.write(cmd_line)
+                tmp_script.close()
+                os.chmod(tmp_script.name, stat.S_IEXEC)
+                cmd_line = './'+tmp_script.name
+                
             # setup to do task_mem_lim jobs on each node
             # note: specified above that cmd_line uses ${tid} as task index 
             par_tmp = dedent("""\
