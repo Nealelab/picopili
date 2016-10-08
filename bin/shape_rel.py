@@ -303,7 +303,7 @@ jobres = send_job(jobname='shape.'+str(outdot),
                   cmd=' '.join(shape_call),
                   logname='shape.'+str(outdot)+'.chr'+task_id+'.sub.log',
                   mem=int(args.mem_req)*1000,
-                  walltime=168, # week
+                  walltime=30,
                   njobs=22,
                   threads=int(args.threads),
                   sleep=str(args.sleep))
@@ -329,7 +329,7 @@ if args.full_pipe:
              mem=8000,
              walltime=2,
              wait_name='shape.'+str(outdot),
-             wait_num=jobres,
+             wait_num=str(jobres).strip(),
              sleep=str(args.sleep))
 
 

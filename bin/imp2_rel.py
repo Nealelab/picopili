@@ -225,14 +225,14 @@ if bad_chr:
     shape_cmd = cmd_templ.format(**jobdict)
 
     # submit
-    send_job(jobname='shape.'+str(outdot)+'.resub_'+str(num_chr),
-             cmd=shape_cmd,
-             logname='shape.'+str(outdot)+'.resub_'+str(num_chr)+'.sub.'+str(clust_conf['log_task_id'])+'.log',
-             mem=int(extra_args.mem_req)*1000,
-             walltime=168, # week
-             njobs=int(num_chr),
-             threads=extra_args.threads,
-             sleep=args.sleep)
+    jobres = send_job(jobname='shape.'+str(outdot)+'.resub_'+str(num_chr),
+	              cmd=shape_cmd,
+	              logname='shape.'+str(outdot)+'.resub_'+str(num_chr)+'.sub.'+str(clust_conf['log_task_id'])+'.log',
+	              mem=int(extra_args.mem_req)*1000,
+	              walltime=30,
+	              njobs=int(num_chr),
+	              threads=extra_args.threads,
+		      sleep=args.sleep)
 
     print 'Pre-phasing jobs re-submitted for %d chromosomes.\n' % num_chr
 
@@ -250,6 +250,7 @@ if bad_chr:
              mem=8000,
              walltime=2, # week
              wait_name='shape.'+str(outdot)+'.resub_'+str(num_chr),
+	     wait_num=str(jobres).strip(),
              sleep=args.sleep)
 
     print '\n############'
@@ -368,13 +369,13 @@ save_job(jfile=job_store_file, cmd_templ=imp_templ, job_dict=jobdict, sendjob_di
 # submit
 cmd_imp = imp_templ.format(**jobdict)
 
-send_job(jobname='imp.chunks.'+str(outdot),
-         cmd=cmd_imp,
-         logname=str('imp.chunks.'+str(outdot)+'.'+str(clust_conf['log_task_id'])+'.sub.log'),
-         mem=8000,
-         walltime=2,
-         njobs=int(nchunks),
-         sleep=args.sleep)
+jobres2 = send_job(jobname='imp.chunks.'+str(outdot),
+         	   cmd=cmd_imp,
+         	   logname=str('imp.chunks.'+str(outdot)+'.'+str(clust_conf['log_task_id'])+'.sub.log'),
+         	   mem=8000,
+         	   walltime=2,
+         	   njobs=int(nchunks),
+         	   sleep=args.sleep)
 print 'Imputation jobs submitted for %d chunks.\n' % nchunks
 
 
@@ -399,6 +400,7 @@ if args.full_pipe:
              mem=8000,
              walltime=2, # week
              wait_name='imp.chunks.'+str(outdot),
+	     wait_num=str(jobres2).strip(),
              sleep=args.sleep)
 
 

@@ -207,13 +207,13 @@ if len(mis_chunks) > 0:
     # submit
     bg_cmd = cmd_templ.format(**job_dict)
 
-    send_job(jobname=sendjob_dict['jobname'],
-             cmd=bg_cmd,
-             logname=sendjob_dict['logname'],
-             mem=sendjob_dict['mem'],
-             walltime=sendjob_dict['walltime'],
-             njobs=sendjob_dict['njobs'],
-             sleep=sendjob_dict['sleep'])
+    jobres = send_job(jobname=sendjob_dict['jobname'],
+	              cmd=bg_cmd,
+	              logname=sendjob_dict['logname'],
+	              mem=sendjob_dict['mem'],
+	              walltime=sendjob_dict['walltime'],
+	              njobs=sendjob_dict['njobs'],
+	              sleep=sendjob_dict['sleep'])
         
     print 'Best-guess jobs resubmitted for %d chunks.\n' % nummiss
     
@@ -229,8 +229,9 @@ if len(mis_chunks) > 0:
              cmd=' '.join(sys.argv[:]),
              logname=agg_log,
              mem=8000,
-             walltime=168, # week
+             walltime=30,
              wait_name='bg.chunks.'+str(outdot)+'.resub_'+str(nummiss),
+             wait_num=str(jobres).strip(),
              sleep=args.sleep)
 
     print '\n############'

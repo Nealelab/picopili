@@ -297,8 +297,8 @@ def send_job(jobname,
         out, err = p.communicate()
         if p.returncode is None or p.returncode == 0:
             return out
-        else
-            raise EnvironmentError((p.returncode,err))
+        else:
+            raise EnvironmentError((p.returncode,err,out))
             
     else:          
         return 0

@@ -321,13 +321,13 @@ if len(mis_chunks) > 0:
     # submit
     imp_cmd = cmd_templ.format(**job_dict)
 
-    send_job(jobname=sendjob_dict['jobname'],
-             cmd=imp_cmd,
-             logname=sendjob_dict['logname'],
-             mem=sendjob_dict['mem'],
-             walltime=sendjob_dict['walltime'],
-             njobs=sendjob_dict['njobs'],
-             sleep=sendjob_dict['sleep'])
+    jobres = send_job(jobname=sendjob_dict['jobname'],
+             	      cmd=imp_cmd,
+             	      logname=sendjob_dict['logname'],
+	              mem=sendjob_dict['mem'],
+	              walltime=sendjob_dict['walltime'],
+	              njobs=sendjob_dict['njobs'],
+	              sleep=sendjob_dict['sleep'])
         
     print 'GWAS jobs resubmitted for %d chunks.\n' % nummiss
 
@@ -345,6 +345,7 @@ if len(mis_chunks) > 0:
              mem=8000,
              walltime=2, # week
              wait_name='imp.chunks.'+str(outdot)+'.resub_'+str(nummiss),
+	     wait_num=str(jobres).strip(),
              sleep=args.sleep)
 
     print '\n############'
@@ -438,13 +439,13 @@ save_job(jfile=job_store_file, cmd_templ=bg_templ, job_dict=jobdict, sendjob_dic
 # TODO: flex queue/mem reqs
 bg_cmd = bg_templ.format(**jobdict)
 
-send_job(jobname='bg.chunks.'+str(outdot),
-         cmd=bg_cmd,
-         logname=str('bg.chunks.'+str(outdot)+'.'+str(clust_conf['log_task_id'])+'.sub.log'),
-         mem=8000,
-         walltime=2,
-         njobs=int(nchunks),
-         sleep=args.sleep)
+jobres2 = send_job(jobname='bg.chunks.'+str(outdot),
+	           cmd=bg_cmd,
+	           logname=str('bg.chunks.'+str(outdot)+'.'+str(clust_conf['log_task_id'])+'.sub.log'),
+	           mem=8000,
+	           walltime=2,
+	           njobs=int(nchunks),
+	           sleep=args.sleep)
 
 print 'Best-guess jobs submitted for %d chunks.\n' % nchunks
 
@@ -467,8 +468,9 @@ if args.full_pipe:
              cmd=next_call,
              logname=agg_log,
              mem=8000,
-             walltime=168, # week
+             walltime=30,
              wait_name='bg.chunks.'+str(outdot),
+	     wait_num=str(jobres2).strip(),
              sleep=args.sleep)
 
 # finish

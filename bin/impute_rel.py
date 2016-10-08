@@ -145,7 +145,7 @@ send_job(jobname='shape.'+str(outdot),
          cmd=next_call,
          logname=shape_log,
          mem=int(args.mem_req * 1000),
-         walltime=168, # week
+         walltime=30,
          sleep=args.sleep)
 
 

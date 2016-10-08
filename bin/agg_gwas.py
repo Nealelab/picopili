@@ -223,14 +223,14 @@ if len(mis_chunks) > 0:
     # submit
     gwas_cmd = cmd_templ.format(**job_dict)
 
-    send_job(jobname=sendjob_dict['jobname'],
-             cmd=gwas_cmd,
-             logname=sendjob_dict['logname'],
-             mem=sendjob_dict['mem'],
-             walltime=sendjob_dict['walltime'],
-             njobs=sendjob_dict['njobs'],
-             maxpar=sendjob_dict['maxpar'],
-             sleep=sendjob_dict['sleep'])
+    jobres = send_job(jobname=sendjob_dict['jobname'],
+	              cmd=gwas_cmd,
+	              logname=sendjob_dict['logname'],
+	              mem=sendjob_dict['mem'],
+	              walltime=sendjob_dict['walltime'],
+	              njobs=sendjob_dict['njobs'],
+	              maxpar=sendjob_dict['maxpar'],
+	              sleep=sendjob_dict['sleep'])
         
     print 'GWAS jobs resubmitted for %d chunks.\n' % nummiss
     
@@ -245,8 +245,9 @@ if len(mis_chunks) > 0:
              cmd=' '.join(sys.argv[:]),
              logname=agg_log,
              mem=24000,
-             walltime=168, # week
+             walltime=30,
              wait_name='gwas.chunks.'+str(outdot)+'.resub_'+str(nummiss),
+             wait_num=str(jobres).strip(),
              sleep=10)
 
     print '\n############'

@@ -197,9 +197,9 @@ jobres2 = send_job(jobname=str('imuspca_'+args.out),
                    cmd=str(imuspca_call),
                    logname=str('imuspca_'+args.out+'.sub.log'),
                    mem=int(imus_mem)*1000,
-                   walltime=168, # one week
+                   walltime=30,
                    wait_name=str('strictqc_'+args.out),
-                   wait_num=str(jobres),
+                   wait_num=str(jobres).strip(),
                    sleep=args.sleep,
                    testonly=args.test_sub)
 
@@ -227,7 +227,7 @@ send_job(jobname=str('checkfinal_'+args.out),
          mem=100,
          walltime=1,
          wait_name=str('imuspca_'+args.out),
-         wait_num=str(jobres2),
+         wait_num=str(jobres2).strip(),
          sleep=str(args.sleep),
          testonly=args.test_sub)
 

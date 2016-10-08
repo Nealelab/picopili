@@ -496,14 +496,14 @@ save_job(jfile=job_store_file, cmd_templ=gwas_templ, job_dict=jobdict, sendjob_d
 # submit job
 gwas_cmd = gwas_templ.format(**jobdict)
 
-send_job(jobname='gwas.chunks.'+str(outdot),
-         cmd=gwas_cmd,
-         logname=str('gwas.chunks.'+str(outdot)+'.'+str(clust_conf['log_task_id'])+'.sub.log'),
-         mem=4000,
-         walltime=2,
-         njobs=int(nchunk),
-         maxpar=200,
-         sleep=args.sleep)
+jobres = send_job(jobname='gwas.chunks.'+str(outdot),
+         	  cmd=gwas_cmd,
+	          logname=str('gwas.chunks.'+str(outdot)+'.'+str(clust_conf['log_task_id'])+'.sub.log'),
+	          mem=4000,
+	          walltime=2,
+	          njobs=int(nchunk),
+	          maxpar=200,
+	          sleep=args.sleep)
 
 print 'GWAS jobs submitted for %d chunks.\n' % nchunk
 
@@ -565,8 +565,9 @@ send_job(jobname='agg_'+str(outdot),
          cmd=' '.join(agg_call),
          logname=agg_log,
          mem=4000,
-         walltime=168, # week
+         walltime=30,
          wait_name='gwas.chunks.'+str(outdot),
+         wait_num=str(jobres).strip(),
          sleep=args.sleep)
 
 # TODO:
