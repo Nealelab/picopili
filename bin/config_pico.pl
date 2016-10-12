@@ -673,7 +673,7 @@ if ($status_bin != 0) {
 	if ($shell eq "bash-login-check"){$shell = "bash";}
 	if ($shell ne "bash" && $shell ne "tcsh") {
     	print "Warning! Shell not recognized: $shell\n";
-		print "Please send email to rwalters\@broadinstitute.org\n";
+		print "Please send email to rwalters(at)broadinstitute.org\n";
 	}
 	print "Detected you are using the following shell: $shell\n\n";
 	

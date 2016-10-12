@@ -12,7 +12,7 @@ use strict;
 #
 #                                  01/14/10
 #
-#          Adapted for Picopili by Raymond Walters, rwalters@broadinstitute.org
+#          Adapted for Picopili by Raymond Walters, rwalters(at)broadinstitute.org
 #
 #
 #
