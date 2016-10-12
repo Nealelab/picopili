@@ -492,7 +492,7 @@ if __name__ == "__main__":
     # get queue
     conf_file = os.environ['HOME']+"/picopili.conf"
     configs = read_conf(conf_file)
-    queue = configs['queue']
+    queue = configs['cluster']
     
     # set logfile name
     if args.noerr:

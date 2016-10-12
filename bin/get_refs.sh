@@ -24,7 +24,7 @@ echo " "
 
 # setup
 rp_conf="$HOME/ricopili.conf"
-SERVER="https://personal.broadinstitute.org/rwalters/picopili_files/"
+SERVER="https://personal.broadinstitute.org/rwalters/picopili_files"
 SCRIPT=$(readlink -f "$0")
 BINLOC=$(dirname "$SCRIPT")
 LIBLOC=`echo $(dirname "$BINLOC")"/lib"`
@@ -118,7 +118,7 @@ if [ "$to_dl" = 'true' ]; then
 	echo "WARNING: Preparing to download reference files from:"
 	echo "$SERVER"
 	echo " "
-	echo "Expected total file size is ~275 MB, minus existing"
+	echo "Expected total file size is ~300 MB, minus existing"
 	echo "files already linked/downloaded."
 	echo " "
 	echo "If you do not have web access, or if you do not want"
@@ -133,7 +133,10 @@ if [ "$to_dl" = 'true' ]; then
 		if [ "$finame" = "last" ]; then
 			continue
 		else
-			wget "$SERVER/$finame" "$LIBLOC/buigue/$finame"
+			echo " "
+			echo "Next file: $SERVER/$finame"
+			# wget --no-check-certificate "$SERVER/$finame" "$LIBLOC/buigue/$finame"
+			curl -o "$LIBLOC/buigue/$finame" "$SERVER/$finame"
 		fi
 	done
 	for finame in ${hmfiles[@]}; do
@@ -141,7 +144,10 @@ if [ "$to_dl" = 'true' ]; then
 		if [ "$finame" = "last" ]; then
 			continue
 		else
-			wget "$SERVER/$finame" "$LIBLOC/plague/$finame"
+			echo " "
+			echo "Next file: $SERVER/$finame"
+			# wget --no-check-certificate "$SERVER/$finame" "$LIBLOC/plague/$finame"
+			curl -o "$LIBLOC/plague/$finame" "$SERVER/$finame"
 		fi
 	done
 fi

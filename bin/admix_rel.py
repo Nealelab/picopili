@@ -144,13 +144,13 @@ arg_exloc.add_argument('--admixture-ex',
                     metavar='PATH',
                     help='path to ADMIXTURE executable',
                     required=False,
-                    default="/humgen/atgu1/fs03/shared_resources/shared_software/bin/admixture")
+                    default=None)
 arg_exloc.add_argument('--reap-ex',
                     type=str,
                     metavar='PATH',
                     help='path to REAP executable',
                     required=False,
-                    default="/humgen/atgu1/fs03/shared_resources/shared_software/bin/REAP")
+                    default=None)
 
 args = parser.parse_args()
 

@@ -12,6 +12,8 @@ use strict;
 #
 #                                  01/14/10
 #
+#          Adapted for Picopili by Raymond Walters, rwalters(at)broadinstitute.org
+#
 #
 #
 #    lifts a plink binary from hg18 to hg19
@@ -83,8 +85,6 @@ version: $version
 
   here a seletion of lilofiles:
   $liloc
-
- created by Stephan Ripke 2010: sripke\@broadinstitute.org
 
 ";
 

@@ -210,7 +210,7 @@ foreach my $scr_name (@test_scripts) {
 	}
     }
     if ( $scr_path eq  '') {
-	push @miss_scripts, "cp /home/unix/sripke/bin/$scr_name ./\n";
+	push @miss_scripts, "$scr_name\n";
 	print "!!Error!! : No $scr_name command available\n" ;
     }
  
@@ -219,18 +219,20 @@ foreach my $scr_name (@test_scripts) {
 
 
 if (@miss_scripts > 0) {
-  if (-e "get_scripts_on_broad.txt") {
-    print "please remove this file and restart: get_scripts_on_broad.txt\n";
-  }
-  die $! unless open FILE1, "> get_scripts_on_broad.txt";
+
+#  if (-e "get_scripts_on_broad.txt") {
+#    print "please remove this file and restart: get_scripts_on_broad.txt\n";
+#  }
+  die $! unless open FILE1, "> missing_picopili_scripts.txt";
   foreach (@miss_scripts) {
     print FILE1 "$_";
   }
   close FILE1;
 
+  die "Missing required scripts. See missing_picopili_scripts.txt\n";
 
-  print "exiting now -> have a look at get_scripts_on_broad.txt\n";
-  exit;
+#  print "exiting now -> have a look at get_scripts_on_broad.txt\n";
+#  exit;
 
 }
 
@@ -422,36 +424,36 @@ sub send_jobarray {
     $now =~ s/ /_/g;
 
 
-    if ($sjaname eq "finished") {
-
-	my $fini_message ;
-	$fini_message .= "\n\n##################################################################\n";
-	$fini_message .= "##### CONGRATULATIONS: \n";
-	$fini_message .= "##### rp_pipeline finished successfully:\n";
-	$fini_message .= "##### $sjainfotxt\n";
-	$fini_message .= "##### now start with PCA (see README in subdir pcaer_sub/)\n";
-	$fini_message .= "##### or directly with postimputation analysis\n";
-	$fini_message .= "##### have a look at the wiki page\n"; 
-	$fini_message .= "##### https://sites.google.com/a/broadinstitute.org/ricopili/\n";
-	$fini_message .= "##################################################################\n";
-	print "$fini_message\n";
-
-	
-	die $! unless open SUC, "> success_file";
-	print SUC $fini_message."\n";
-	close SUC;
-
-	if($email_on){
-		&mysystem ('cat success_file | '.$mutt_script.' -s RP_pipeline_finished '.$email) ;
-	}
-
-	my $sjarow      = $sjainfotxt."\t$sjaname\t$now";
-	&a2filenew_app("$sjainfofile",$sjarow);
-
-
-	exit;
-
-    }
+#    if ($sjaname eq "finished") {
+#
+#	my $fini_message ;
+#	$fini_message .= "\n\n##################################################################\n";
+#	$fini_message .= "##### CONGRATULATIONS: \n";
+#	$fini_message .= "##### rp_pipeline finished successfully:\n";
+#	$fini_message .= "##### $sjainfotxt\n";
+#	$fini_message .= "##### now start with PCA (see README in subdir pcaer_sub/)\n";
+#	$fini_message .= "##### or directly with postimputation analysis\n";
+#	$fini_message .= "##### have a look at the wiki page\n"; 
+#	$fini_message .= "##### https://sites.google.com/a/broadinstitute.org/ricopili/\n";
+#	$fini_message .= "##################################################################\n";
+#	print "$fini_message\n";
+#
+#	
+#	die $! unless open SUC, "> success_file";
+#	print SUC $fini_message."\n";
+#	close SUC;
+#
+#	if($email_on){
+#		&mysystem ('cat success_file | '.$mutt_script.' -s RP_pipeline_finished '.$email) ;
+#	}
+#
+#	my $sjarow      = $sjainfotxt."\t$sjaname\t$now";
+#	&a2filenew_app("$sjainfofile",$sjarow);
+#
+#
+#	exit;
+#
+#    }
 
 
     chdir ($sjadir);

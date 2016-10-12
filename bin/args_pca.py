@@ -190,7 +190,7 @@ arg_exloc.add_argument('--primus-ex',
 #                    metavar='PATH',
 #                    help='path to smartpca executable',
 #                    required=False,
-#                    default="/humgen/atgu1/fs03/shared_resources/shared_software/EIG6.0beta_noreq/bin/smartpca")
+#                    default=None)
 
 
 
