@@ -1,5 +1,5 @@
 #PBS -lwalltime={wall_hours}:00:00
-#PBS -lnodes=1
+#PBS -lnodes=1{big_mem_txt}
 #PBS -S /bin/bash
 #PBS -N {job_name}
 #PBS -j oe

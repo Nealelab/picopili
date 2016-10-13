@@ -206,15 +206,23 @@ col_gradient = ["#9CD8B8","#73C8BD","#4DBBC2","#33A7C2","#1D91C0","#2072B2","#23
 
 # print settings
 print 'Using settings:'
-print '--unrel-bfile '+args.unrel_bfile
+if args.unrel_bfile is not None and args.unrel_bfile != "":
+	print '--unrel-bfile '+args.unrel_bfile
+if args.admix_p is not None and args.admix_p != "":
+	print '--admix-p '+args.admix_p
 print '--target-bfile '+args.target_bfile
 print '--out '+args.out
 print '--outdir '+args.outdir
 print '--npops '+str(args.npops)
-print '--prop-th '+str(args.prop_th)
-print '--min-exemplar '+str(args.min_exemplar)
+if args.use_exemplars:
+	print '--min-exemplar '+str(args.min_exemplar)
+	if args.admix_q is not None and args.admix_q != "":
+		print '--admix-q '+args.admix_q
+	print '--prop-th '+str(args.prop_th)
+	print '--min-exemplar '+str(args.min_exemplar)
 print '--min-rel '+str(args.min_rel)
-print '--plot-admix-pca '+str(args.plot_admix_pca)
+if args.plot_admix_pca is not None and args.plot_admix_pca != "":
+	print '--plot-admix-pca '+str(args.plot_admix_pca)
 
 
 #############
@@ -484,7 +492,7 @@ else:
     
     print str(' '.join(admix_project_call))
     print 'Logging to ' + admix_target_log.name + '\n'
-    subprocess.check_call(admix_super_call, stdout=admix_target_log)
+    subprocess.check_call(admix_project_call, stdout=admix_target_log)
     
     admix_target_log.close()
 

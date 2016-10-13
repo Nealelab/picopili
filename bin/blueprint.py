@@ -79,6 +79,11 @@ def send_job(jobname,
     else:
         mem_gb = str(1)
 
+    if mem > 30000:
+	mem_txt = str(clust_conf['big_mem_txt'])
+    else:
+	mem_txt = ""
+
     # multithreading arguments
     if threads is None:
         threads = 1
@@ -244,6 +249,7 @@ def send_job(jobname,
                "log_name": str(logloc)+'/'+str(logname),
                "mem_in_mb": str(mem_mb),
                "mem_in_gb": str(mem_gb),
+	       "big_mem_txt": str(mem_txt),
                "threads": str(threads),
                "total_threads": str(tot_threads),
                "wall_hours": str(walltime),
