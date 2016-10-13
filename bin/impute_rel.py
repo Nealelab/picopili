@@ -27,7 +27,7 @@ if not (('-h' in sys.argv) or ('--help' in sys.argv)):
 import os
 import argparse
 
-from args_impute import parserbase, parserphase, parserimpute, parserchunk, parserref, parserbg, parsercluster
+from args_impute import parserbase, parserphase, parserimpute, parserchunk, parserref, arg_ref, parserbg, parsercluster
 from py_helpers import unbuffer_stdout
 from blueprint import send_job
 unbuffer_stdout()
@@ -36,6 +36,15 @@ unbuffer_stdout()
 if not (('-h' in sys.argv) or ('--help' in sys.argv)):
     print '\n...Parsing arguments...' 
 #############
+
+arg_ref.add_argument('--ref-dir',
+                         type=str,
+                         metavar='DIRECTORY',
+                         help='Directory containing imputation reference files (haps, legends, sample, and maps). ' + 
+                              'Used as prefix for specifying full paths of --ref-maps, --ref-haps, --ref-legs, and --ref-samps',
+                         required=False,
+                         default=None)
+
 parser = argparse.ArgumentParser(prog='impute_rel.py',
                                  formatter_class=lambda prog:
                                  argparse.ArgumentDefaultsHelpFormatter(prog, max_help_position=40),
@@ -43,8 +52,70 @@ parser = argparse.ArgumentParser(prog='impute_rel.py',
                     
 args = parser.parse_args()
 
+if args.ref_dir is not None:
+    # verify exists
+    assert os.path.isdir(args.ref_dir), "Failed to find imputation reference directory %s" % args.ref_dir
+    
+    # prepend to references accordingly    
+    args.ref_maps = str(args.ref_dir) +'/' + args.ref_maps
+    args.ref_haps = str(args.ref_dir) +'/' + args.ref_haps
+    args.ref_legs = str(args.ref_dir) +'/' + args.ref_legs
+    args.ref_samps = str(args.ref_dir) +'/' + args.ref_samps
+
+# reference recommendation
+def print_ref_rec():
+    print '\nIf you do not have an imputation reference available, the 1000 Genomes'
+    print 'Phase 3 reference panel provided by IMPUTE is directly compatible with'
+    print 'picopili and broadly covers most major continental populations.'
+    print '\nDirect download:'
+    print 'wget https://mathgen.stats.ox.ac.uk/impute/1000GP_Phase3.tgz'
+    print '\nWARNING: download filesize is > 12 GB\n'    
+
+# check these references exist
+if not os.path.isfile(args.ref_maps.replace('###','1')):
+    print "Failed to verify genetic maps exist."
+    print_ref_rec()
+    raise IOError("No chr 1 genetic map: %s" % args.ref_maps.replace('###','1'))
+    
+if not os.path.isfile(args.ref_haps.replace('###','1')):
+    print "Failed to verify reference haplotypes exist."
+    # print rec, since is possible have genetic map but not imputation panel
+    print_ref_rec()
+    raise IOError("No chr 1 reference haplotypes: %s" % args.ref_haps.replace('###','1'))
+    
+if not os.path.isfile(args.ref_legs.replace('###','1')):
+    # not printing ref_rec here since at this point have verified haplotypes exist
+    raise IOError("Failed to verify reference legend files exist (tested for chr 1 at %s)" % args.ref_legs.replace('###','1'))
+    
+if not os.path.isfile(args.ref_samps.replace('###','1')):
+    # not printing ref_rec here since at this point have verified haplotypes exist
+    raise IOError("Failed to verify reference sample file exists (tested for chr 1 at %s)" % args.ref_samps.replace('###','1'))
+
+
+# more flexible handling for info file for shapeit, since could be external
+if not os.path.isfile(args.ref_info.replace('###','1')):
+        
+        if args.ref_dir is not None and os.path.isfile(str(args.ref_dir) +'/' + args.ref_info.replace('###','1')):
+            args.ref_info = str(args.ref_dir) +'/' + args.ref_info
+            
+        else:
+            print "Reference information file for phasing not found (tested for chr 1: %s)." % args.ref_info.replace('###','1')
+            if args.ref_dir is not None:
+                print "Tried both relative path and in --ref-dir %s" % str(args.ref_dir)
+            
+            if args.ref_dir == "1000GP_Phase3_chr###.legend.gz":
+                print "For 1000 Genomes Phase 3 reference from IMPUTE the required file is "
+                print "the same as the reference legend.\n"
+                print "Maybe you wanted to add this\n?"
+                # verified above that the legend file exists
+                print "--ref-info %s\n" % args.ref_legs
+            
+            raise IOError("Failed to verify phasing info file exists (tested for chr 1 at %s)" % args.ref_info.replace('###','1'))
+
 
 # TODO: full sanity check of the args here
+
+
 
 
 # print args
@@ -88,6 +159,7 @@ print '--chr_info_file '+str(args.chr_info_file)
 
 
 print '\nImputation Reference Files:'
+print '--ref-dir '+str(args.ref_dir)
 print '--ref-maps '+str(args.ref_maps)
 print '--ref-haps '+str(args.ref_haps)
 print '--ref-legs '+str(args.ref_legs)

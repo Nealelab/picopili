@@ -89,9 +89,10 @@ arg_align.add_argument('--ref-info',
                         help='gzipped file of reference information, with columns ' + \
                                 '"id","position","a0","a1", and $popname, where $popname' + \
                                 'contains the allele frequency for the "a1" allele. Can ' + \
-                                'include "###" in place of chromosome number (as in default).',
+                                'include "###" in place of chromosome number. Expected format ' + \
+                                'is from 1000GP_Phase3_chr###.legend.gz files from IMPUTE.',
                         required=False,
-                        default='/humgen/atgu1/fs03/shared_resources/1kG/shapeit/1000GP_Phase3_chr###.legend.gz')
+                        default='1000GP_Phase3_chr###.legend.gz')
 arg_shape.add_argument('--window',
                         type=float,
                         metavar='FLOAT',
@@ -197,25 +198,25 @@ arg_ref.add_argument('--ref-maps',
                      metavar='FILENAME',
                      help='Genomic maps. To specify files split by chromosome, use "###" to indicate chromosome number (see default).',
                      required=False,
-                     default='/humgen/atgu1/fs03/shared_resources/1kG/shapeit/genetic_map/genetic_map_chr###_combined_b37.txt')
+                     default='genetic_map_chr###_combined_b37.txt')
 arg_ref.add_argument('--ref-haps',
                      type=str,
                      metavar='FILENAME',
                      help='Imputation reference .hap.gz file for shapeit and impute2. Can use "###" to indicate chromosome number (see default).',
                      required=False,
-                     default='/humgen/atgu1/fs03/shared_resources/1kG/shapeit/1000GP_Phase3_chr###.hap.gz')
+                     default='1000GP_Phase3_chr###.hap.gz')
 arg_ref.add_argument('--ref-legs',
                      type=str,
                      metavar='FILENAME',
                      help='Imputation reference .legend.gz file for shapeit and impute2. Can use "###" to indicate chromosome number (see default).',
                      required=False,
-                     default='/humgen/atgu1/fs03/shared_resources/1kG/shapeit/1000GP_Phase3_chr###.legend.gz')
+                     default='1000GP_Phase3_chr###.legend.gz')
 arg_ref.add_argument('--ref-samps',
                      type=str,
                      metavar='FILENAME',
                      help='Imputation reference .sample file for shapeit and impute2. Can use "###" to indicate chromosome number.',
                      required=False,
-                     default='/humgen/atgu1/fs03/shared_resources/1kG/shapeit/1000GP_Phase3.sample')
+                     default='1000GP_Phase3.sample')
 
 ############
 #
@@ -296,7 +297,10 @@ arg_clust.add_argument('--sleep',
                     help='Number of seconds to delay on start of cluster jobs',
                     required=False,
                     default=30)
-arg_clust.add_argument('--full-pipe', 
+
+parserjob = argparse.ArgumentParser(add_help=False)
+arg_job = parserjob.add_argument_group('Job Submission Settings')
+arg_job.add_argument('--full-pipe', 
                     action='store_true',
                     help='Proceed through full imputation pipeline',
                     required=False)

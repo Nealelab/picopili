@@ -28,7 +28,7 @@ import os
 import subprocess
 import argparse
 from textwrap import dedent
-from args_impute import parserbase, parserimpute, parserref, parserchunk, parsercluster
+from args_impute import parserbase, parserimpute, parserref, parserchunk, parsercluster, parserjob
 from py_helpers import unbuffer_stdout, file_len, link, find_exec, test_exec, read_conf
 from blueprint import send_job, read_clust_conf, init_sendjob_dict, save_job
 unbuffer_stdout()
@@ -41,7 +41,7 @@ if not (('-h' in sys.argv) or ('--help' in sys.argv)):
 parser = argparse.ArgumentParser(prog='imp2_rel.py',
                                  formatter_class=lambda prog:
                                  argparse.ArgumentDefaultsHelpFormatter(prog, max_help_position=40),
-                                 parents=[parserbase, parserimpute, parserref, parserchunk, parsercluster])
+                                 parents=[parserbase, parserimpute, parserref, parserchunk, parsercluster, parserjob])
                     
 args, extra_args = parser.parse_known_args()
 
@@ -86,7 +86,8 @@ print '--chr_info_file '+str(args.chr_info_file)
 
 print '\nCluster settings:'
 print '--sleep '+str(args.sleep)
-
+if args.full_pipe:
+    print '--full-pipe'
 
 
 #############

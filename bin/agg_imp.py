@@ -27,7 +27,7 @@ if not (('-h' in sys.argv) or ('--help' in sys.argv)):
 import os
 import subprocess
 import argparse
-from args_impute import parserbase, parsercluster
+from args_impute import parserbase, parsercluster, parserjob
 from py_helpers import unbuffer_stdout, find_exec, file_len
 from blueprint import send_job, load_job, save_job, read_clust_conf
 unbuffer_stdout()
@@ -39,7 +39,7 @@ if not (('-h' in sys.argv) or ('--help' in sys.argv)):
 parser = argparse.ArgumentParser(prog='agg_imp.py',
                                  formatter_class=lambda prog:
                                  argparse.ArgumentDefaultsHelpFormatter(prog, max_help_position=40),
-                                 parents=[parserbase, parsercluster])
+                                 parents=[parserbase, parsercluster, parserjob])
                     
 args, extra_args = parser.parse_known_args()
 

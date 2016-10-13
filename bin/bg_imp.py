@@ -36,7 +36,7 @@ import warnings
 import argparse
 from warnings import warn
 from textwrap import dedent
-from args_impute import parserbase, parserbg, parsercluster
+from args_impute import parserbase, parserbg, parsercluster, parserjob
 from py_helpers import unbuffer_stdout, find_exec, file_tail, link, warn_format, read_conf
 from blueprint import send_job, init_sendjob_dict, save_job, load_job, read_clust_conf
 unbuffer_stdout()
@@ -49,7 +49,7 @@ if not (('-h' in sys.argv) or ('--help' in sys.argv)):
 parser = argparse.ArgumentParser(prog='bg_imp.py',
                                  formatter_class=lambda prog:
                                  argparse.ArgumentDefaultsHelpFormatter(prog, max_help_position=40),
-                                 parents=[parserbase, parserbg, parsercluster])
+                                 parents=[parserbase, parserbg, parsercluster, parserjob])
                    
 args, extra_args = parser.parse_known_args()
 
@@ -180,7 +180,8 @@ print '--miss-th '+str(args.miss_th)
 
 print '\nCluster settings:'
 print '--sleep '+str(args.sleep)
-
+if args.full_pipe:
+    print '--full-pipe'
 
 
 #############

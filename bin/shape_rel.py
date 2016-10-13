@@ -38,7 +38,7 @@ if not (('-h' in sys.argv) or ('--help' in sys.argv)):
 import os
 import subprocess
 import argparse
-from args_impute import parserbase, parserphase, parserref, parsercluster
+from args_impute import parserbase, parserphase, parserref, parsercluster, parserjob
 from py_helpers import unbuffer_stdout, link, find_exec, read_conf
 from blueprint import send_job
 unbuffer_stdout()
@@ -52,7 +52,7 @@ if not (('-h' in sys.argv) or ('--help' in sys.argv)):
 parser = argparse.ArgumentParser(prog='shape_rel.py',
                                  formatter_class=lambda prog:
                                  argparse.ArgumentDefaultsHelpFormatter(prog, max_help_position=40),
-                                 parents=[parserbase, parserphase, parserref, parsercluster])
+                                 parents=[parserbase, parserphase, parserref, parsercluster, parserjob])
 
 args, extra_args = parser.parse_known_args()
 
@@ -92,7 +92,8 @@ print '\nJob Submission:'
 print '--sleep '+str(args.sleep)
 print '--mem-req '+str(args.mem_req)
 print '--threads '+str(args.threads)
-
+if args.full_pipe:
+    print '--full-pipe'
 
 
 if str(args.addout) != '' and args.addout is not None:
