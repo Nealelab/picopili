@@ -203,26 +203,38 @@ print '\n...Checking dependencies...'
 
 plinkx = find_exec('plink',key='p2loc')
 
-if args.rscript_ex == None or args.rscript_ex == "None":
+if args.rscript_ex is None or args.rscript_ex == "None":
     args.rscript_ex = find_exec('Rscript', key='rscloc')
 
-if args.admixture_ex == None or args.admixture_ex == "None":
-    args.admixture_ex = find_exec('admixture', key='admloc')
-
-if args.reap_ex == None or args.reap_ex == "None":
+if args.reap_ex is None or args.reap_ex == "None":
     args.reap_ex = find_exec('REAP', key='reaploc')
 
 rp_bin = os.path.dirname(os.path.realpath(__file__))
 Rplotibdx = rp_bin+'/plot_reap_ibd.Rscript'
 
 if plot_pca:
-    Rplotibdx = rp_bin+'/plot_pca.Rscript'
+    Rplotpcax = rp_bin+'/plot_pca.Rscript'
 
+
+# either have admixture file, or need to run admixture
+run_admix = True
+
+if args.admix_p is not None and args.admix_q is not None and args.admix_p != "" and args.admix_q != "":
+    if args.admixture_ex is None or args.admixture_ex == "None":
+        args.admixture_ex = find_exec('admixture', key='admloc')
+
+    test_exec(args.admixture_ex, 'ADMIXTURE')
+    
+    assert '/' not in args.unrel_bfile, "--unrel-bfile must specify only a file stem, not a path"
+    run_admix = False
+
+else:
+    assert os.path.isfile(args.admix_p), "Admixture .P file %s does not exist." % str(args.admix_p)
+    assert os.path.isfile(args.admix_q), "Admixture .P file %s does not exist." % str(args.admix_q)
 
 # verify executables
 test_exec(plinkx, 'Plink')
 test_exec(args.rscript_ex, 'Rscript')
-test_exec(args.admixture_ex, 'ADMIXTURE')
 test_exec(args.reap_ex, 'REAP')
 
 # pca file
@@ -231,7 +243,6 @@ if plot_pca:
     assert '/' not in args.target_bfile, "--plot-admix-pca must specify only a file, not a path"
 
 # verify bfiles are files, not paths
-assert '/' not in args.unrel_bfile, "--unrel-bfile must specify only a file stem, not a path"
 assert '/' not in args.target_bfile, "--target-bfile must specify only a file stem, not a path"
 
 
@@ -272,136 +283,172 @@ if not (args.plot_admix_pca==None or args.plot_admix_pca=="None"):
 print '\n...Running Admixture on unrelated dataset...'
 #############
 
-admix_call = [args.admixture_ex,
-              str(args.unrel_bfile+'.bed'),
-              str(args.npops),
-              '-j'+str(args.multithread_cores)]
-admix_unrel_log = open(str('admix_'+args.out+'_unrel.log'), 'w')
+if run_admix:
+    admix_call = [args.admixture_ex,
+                  str(args.unrel_bfile+'.bed'),
+                  str(args.npops),
+                  '-j'+str(args.multithread_cores)]
+    admix_unrel_log = open(str('admix_'+args.out+'_unrel.log'), 'w')
+    
+    print str(' '.join(admix_call))
+    print 'Logging to ' + admix_unrel_log.name + '\n'
+    subprocess.check_call(admix_call, stdout=admix_unrel_log)
+    
+    admix_unrel_log.close()
 
-print str(' '.join(admix_call))
-print 'Logging to ' + admix_unrel_log.name + '\n'
-subprocess.check_call(admix_call, stdout=admix_unrel_log)
 
-admix_unrel_log.close()
+if args.use_exemplars:
 
-
-
-#############
-print '\n...Selecting exemplars for each ancestral population...'
-#############
-# - identify population assignment (including "-") for each input individual
-# - confirm whether there are enough IDs assigned to each populations
-# - match population assignments to FID/IIDs
-# - write .pops file for target bfile, .pops.info file 
-
-# label for populations are popA, popB, popC, ...
-popnames = [str('pop'+ascii_uppercase[i]) for i in range(args.npops)]
-
-# define function returning popname or '-' based on largest proportion
-# Note: ties broken in favor of first pop listed in names (possible if th <= 0.5)
-def maxpop(props, names, th):
-    whichmax = props.index(max(props))
-    if props[whichmax] > th:
-        outpop = names[whichmax]
+    #############
+    print '\n...Selecting exemplars for each ancestral population...'
+    #############
+    # - identify population assignment (including "-") for each input individual
+    # - confirm whether there are enough IDs assigned to each populations
+    # - match population assignments to FID/IIDs
+    # - write .pops file for target bfile, .pops.info file 
+    
+    # label for populations are popA, popB, popC, ...
+    popnames = [str('pop'+ascii_uppercase[i]) for i in range(args.npops)]
+    
+    # define function returning popname or '-' based on largest proportion
+    # Note: ties broken in favor of first pop listed in names (possible if th <= 0.5)
+    def maxpop(props, names, th):
+        whichmax = props.index(max(props))
+        if props[whichmax] > th:
+            outpop = names[whichmax]
+        else:
+            outpop = '-'
+        return outpop
+    
+    # get list of selected pop for each individual in admixture results
+    ind_pops = []
+    
+    if run_admix:
+        admix_pops_file = str(args.unrel_bfile+'.'+str(args.npops)+'.Q')
     else:
-        outpop = '-'
-    return outpop
-
-# get list of selected pop for each individual in admixture results
-ind_pops = []
-admix_pops_file = str(args.unrel_bfile+'.'+str(args.npops)+'.Q')
-with open(admix_pops_file, 'r') as f:
-    # map() required to read probs as float instead of string
-    ind_pops = [maxpop(props=map(float,line.split()), names=popnames, th=args.prop_th) for line in f]
-
-# sanity check parsing
-nfam = file_len(str(args.unrel_bfile+'.fam'))
-if len(ind_pops) != nfam:
-    raise ValueError('Number of individuals parsed from admixture results (%d in %s) ' + \
-                     'and fam file of unrelateds (%d in %s) do not match.' % (len(ind_pops), admix_pops_file, int(nfam), str(args.unrel_bfile+'.fam')))
-
-# check have sufficient exemplars
-popcounts = [ind_pops.count(popnames[i]) for i in range(args.npops)]
-lackingpops = [popcounts[i] < args.min_exemplar for i in range(args.npops)]
-
-print 'Exemplars per population:'
-for i in range(args.npops):
-    print str(popnames[i] + ': ' + str(popcounts[i]))
-print 'Unassigned: '+str(ind_pops.count('-'))
-
-if any(lackingpops):
-    print '\n###########\n'
-    print 'ERROR: One or more populations with insufficient number of exemplars (<'+str(args.min_exemplar)+').'
-    print '\nConsider rerunning with fewer ancestral populations (here: '+str(args.npops)+'), \n' + \
-          'a looser threshold for selecting population exemplars (here: '+str(args.prop_th)+'), \n' + \
-          'or fewer required exemplars per ancestral population in the unrelated set ' + \
-          '(here :'+str(args.min_exemplar)+').\n'
-    exit(1)
-
-
-### match exemplar pop status with FID/IIDs, record in dict
-pop_dict = {}
-
-# process fam file by line
-ref_fam = open(str(args.unrel_bfile+'.fam'), 'r')
-idnum=0
-for line in ref_fam:
-    # iterate line counter, used to get elements from ind_pops[]
-    idnum += 1
+        admix_pops_file = args.admix_q
     
-    # read
-    (fid, iid, pat, mat, sex, phen) = line.split()
-
-    # use FID:IID identifier as key to record pop status
-    bfile_id = fid +':'+ iid
-    pop_dict[bfile_id] = ind_pops[idnum-1]
-
-ref_fam.close()
-
-
-### create pop file to match target fam file, pop info file
-target_fam = open(str(args.target_bfile+'.fam'), 'r')
-target_pop = open(str(args.target_bfile+'.pop'), 'w')
-target_popinfo = open(str(args.target_bfile+'.pop.info'), 'w')
-
-for line in target_fam:
     
-    # read
-    (targetfid, targetiid, pat, mat, sex, phen) = line.split()
-    target_id = targetfid +':'+ targetiid
+    with open(admix_pops_file, 'r') as f:
+        # map() required to read probs as float instead of string
+        ind_pops = [maxpop(props=map(float,line.split()), names=popnames, th=args.prop_th) for line in f]
     
-    # check dict
-    if target_id in pop_dict:
-        target_pop.write(pop_dict[target_id] + '\n')
-        target_popinfo.write(targetfid + ' ' + targetiid + ' ' + target_id + ' unrel ' + pop_dict[target_id] + '\n')
+    # sanity check parsing
+    nfam = file_len(str(args.unrel_bfile+'.fam'))
+    if len(ind_pops) != nfam:
+        raise ValueError('Number of individuals parsed from admixture results (%d in %s) ' + \
+                         'and fam file of unrelateds (%d in %s) do not match.' % (len(ind_pops), admix_pops_file, int(nfam), str(args.unrel_bfile+'.fam')))
+    
+    # check have sufficient exemplars
+    popcounts = [ind_pops.count(popnames[i]) for i in range(args.npops)]
+    lackingpops = [popcounts[i] < args.min_exemplar for i in range(args.npops)]
+    
+    print 'Exemplars per population:'
+    for i in range(args.npops):
+        print str(popnames[i] + ': ' + str(popcounts[i]))
+    print 'Unassigned: '+str(ind_pops.count('-'))
+    
+    if any(lackingpops):
+        print '\n###########\n'
+        print 'ERROR: One or more populations with insufficient number of exemplars (<'+str(args.min_exemplar)+').'
+        print '\nConsider rerunning with fewer ancestral populations (here: '+str(args.npops)+'), \n' + \
+              'a looser threshold for selecting population exemplars (here: '+str(args.prop_th)+'), \n' + \
+              'or fewer required exemplars per ancestral population in the unrelated set ' + \
+              '(here :'+str(args.min_exemplar)+').\n'
+        exit(1)
+    
+    
+    ### match exemplar pop status with FID/IIDs, record in dict
+    pop_dict = {}
+    
+    # process fam file by line
+    ref_fam = open(str(args.unrel_bfile+'.fam'), 'r')
+    idnum=0
+    for line in ref_fam:
+        # iterate line counter, used to get elements from ind_pops[]
+        idnum += 1
+        
+        # read
+        (fid, iid, pat, mat, sex, phen) = line.split()
+    
+        # use FID:IID identifier as key to record pop status
+        bfile_id = fid +':'+ iid
+        pop_dict[bfile_id] = ind_pops[idnum-1]
+    
+    ref_fam.close()
+    
+    
+    ### create pop file to match target fam file, pop info file
+    target_fam = open(str(args.target_bfile+'.fam'), 'r')
+    target_pop = open(str(args.target_bfile+'.pop'), 'w')
+    target_popinfo = open(str(args.target_bfile+'.pop.info'), 'w')
+    
+    for line in target_fam:
+        
+        # read
+        (targetfid, targetiid, pat, mat, sex, phen) = line.split()
+        target_id = targetfid +':'+ targetiid
+        
+        # check dict
+        if target_id in pop_dict:
+            target_pop.write(pop_dict[target_id] + '\n')
+            target_popinfo.write(targetfid + ' ' + targetiid + ' ' + target_id + ' unrel ' + pop_dict[target_id] + '\n')
+        else:
+            target_pop.write('-' + '\n')
+            target_popinfo.write(targetfid + ' ' + targetiid + ' ' + target_id + ' target ' + '-' + '\n')
+    
+    
+    target_fam.close()
+    target_pop.close()
+    target_popinfo.close()
+
+
+
+    #############
+    print '\n...Running supervised admixture analysis in target data...'
+    #############
+    
+    admix_super_call = [args.admixture_ex,
+                        str(args.target_bfile+'.bed'),
+                        str(args.npops),
+                        '-j'+str(args.multithread_cores),
+                        '--supervised']
+    admix_target_log = open(str('admix_'+args.out+'_target.log'), 'w')
+    
+    print str(' '.join(admix_super_call))
+    print 'Logging to ' + admix_target_log.name + '\n'
+    subprocess.check_call(admix_super_call, stdout=admix_target_log)
+    
+    admix_target_log.close()
+    
+
+
+# no exemplars, using projection instead
+else:
+    
+    #############
+    print '\n...Projecting admixture analysis to target data...'
+    #############
+    
+    ref_p_name = str(args.target_bfile)+'.'+str(args.npops)+'.P.in'
+    if run_admix:
+        link(str(args.unrel_bfile)+'.'+str(args.npops)+'.P', ref_p_name, 'admixture allele freqs')
     else:
-        target_pop.write('-' + '\n')
-        target_popinfo.write(targetfid + ' ' + targetiid + ' ' + target_id + ' target ' + '-' + '\n')
+        ref_p_in = str(args.admix_p)
+        link(wd+'/'+ref_p_in, ref_p_name,'input admixture allele freqs')
 
-
-target_fam.close()
-target_pop.close()
-target_popinfo.close()
-
-
-
-#############
-print '\n...Running supervised admixture analysis in target data...'
-#############
-
-admix_super_call = [args.admixture_ex,
-                    str(args.target_bfile+'.bed'),
-                    str(args.npops),
-                    '-j'+str(args.multithread_cores),
-                    '--supervised']
-admix_target_log = open(str('admix_'+args.out+'_target.log'), 'w')
-
-print str(' '.join(admix_super_call))
-print 'Logging to ' + admix_target_log.name + '\n'
-subprocess.check_call(admix_super_call, stdout=admix_target_log)
-
-admix_target_log.close()
-
+    
+    admix_project_call = [args.admixture_ex,
+                          '-P', str(args.target_bfile+'.bed'),
+                        str(args.npops),
+                        '-j'+str(args.multithread_cores)]
+    admix_target_log = open(str('admix_'+args.out+'_target.log'), 'w')
+    
+    print str(' '.join(admix_project_call))
+    print 'Logging to ' + admix_target_log.name + '\n'
+    subprocess.check_call(admix_super_call, stdout=admix_target_log)
+    
+    admix_target_log.close()
 
 
 #############
@@ -426,7 +473,7 @@ target_Qfile_nam = str(args.target_bfile + '.' + str(args.npops) + '.Q')
 target_fam_nam = str(args.target_bfile + '.fam')
 
 if not (file_len(target_Qfile_nam) == file_len(target_fam_nam)):
-    raise ValueError('Length of admixture proportions ouput (%s) does not match fam file (%s). ' + \
+    raise ValueError('Length of admixture proportions output (%s) does not match fam file (%s). ' + \
                      'Error during output?' % (target_Qfile_nam, target_fam_nam))
 
 # paste together columns, should be in same order (based on ADMIXTURE's ouptut format)
@@ -514,12 +561,15 @@ if plot_pca:
 
     # setup file streams for plotinfo files
     pop_info_files = []
-    exemp_info_files = []
+    if args.use_exemplars:
+        exemp_info_files = []
     for i in xrange(args.npops):
         pop_info_files.append( open(str(args.target_bfile) + '.' + popnames[i] + '.admixture.plotinfo.txt', 'w') )
         pop_info_files[i].write('FID IID col pch layer\n')
-        exemp_info_files.append( open(str(args.target_bfile) + '.' + popnames[i] + '.exemplar.plotinfo.txt', 'w') )
-        exemp_info_files[i].write('FID IID col pch layer\n')
+        
+        if args.use_exemplars:
+            exemp_info_files.append( open(str(args.target_bfile) + '.' + popnames[i] + '.exemplar.plotinfo.txt', 'w') )
+            exemp_info_files[i].write('FID IID col pch layer\n')
         
     # parse admixture proportions
     reap_mix_props = open(str(args.target_bfile + '.props.tmp.txt'), 'r')
@@ -543,26 +593,29 @@ if plot_pca:
             pop_info_files[i].write(' '.join([fid, iid, bin_col, str(1), str(in_bin)])+'\n')
             
             # exemplar info file: FID, IID, col, pch, layer
-            if joinid in pop_dict:
-                if pop_dict[joinid] == popnames[i]:
-                    exemp_info_files[i].write(' '.join([fid, iid, '\"'+str(exemplar_color)+'\"', str(exemplar_pch), str(3)]) + '\n')
+            if args.use_exemplars:
+                if joinid in pop_dict:
+                    if pop_dict[joinid] == popnames[i]:
+                        exemp_info_files[i].write(' '.join([fid, iid, '\"'+str(exemplar_color)+'\"', str(exemplar_pch), str(3)]) + '\n')
+                    else:
+                        exemp_info_files[i].write(' '.join([fid, iid, '\"'+str(ref_color)+'\"', str(ref_pch), str(2)]) + '\n')
                 else:
-                    exemp_info_files[i].write(' '.join([fid, iid, '\"'+str(ref_color)+'\"', str(ref_pch), str(2)]) + '\n')
-            else:
-                exemp_info_files[i].write(' '.join([fid, iid, '\"'+str(other_color)+'\"', str(other_pch), str(1)]) + '\n')
+                    exemp_info_files[i].write(' '.join([fid, iid, '\"'+str(other_color)+'\"', str(other_pch), str(1)]) + '\n')
 
     # close plotinfo files
     for i in xrange(args.npops):
         pop_info_files[i].close()
-        exemp_info_files[i].close()
+        if args.use_exemplars:
+            exemp_info_files[i].close()
     
     # create legend files: col, pch, fill, text (either col/pch or fill should be NA)
-    exem_legend = open(str(args.target_bfile) + '.exemplar.legend.txt', 'w')
-    exem_legend.write('col pch fill text\n')
-    exem_legend.write(str(exemplar_color) + ' ' + str(exemplar_pch) + ' NA ' + '\"Population exemplar\"\n')
-    exem_legend.write(str(ref_color) + ' ' + str(ref_pch) + ' NA ' + '\"Reference set\"\n')
-    exem_legend.write(str(other_color) + ' ' + str(other_pch) + ' NA ' + '\"Non-reference set\"\n')        
-    exem_legend.close()
+    if args.use_exemplars:
+        exem_legend = open(str(args.target_bfile) + '.exemplar.legend.txt', 'w')
+        exem_legend.write('col pch fill text\n')
+        exem_legend.write(str(exemplar_color) + ' ' + str(exemplar_pch) + ' NA ' + '\"Population exemplar\"\n')
+        exem_legend.write(str(ref_color) + ' ' + str(ref_pch) + ' NA ' + '\"Reference set\"\n')
+        exem_legend.write(str(other_color) + ' ' + str(other_pch) + ' NA ' + '\"Non-reference set\"\n')        
+        exem_legend.close()
     
     prop_legend = open(str(args.target_bfile) + '.admixture.legend.txt', 'w')
     prop_legend.write('col pch fill text\n')
@@ -572,16 +625,17 @@ if plot_pca:
 
     ### generate plots
     for i in xrange(args.npops):
-        r_pca_ex_log = open(str(args.out) + '.' + popnames[i] + '.plot_exemplars.log', 'w')
-        subprocess.check_call([Rplotpcax,
-                               str(args.plot_admix_pca),
-                               str(args.target_bfile) + '.' + popnames[i] + '.exemplar.plotinfo.txt',
-                               str(args.target_bfile) + '.exemplar.legend.txt',
-                               str(3),
-                               str(args.out) + '.' + popnames[i] + '.exemplars'],
-                               stderr=subprocess.STDOUT,
-                               stdout=r_pca_ex_log)    
-        r_pca_ex_log.close()
+        if args.use_exemplars:
+            r_pca_ex_log = open(str(args.out) + '.' + popnames[i] + '.plot_exemplars.log', 'w')
+            subprocess.check_call([Rplotpcax,
+                                   str(args.plot_admix_pca),
+                                   str(args.target_bfile) + '.' + popnames[i] + '.exemplar.plotinfo.txt',
+                                   str(args.target_bfile) + '.exemplar.legend.txt',
+                                   str(3),
+                                   str(args.out) + '.' + popnames[i] + '.exemplars'],
+                                   stderr=subprocess.STDOUT,
+                                   stdout=r_pca_ex_log)    
+            r_pca_ex_log.close()
 
         r_pca_admix_log = open(str(args.out) + '.' + popnames[i] + '.plot_admixture.log', 'w')
         subprocess.check_call([Rplotpcax,
@@ -612,7 +666,10 @@ if not args.no_cleanup:
                                str(args.out+'.plot_pca_files.tar.gz')] + \
                                glob(args.target_bfile+".*.admixture.plotinfo.txt") + \
                                [str(args.target_bfile)+".admixture.legend.txt"] + \
-                               glob(args.out+".*.plot_admixture.log") + \
+                               glob(args.out+".*.plot_admixture.log"))
+                               
+        subprocess.check_call(["tar", "-zcvf",
+                               str(args.out+'.plot_exemplar_files.tar.gz')] + \
                                glob(args.target_bfile+".*.exemplar.plotinfo.txt") + \
                                [str(args.target_bfile)+".exemplar.legend.txt"] + \
                                glob(args.out+".*.plot_exemplars.log")  )
@@ -621,22 +678,27 @@ if not args.no_cleanup:
         subprocess.check_call(['rm'] + glob(args.target_bfile+".*.admixture.plotinfo.txt"))
         subprocess.check_call(['rm'] + glob(args.target_bfile+".admixture.legend.txt"))
         subprocess.check_call(['rm'] + glob(args.out+".*.plot_admixture.log"))
-        subprocess.check_call(['rm'] + glob(args.target_bfile+".*.exemplar.plotinfo.txt"))
-        subprocess.check_call(['rm'] + glob(args.target_bfile+".exemplar.legend.txt"))
-        subprocess.check_call(['rm'] + glob(args.out+".*.plot_exemplars.log"))
+        
+        if args.use_exemplars:
+            subprocess.check_call(['rm'] + glob(args.target_bfile+".*.exemplar.plotinfo.txt"))
+            subprocess.check_call(['rm'] + glob(args.target_bfile+".exemplar.legend.txt"))
+            subprocess.check_call(['rm'] + glob(args.out+".*.plot_exemplars.log"))
 
 
     ###
     print '\nZipping Admixture output files:'
     ###
+    
     gz_confirm(str(args.target_bfile)+'.'+str(args.npops)+'.P', 
                str(args.target_bfile)+'.'+str(args.npops)+'.P.gz', force=False)
     gz_confirm(str(args.target_bfile)+'.'+str(args.npops)+'.Q', 
                str(args.target_bfile)+'.'+str(args.npops)+'.Q.gz', force=False)
-    gz_confirm(str(args.unrel_bfile)+'.'+str(args.npops)+'.P', 
-               str(args.unrel_bfile)+'.'+str(args.npops)+'.P.gz', force=False)
-    gz_confirm(str(args.unrel_bfile)+'.'+str(args.npops)+'.Q', 
-               str(args.unrel_bfile)+'.'+str(args.npops)+'.Q.gz', force=False)
+    
+    if run_admix:
+        gz_confirm(str(args.unrel_bfile)+'.'+str(args.npops)+'.P', 
+                   str(args.unrel_bfile)+'.'+str(args.npops)+'.P.gz', force=False)
+        gz_confirm(str(args.unrel_bfile)+'.'+str(args.npops)+'.Q', 
+                   str(args.unrel_bfile)+'.'+str(args.npops)+'.Q.gz', force=False)
 
     
     ###
@@ -655,8 +717,11 @@ if not args.no_cleanup:
     ###
     subprocess.check_call(['rm', '-v',
                            str(args.target_bfile)+'.tmp_recode.tped',
-                           str(args.target_bfile)+'.tmp_recode.tfam',
-                           str(args.target_bfile)+'.props.tmp.txt'])
+                           str(args.target_bfile)+'.tmp_recode.tfam'])
+    
+    if plot_pca:
+        subprocess.check_call(['rm', '-v', 
+                               str(args.target_bfile)+'.props.tmp.txt'])
 
     ###
     print '\nRemove if exist:'
