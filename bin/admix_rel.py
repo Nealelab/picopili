@@ -65,8 +65,23 @@ arg_base.add_argument('--unrel-bfile',
                     type=str,
                     metavar='FILESTEM',
                     help='File stem for plink bed/bim/fam files ' + \
-                         'with unrelated individuals to estimate admixture.',
-                    required=True)
+                         'with unrelated individuals to estimate admixture.' + \
+                         'Must specify either this or --admix-p.',
+                    required=False)
+arg_base.add_argument('--admix-p',
+                    type=str,
+                    metavar='FILE',
+                    help='Admixture results .P file from sample of ' + \
+                         'unrelated individuals. Can alternatively specify ' + \
+                         '--unrel-bfile to run this initial admixture.',
+                    required=False)
+arg_base.add_argument('--admix-q',
+                    type=str,
+                    metavar='FILE',
+                    help='Admixture results .Q file from sample of ' + \
+                         'unrelated individuals. Required only if using ' + \
+                         '--admix-p and --use-exemplars.',
+                    required=False)
 arg_base.add_argument('--target-bfile', 
                     type=str,
                     metavar='FILESTEM',
@@ -89,13 +104,19 @@ arg_base.add_argument('--outdir',
 arg_base.add_argument('--no-cleanup',
                     action='store_true',
                     help='skip cleanup of interim files')
-
 arg_admix.add_argument('--npops',
                     type=int,
                     metavar='INT',
                     help='Number of ancestral populations for admixture',
                     required=False,
                     default=4)
+arg_admix.add_argument('--use-exemplars',
+                    action='store_true',
+                    help='Determine admixture in target sample based on ' + \
+                          'supervised fit with a selection of population exemplars ' + \
+                          'rather than a project of admixture solution in unrelateds. ' + \
+                          '(Required for ADMIXTURE version < 1.3). Requires --unrel-bfile, ' + \
+                          'and if using --admix-p also requires specifying --admix-q.')                    
 arg_admix.add_argument('--prop-th',
                     type=float,
                     metavar='FLOAT',
@@ -203,6 +224,11 @@ print '\n...Checking dependencies...'
 
 plinkx = find_exec('plink',key='p2loc')
 
+if args.admixture_ex is None or args.admixture_ex == "None":
+    args.admixture_ex = find_exec('admixture', key='admloc')
+
+test_exec(args.admixture_ex, 'ADMIXTURE')
+
 if args.rscript_ex is None or args.rscript_ex == "None":
     args.rscript_ex = find_exec('Rscript', key='rscloc')
 
@@ -215,22 +241,33 @@ Rplotibdx = rp_bin+'/plot_reap_ibd.Rscript'
 if plot_pca:
     Rplotpcax = rp_bin+'/plot_pca.Rscript'
 
-
-# either have admixture file, or need to run admixture
+# check if running admixture for unrelateds
 run_admix = True
-
-if args.admix_p is not None and args.admix_q is not None and args.admix_p != "" and args.admix_q != "":
-    if args.admixture_ex is None or args.admixture_ex == "None":
-        args.admixture_ex = find_exec('admixture', key='admloc')
-
-    test_exec(args.admixture_ex, 'ADMIXTURE')
-    
-    assert '/' not in args.unrel_bfile, "--unrel-bfile must specify only a file stem, not a path"
+if args.admix_p is not None and args.admix_p != "":
     run_admix = False
 
 else:
     assert os.path.isfile(args.admix_p), "Admixture .P file %s does not exist." % str(args.admix_p)
-    assert os.path.isfile(args.admix_q), "Admixture .P file %s does not exist." % str(args.admix_q)
+    
+    if args.use_exemplars:
+        assert os.path.isfile(args.admix_q), "Admixture .Q file %s does not exist." % str(args.admix_q)
+
+
+# check if have unrel-bfile if needed:
+if args.unrel_bfile is None or args.unrel_bfile == "":
+    
+    if run_admix:
+        raise parser.error('Must specify either --unrel-bfile or --admix-p.')
+
+    if args.use_exemplars:
+        raise parser.error('Must specify --unrel-bfile to define exemplars for --use-exemplars.')
+
+else:
+    assert '/' not in args.unrel_bfile, "--unrel-bfile must specify only a file stem, not a path"
+    assert os.path.isfile(str(args.unrel_bfile)+'.bed'), "bed file for unrelated individuals %s does not exist." % str(args.unrel_bfile)+'.bed'
+    assert os.path.isfile(str(args.unrel_bfile)+'.bim'), "bim file for unrelated individuals %s does not exist." % str(args.unrel_bfile)+'.bim'
+    assert os.path.isfile(str(args.unrel_bfile)+'.fam'), "fam file for unrelated individuals %s does not exist." % str(args.unrel_bfile)+'.fam'
+
 
 # verify executables
 test_exec(plinkx, 'Plink')
@@ -264,9 +301,10 @@ if not os.path.isdir(str(args.outdir)):
 os.chdir(args.outdir)
 
 # link plink files (with verification)
-link(str(wd+'/'+args.unrel_bfile+'.bed'), str(args.unrel_bfile+'.bed'), 'bed file for unrelated individuals')
-link(str(wd+'/'+args.unrel_bfile+'.bim'), str(args.unrel_bfile+'.bim'), 'bim file for unrelated individuals')
-link(str(wd+'/'+args.unrel_bfile+'.fam'), str(args.unrel_bfile+'.fam'), 'fam file for unrelated individuals')
+if run_admix or args.use_exemplars:
+    link(str(wd+'/'+args.unrel_bfile+'.bed'), str(args.unrel_bfile+'.bed'), 'bed file for unrelated individuals')
+    link(str(wd+'/'+args.unrel_bfile+'.bim'), str(args.unrel_bfile+'.bim'), 'bim file for unrelated individuals')
+    link(str(wd+'/'+args.unrel_bfile+'.fam'), str(args.unrel_bfile+'.fam'), 'fam file for unrelated individuals')
 
 link(str(wd+'/'+args.target_bfile+'.bed'), str(args.target_bfile+'.bed'), 'bed file for target individuals')
 link(str(wd+'/'+args.target_bfile+'.bim'), str(args.target_bfile+'.bim'), 'bim file for target individuals')
