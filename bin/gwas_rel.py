@@ -411,7 +411,7 @@ if args.model == 'gee' or args.model == 'dfam':
 #$ -V
 #$ -N {jname}
 #$ -q short
-#$ -l m_mem_free=4g
+#$ -l m_mem_free=4g,h_vmem=4g
 #$ -t 1-{nchunk}
 #$ -tc 200
 #$ -o {outlog}
@@ -444,7 +444,7 @@ elif args.model == 'gmmat' or args.model == 'gmmat-fam':
 #$ -V
 #$ -N {jname}
 #$ -q short
-#$ -l m_mem_free=4g
+#$ -l m_mem_free=4gi,h_vmem=4g
 #$ -t 1-{nchunk}
 #$ -tc 200
 #$ -o {outlog}
@@ -577,7 +577,7 @@ agg_call = filter(None,agg_call)
 uger_agg = ' '.join(['qsub',
                         '-hold_jid','gwas.chunks.'+str(outdot),
                         '-q', 'long',
-                        '-l', 'm_mem_free=4g',
+                        '-l', 'm_mem_free=4g,h_vmem=4g',
                         '-N', 'agg_'+str(outdot),
                         '-o', agg_log,
                         str(rp_bin)+'/uger.sub.sh',

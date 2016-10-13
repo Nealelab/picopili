@@ -189,7 +189,7 @@ if len(mis_chunks) > 0:
         if '#$ -t ' in line:
             new_uger_file.write('#$ -t 1-'+str(nummiss)+'\n')
         elif '#$ -l m_mem_free' in line:
-	    new_uger_file.write('#$ -l m_mem_free=8g \n')     
+	    new_uger_file.write('#$ -l m_mem_free=8g,h_vmem=8g \n')     
         elif '#$ -q short' in line:
 	    new_uger_file.write('#$ -q long \n')
         else:
@@ -214,7 +214,7 @@ if len(mis_chunks) > 0:
     uger_agg = ' '.join(['qsub',
                             '-hold_jid','bg.chunks.'+str(outdot)+'.resub_'+str(nummiss),
                             '-q', 'long',
-                            '-l', 'm_mem_free=8g',
+                            '-l', 'm_mem_free=8g,h_vmem=8g',
                             '-N', 'agg.imp.'+str(outdot),
                             '-o', agg_log,
                             str(rp_bin)+'/uger.sub.sh',

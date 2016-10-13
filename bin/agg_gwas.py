@@ -40,7 +40,7 @@ import gzip
 # from glob import glob
 from math import log10, sqrt
 from args_gwas import *
-from py_helpers import unbuffer_stdout, file_len
+from py_helpers import unbuffer_stdout, file_len, file_tail
 # , read_conf, link
 unbuffer_stdout()
 
@@ -125,18 +125,27 @@ for line in chunks_in:
     # verify output file exists
     if args.model == 'gee':
         ch_out = 'gee.'+str(outdot)+'.'+str(chname)+'.auto.R'
+        out_len = 10
     elif args.model == 'dfam':
         ch_out = 'dfam.'+str(outdot)+'.'+str(chname)+'.dfam'
+        out_len = 8
     elif args.model == 'gmmat':
-    	ch_out = 'gmmat_score.'+str(outdot)+'.'+str(chname)+'.R.txt'
+        ch_out = 'gmmat_score.'+str(outdot)+'.'+str(chname)+'.R.txt'
+        out_len = 11
     elif args.model == 'gmmat-fam':
-   	ch_out = 'gmmatfam_score.'+str(outdot)+'.'+str(chname)+'.R.txt'
+        ch_out = 'gmmatfam_score.'+str(outdot)+'.'+str(chname)+'.R.txt'
+        out_len = 11
     
-    # record chunks with no output
+    # record chunks with no/partial/broken output
     if not os.path.isfile(ch_out):
         mis_chunks[str(chname)] = [str(chrom), int(start), int(end)]
-    elif not file_len(ch_out) > 10:
+    elif file_len(ch_out) != file_len(str(outdot)+'.snps.'+str(chname)+'.txt'):
         mis_chunks[str(chname)] = [str(chrom), int(start), int(end)]
+    else:
+        ft = file_tail(ch_out)
+        if len(ft.split()) != out_len:
+            mis_chunks[str(chname)] = [str(chrom), int(start), int(end)]
+            
 
 chunks_in.close()
 
@@ -190,7 +199,7 @@ if len(mis_chunks) > 0:
 #                new_uger_file.write('#$ -tc 40 \n')
 #            new_uger_file.write('#$ -tc 5 \n')
         elif '#$ -l m_mem_free' in line:
-	    new_uger_file.write('#$ -l m_mem_free=8g \n')
+	    new_uger_file.write('#$ -l m_mem_free=24g,h_vmem=24g \n')
         else:
             line=line.replace(args.chunk_file, tmp_chunk_file.name)
             line=line.replace('.$TASK_ID.','.tmp'+str(nummiss)+'.$TASK_ID.')
@@ -211,7 +220,7 @@ if len(mis_chunks) > 0:
     uger_agg = ' '.join(['qsub',
                             '-hold_jid','gwas.chunks.'+str(outdot)+'.resub_'+str(nummiss),
                             '-q', 'long',
-                            '-l', 'm_mem_free=4g',
+                            '-l', 'm_mem_free=24g,h_vmem=24g',
                             '-N', 'agg_'+str(outdot),
                             '-o', agg_log,
                             str(rp_bin)+'/uger.sub.sh',
