@@ -15,7 +15,7 @@
 * `impute_rel.py`: Imputation pipeline for related samples using SHAPEIT's `--duohmm` and IMPUTE2. Includes build check (with liftOver if needed), alignement to reference, phasing, imputation, and best-guess genotype calls with MAF/info score/mendelian error filtering.
 
 
-### Installation
+### Installation at Broad
 
 ##### 1. The following assumes:
 
@@ -44,3 +44,20 @@ PATH=$HOME/github/picopili/rp_bin:$PATH
 ##### 4. Logout and log back in.
 
 Applies the changes in `~/.my.bashrc`.
+
+
+### Installation on other platforms
+
+For other platforms, please see the `portable` branch (https://github.com/Nealelab/picopili/tree/portable), with patch notes in pull #56.
+
+Briefly, you will want to clone from github and switch to the portable branch:
+```
+mkdir ~/github
+cd ~/github
+git clone https://github.com/Nealelab/picopili.git
+git checkout portable
+```
+
+Then run `./picopili/CONFIG` and `./picopili/GET_REFS` to setup the installation. 
+
+You will also need to define a cluster configuration with a `.conf` configuation file and a `.sub.sh` sumbission script template. See `./picopili/cluster_templates/` for examples for a SGE/UGE job system (`broad_uger.*`) and for a TORQUE/Maui job system with tasks parallelized within node as well as across nodes (`lisa.*`).
