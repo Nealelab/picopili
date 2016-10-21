@@ -325,11 +325,12 @@ if not (args.plot_admix_pca==None or args.plot_admix_pca=="None"):
 
 
 
-#############
-print '\n...Running Admixture on unrelated dataset...'
-#############
-
 if run_admix:
+
+    #############
+    print '\n...Running Admixture on unrelated dataset...'
+    #############
+
     admix_call = [args.admixture_ex,
                   str(args.unrel_bfile+'.bed'),
                   str(args.npops),
@@ -485,7 +486,7 @@ else:
 
     
     admix_project_call = [args.admixture_ex,
-                          '-P', str(args.target_bfile+'.bed'),
+                          '-P', str(args.target_bfile)+'.bed',
                         str(args.npops),
                         '-j'+str(args.multithread_cores)]
     admix_target_log = open(str('admix_'+args.out+'_target.log'), 'w')
@@ -559,7 +560,7 @@ reap_call = [str(args.reap_ex),
              '-r', str(2),
              '-k', str(args.npops),
              '-m',
-             '-t', str(args.min_rel)]
+             '-t', str(float(args.min_rel/2.0))]
 reap_log = open(str('reap_' + args.out + '.log'), 'w')
 
 print str(' '.join(reap_call))
