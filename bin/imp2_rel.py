@@ -185,7 +185,7 @@ if bad_chr:
     # with "chr_list" to get have adaptive chromosome list
     cmd_templ = dedent("""\
     chrs=({chr_list})
-    chrom=${{chrs[{task}-1]}}
+    chrom=${cbopen}chrs[{task}-1]{cbclose}
 
     {shape_ex} {bed} {map} {ref} {window} {duo_txt} {thread_str} {seed_str} {outmax} {shapelog}    
     """)
@@ -222,6 +222,8 @@ if bad_chr:
                "seed_str": '--seed '+str(extra_args.shape_seed),
                "outmax": '--output-max '+str(outstem)+'.phased.haps '+str(outstem)+'.phased.sample',
                "shapelog": str(outstem)+'.shape.resub_'+str(num_chr)+'.log',
+	       "cbopen":'{{',
+	       "cbclose":'}}',
                }    
     shape_cmd = cmd_templ.format(**jobdict)
 
@@ -326,12 +328,12 @@ link(str(chunk_dir)+'/'+str(outdot)+'.chunks.txt', str(outdot)+'.chunks.txt', 'g
 
 # job script
 imp_templ = dedent("""\
-    cchr=`awk -v a={task} 'NR==a+1{{print $1}}' {cfile}`
-    cstart=`awk -v a={task} 'NR==a+1{{print $2}}' {cfile}`
-    cend=`awk -v a={task} 'NR==a+1{{print $3}}' {cfile}`
-    cname=`awk -v a={task} 'NR==a+1{{print $4}}' {cfile}`
+    cchr=`awk -v a={task} 'NR==a+1{cbopen}print $1{cbclose}' {cfile}`
+    cstart=`awk -v a={task} 'NR==a+1{cbopen}print $2{cbclose}' {cfile}`
+    cend=`awk -v a={task} 'NR==a+1{cbopen}print $3{cbclose}' {cfile}`
+    cname=`awk -v a={task} 'NR==a+1{cbopen}print $4{cbclose}' {cfile}`
 
-    {impute_ex} -use_prephased_g -known_haps_g {in_haps} -h {ref_haps} -l {ref_leg} -m {map} -int ${{cstart}} ${{cend}} -buffer {buffer} -Ne {Ne} -allow_large_regions -o_gz -o {out} {seedtxt}
+    {impute_ex} -use_prephased_g -known_haps_g {in_haps} -h {ref_haps} -l {ref_leg} -m {map} -int ${cbopen}cstart{cbclose} ${cbopen}cend{cbclose} -buffer {buffer} -Ne {Ne} -allow_large_regions -o_gz -o {out} {seedtxt}
 """)
 
 # fill in template
@@ -345,7 +347,9 @@ jobdict = {"task": "{task}",
            "Ne": str(args.Ne),
            "buffer": str(args.buffer),
            "out": str(outdot)+'.imp.${cname}',
-           "seedtxt": str(seedtxt)
+           "seedtxt": str(seedtxt),
+	   "cbopen":'{{',
+	   "cbclose":'}}',
            }
 
 

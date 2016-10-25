@@ -149,7 +149,7 @@ cluster = configs['cluster']
 clust_conf = read_clust_conf()
 
 # TODO: here
-
+# TODO: move to before logging
 
 
 
@@ -400,21 +400,23 @@ print '\n...Submitting GWAS for all chunks...'
 ######################
 
 # basic template, depending on model
+# cbopen/cbclose are placeholders for real curly braces, 
+#     to survive .format() here and in send_job
 if args.model == 'gee' or args.model == 'dfam':
     gwas_templ = dedent("""\
-    cname=`awk -v a={task} 'NR==a+1{{print $4}}' {cfile}`
+    cname=`awk -v a={task} 'NR==a+1{cbopen}print $4{cbclose}' {cfile}`
     {misc}
-    {gwas_ex} --bfile {bfile} --out {argout} --extract {outdot}.snps.${{cname}}.txt {optargs}    
+    {gwas_ex} --bfile {bfile} --out {argout} --extract {outdot}.snps.${cbopen}cname{cbclose}.txt {optargs}    
     """)
 
 elif args.model == 'gmmat' or args.model == 'gmmat-fam':
     gwas_templ = dedent("""\
-    cname=`awk -v a={task} 'NR==a+1{{print $4}}' {cfile}`
-    chrnum=`awk -v a={task} 'NR==a+1{{print $1}}' {cfile}`
+    cname=`awk -v a={task} 'NR==a+1{cbopen}print $4{cbclose}' {cfile}`
+    chrnum=`awk -v a={task} 'NR==a+1{cbopen}print $1{cbclose}' {cfile}`
 
-    {plinkx} --bfile {bfile} --extract {outdot}.snps.${{cname}}.txt {optargs} --make-bed --out {outdot}.${{cname}}
+    {plinkx} --bfile {bfile} --extract {outdot}.snps.${cbopen}cname{cbclose}.txt {optargs} --make-bed --out {outdot}.${cbclose}cname{cbopen}
 
-    {rsc} --no-save --no-restore {gwas_ex} {outdot}.${{cname}} grm.{outdot}.loco_chr${{chrnum}}.rel.gz {covarsub} {outdot}.${{cname}} > {outdot}.${{cname}}.gmmat.R.log
+    {rsc} --no-save --no-restore {gwas_ex} {outdot}.${cbopen}cname{cbclose} grm.{outdot}.loco_chr${cbopen}chrnum{cbclose}.rel.gz {covarsub} {outdot}.${cbopen}cname{cbclose} > {outdot}.${cbopen}cname{cbclose}.gmmat.R.log
     """)
 
 # alternative template for GMMAT
@@ -439,9 +441,9 @@ if args.remove is not None:
 # model-specific arguments not passed for gmmat
 if args.model == 'gee' or args.model == 'dfam':
     if args.addout is not None:
-        gwasargs = gwasargs + ' --addout '+str(args.addout)+'.${cname}'
+        gwasargs = gwasargs + ' --addout '+str(args.addout)+'.${{cname}}'
     else:
-        gwasargs = gwasargs + ' --addout ${cname}'
+        gwasargs = gwasargs + ' --addout ${{cname}}'
     if args.covar is not None:
         gwasargs = gwasargs + ' --covar '+str(args.covar)
     if args.covar_number is not None:
@@ -472,7 +474,9 @@ jobdict = {"task": "{task}",
            "optargs": str(gwasargs),
            "plinkx": str(plinkx),
            "covarsub": str(args.covar)+'.sub.txt',
-           "rsc": str(args.rscript_ex)
+           "rsc": str(args.rscript_ex),
+	   "cbopen":'{{',
+	   "cbclose":'}}',
            }
 
 nchunk = len(chunks.keys())

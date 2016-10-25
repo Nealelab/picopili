@@ -374,10 +374,10 @@ print '\n...Generating best-guess genotypes...'
 
 # best-guess job script for each chunk
 bg_templ = dedent("""\
-    cname=`awk -v a={task} 'NR==a+1{{print $4}}' {cfile}`
-    cchr=`awk -v a={task} 'NR==a+1{{print $1}}' {cfile}`
+    cname=`awk -v a={task} 'NR==a+1{cbopen}print $4{cbclose}' {cfile}`
+    cchr=`awk -v a={task} 'NR==a+1{cbopen}print $1{cbclose}' {cfile}`
     
-    {plink_ex} --gen {gen_in} --sample {samp_in} --oxford-single-chr ${{cchr}} --oxford-pheno-name plink_pheno --hard-call-threshold {hard_call_th} --missing-code -9,NA,na --allow-no-sex --silent --memory 4000 --out {out_str} 
+    {plink_ex} --gen {gen_in} --sample {samp_in} --oxford-single-chr ${cbopen}cchr{cbclose} --oxford-pheno-name plink_pheno --hard-call-threshold {hard_call_th} --missing-code -9,NA,na --allow-no-sex --silent --memory 4000 --out {out_str} 
     
     sleep {sleep}
     # note: Mendel errors checked after --update-parents, see https://www.cog-genomics.org/plink2/order
@@ -392,7 +392,7 @@ bg_templ = dedent("""\
     rm {out_str2}.bim
     rm {out_str2}.fam
     
-    {rs_ex} --chunk ${{cname}} --name {outdot} --imp-dir {imp_dir} --fam-trans {trans}
+    {rs_ex} --chunk ${cbopen}cname{cbclose} --name {outdot} --imp-dir {imp_dir} --fam-trans {trans}
 """)
 
 # get number of chunks
@@ -403,8 +403,8 @@ jobdict = {"task": "{task}",
            "sleep": str(args.sleep),
            "cfile": str(outdot)+'.chunks.txt',
            "plink_ex": str(plink_ex),
-           "gen_in": str(imp_dir)+'/'+str(outdot)+'.imp.${cname}.gz',
-           "samp_in": str(shape_dir)+'/'+str(outdot)+'.chr${cchr}.phased.sample',
+           "gen_in": str(imp_dir)+'/'+str(outdot)+'.imp.${{cname}}.gz',
+           "samp_in": str(shape_dir)+'/'+str(outdot)+'.chr${{cchr}}.phased.sample',
            "hard_call_th": str(hard_call_th),
            "out_str": str(outdot)+'.bg.${cname}',
            "mendel_txt": str(mendel_txt),
@@ -418,7 +418,9 @@ jobdict = {"task": "{task}",
            "outdot": str(outdot),
            "imp_dir": str(imp_dir),
            "idnum": str(shape_dir)+'/'+str(args.bfile)+'.hg19.ch.fl.fam',
-           "trans": str(shape_dir)+'/'+str(args.bfile)+'.hg19.ch.fl.fam.transl'
+           "trans": str(shape_dir)+'/'+str(args.bfile)+'.hg19.ch.fl.fam.transl',
+	   "cbopen":'{{',
+	   "cbclose":'}}',
            }
 
 
