@@ -117,7 +117,7 @@ if args.info_th is None and args.max_info_th is None:
     info_txt = ''
 else:
     # init, then add thresholds
-    info_txt = '--qual-scores '+str(imp_dir)+'/'+str(outdot)+'.imp.${cname}_info' +' 5 2 1'
+    info_txt = '--qual-scores '+str(imp_dir)+'/'+str(outdot)+'.imp.${{cname}}_info' +' 5 2 1'
     # minimum info
     if args.info_th >= 0.0 and args.info_th <= 1.0:
         info_txt = info_txt + ' --qual-threshold '+str(args.info_th)
@@ -406,14 +406,14 @@ jobdict = {"task": "{task}",
            "gen_in": str(imp_dir)+'/'+str(outdot)+'.imp.${{cname}}.gz',
            "samp_in": str(shape_dir)+'/'+str(outdot)+'.chr${{cchr}}.phased.sample',
            "hard_call_th": str(hard_call_th),
-           "out_str": str(outdot)+'.bg.${cname}',
+           "out_str": str(outdot)+'.bg.${{cname}}',
            "mendel_txt": str(mendel_txt),
            "info_txt": str(info_txt),
-           "out_str2": str(outdot)+'.bg.tmp.${cname}',
+           "out_str2": str(outdot)+'.bg.tmp.${{cname}}',
            "maf_txt": str(maf_txt),
            "mac_txt": str(mac_txt),
            "geno_txt": str(geno_txt),
-           "out_str_filt": str(outdot)+'.bg.filtered.${cname}',
+           "out_str_filt": str(outdot)+'.bg.filtered.${{cname}}',
            "rs_ex": str(rs_ex),
            "outdot": str(outdot),
            "imp_dir": str(imp_dir),
