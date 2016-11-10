@@ -111,6 +111,9 @@ clust_conf = read_clust_conf()
 
 
 
+###############
+print '\n...Checking for missing or incomplete chunks...'
+###############
 
 # read chunk def file
 chunks = {}
@@ -138,12 +141,15 @@ for line in chunks_in:
     
     # record chunks with no/partial/broken output
     if not os.path.isfile(ch_out):
+    	print 'Output not found for %s' % str(ch_out)
         mis_chunks[str(chname)] = [str(chrom), int(start), int(end)]
-    elif file_len(ch_out) != file_len(str(outdot)+'.snps.'+str(chname)+'.txt'):
+    elif file_len(ch_out) < file_len(str(outdot)+'.snps.'+str(chname)+'.txt'):
+    	print 'Output file %s is incomplete' % str(ch_out)
         mis_chunks[str(chname)] = [str(chrom), int(start), int(end)]
     else:
         ft = file_tail(ch_out)
         if len(ft.split()) != out_len:
+	    print 'Last line of output file %s is incomplete' % str(ch_out)
             mis_chunks[str(chname)] = [str(chrom), int(start), int(end)]
             
 
@@ -154,7 +160,7 @@ chunks_in.close()
 ###############
 if len(mis_chunks) > 0:
     nummiss = len(mis_chunks)
-    print 'Missing results for %d GWAS jobs. Preparing to resubmit...' % nummiss
+    print '\nMissing results for %d GWAS jobs. Preparing to resubmit...' % nummiss
     
     # just missing chunks for task array
     # fail if already tried
@@ -244,7 +250,7 @@ if len(mis_chunks) > 0:
     send_job(jobname='agg_'+str(outdot),
              cmd=' '.join(sys.argv[:]),
              logname=agg_log,
-             mem=24000,
+             mem=16000,
              walltime=30,
              wait_name='gwas.chunks.'+str(outdot)+'.resub_'+str(nummiss),
              wait_num=str(jobres).strip(),
@@ -258,6 +264,7 @@ if len(mis_chunks) > 0:
 
 ###############
 # if no missing chunks, proceed collecting info for aggregation
+print '\n...Loading auxilary information...'
 ###############
 
 # chnames = chunks.keys()
@@ -339,7 +346,9 @@ filt_head = out_head
 out_file.write('\t'.join(out_head) + '\n')
 filt_file.write('\t'.join(filt_head) + '\n')
 
-print 'starting chunk loop'
+###############
+print '\n...Aggregating GWAS results from chunks...'
+###############
 # loop chunks to aggregate
 for ch in chnames:
     # open output file
