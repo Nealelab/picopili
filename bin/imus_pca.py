@@ -459,7 +459,7 @@ if not args.no_cleanup:
     subprocess.check_call(["tar", "-zcvf",
                            args.out + '.pca_files.tar.gz',
                            args.bfile + '.pca.par',
-                           args.bfile + '.pca.eval.txt',
+#                           args.bfile + '.pca.eval.txt',
                            args.bfile + '.pca.snpw.txt',
                            args.bfile + '.pca.raw.txt',
                            args.bfile + '.pca.refpoplist.txt',
@@ -470,7 +470,7 @@ if not args.no_cleanup:
     # remove successfully zipped files
     subprocess.check_call(["rm",
                            args.bfile + '.pca.par',
-                           args.bfile + '.pca.eval.txt',
+#                           args.bfile + '.pca.eval.txt',
                            args.bfile + '.pca.snpw.txt',
                            args.bfile + '.pca.raw.txt',
                            args.bfile + '.pca.refpoplist.txt',
