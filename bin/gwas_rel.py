@@ -414,7 +414,7 @@ elif args.model == 'gmmat' or args.model == 'gmmat-fam':
     cname=`awk -v a={task} 'NR==a+1{cbopen}print $4{cbclose}' {cfile}`
     chrnum=`awk -v a={task} 'NR==a+1{cbopen}print $1{cbclose}' {cfile}`
 
-    {plinkx} --bfile {bfile} --extract {outdot}.snps.${cbopen}cname{cbclose}.txt {optargs} --make-bed --out {outdot}.${cbclose}cname{cbopen}
+    {plinkx} --bfile {bfile} --extract {outdot}.snps.${cbopen}cname{cbclose}.txt {optargs} --make-bed --out {outdot}.${cbopen}cname{cbclose}
 
     {rsc} --no-save --no-restore {gwas_ex} {outdot}.${cbopen}cname{cbclose} grm.{outdot}.loco_chr${cbopen}chrnum{cbclose}.rel.gz {covarsub} {outdot}.${cbopen}cname{cbclose} > {outdot}.${cbopen}cname{cbclose}.gmmat.R.log
     """)
@@ -568,7 +568,7 @@ agg_call = filter(None,agg_call)
 send_job(jobname='agg_'+str(outdot),
          cmd=' '.join(agg_call),
          logname=agg_log,
-         mem=4000,
+         mem=8000,
          walltime=30,
          wait_name='gwas.chunks.'+str(outdot),
          wait_num=str(jobres).strip(),
