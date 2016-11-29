@@ -297,11 +297,17 @@ if args.model == 'gee' or args.model == 'dfam':
 	print 'bim loaded'
 
 # frq.cc
-# for both: maf_a, maf_u, n_a, n_u
+# for both: 
+# - maf_a = frq in affected (cases)
+# - maf_u = frq in unaffected (controls) 
+# - n_a = number affected (cases)
+# - n_u = number affected (controls)
+# - freq_a1 = a1 used for freq
 maf_a_info = {}
 maf_u_info = {}
 n_a_info = {}
 n_u_info = {}
+freq_a1 = {}
 
 frq = open(args.freq_file, 'r')
 dumphead = frq.readline()
@@ -311,6 +317,7 @@ for line in frq:
     maf_u_info[str(snp)] = mafu
     n_a_info[str(snp)] = int(nchra) / 2
     n_u_info[str(snp)] = int(nchru) / 2
+    freq_a1[str(snp)] = a1
 frq.close()
 print 'frq loaded'
 
@@ -378,8 +385,13 @@ for ch in chnames:
 	    (chrom, snp, cm, bp, a1, a2, n, af2, scoretest, scorevar, p) = line.split()
 
         # get meta info
-        frqa = maf_a_info.pop(str(snp))
-        frqu = maf_u_info.pop(str(snp))
+	# verify use freq of correct allele
+	if str(frq_a1.pop(str(snp))) == str(a1):
+            frqa = maf_a_info.pop(str(snp))
+            frqu = maf_u_info.pop(str(snp))
+	else:
+	    frqa = 1 - maf_a_info.pop(str(snp))
+	    frqu = 1 - maf_u_info.pop(str(snp))
         na = n_a_info.pop(str(snp))
         nu = n_u_info.pop(str(snp))
         
