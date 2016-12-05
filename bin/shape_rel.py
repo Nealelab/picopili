@@ -54,6 +54,15 @@ parser = argparse.ArgumentParser(prog='shape_rel.py',
                                  argparse.ArgumentDefaultsHelpFormatter(prog, max_help_position=40),
                                  parents=[parserbase, parserphase, parserref, parsercluster, parserjob])
 
+arg_ref.add_argument('--ref-dir',
+			type=str,
+			metavar='DIRECTORY',
+			help='Directory containing imputation reference files (haps, legends, sample, and maps). ' +
+				'Used as prefix for specifying full paths of --ref-maps, --ref-haps, --ref-legs, and --ref-samps',
+			required=False,
+			default=None)
+
+
 args, extra_args = parser.parse_known_args()
 
 # other settings
@@ -87,6 +96,7 @@ print '--ref-maps '+str(args.ref_maps)
 print '--ref-haps '+str(args.ref_haps)
 print '--ref-legs '+str(args.ref_legs)
 print '--ref-samps '+str(args.ref_samps)
+print '--ref-dir '+str(args.ref_dir)
 
 print '\nJob Submission:'
 print '--sleep '+str(args.sleep)
@@ -109,6 +119,18 @@ print '\n...Checking dependencies...'
 
 plinkx = find_exec('plink',key='p2loc')
 shapeit_ex = find_exec('shapeit',key='shloc')
+
+
+if args.ref_dir is not None:
+	# verify exists
+	assert os.path.isdir(args.ref_dir), "Failed to find imputation reference directory %s" % args.ref_dir
+
+	# prepend to references accordingly
+	args.ref_maps = str(args.ref_dir) +'/' + args.ref_maps
+	args.ref_haps = str(args.ref_dir) +'/' + args.ref_haps
+	args.ref_legs = str(args.ref_dir) +'/' + args.ref_legs
+	args.ref_samps = str(args.ref_dir) +'/' + args.ref_samps
+
 
 # TODO: here
 

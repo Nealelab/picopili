@@ -42,7 +42,16 @@ parser = argparse.ArgumentParser(prog='imp2_rel.py',
                                  formatter_class=lambda prog:
                                  argparse.ArgumentDefaultsHelpFormatter(prog, max_help_position=40),
                                  parents=[parserbase, parserimpute, parserref, parserchunk, parsercluster, parserjob])
-                    
+
+arg_ref.add_argument('--ref-dir',
+			type=str,
+			metavar='DIRECTORY',
+			help='Directory containing imputation reference files (haps, legends, sample, and maps). ' +
+				'Used as prefix for specifying full paths of --ref-maps, --ref-haps, --ref-legs, and --ref-samps',
+			required=False,
+			default=None)
+
+
 args, extra_args = parser.parse_known_args()
 
 
@@ -111,7 +120,15 @@ rp_bin = os.path.dirname(os.path.realpath(__file__))
 chunker_ex = rp_bin+'/chunk_snps.py'
 test_exec(chunker_ex)
 
+if args.ref_dir is not None:
+	# verify exists
+	assert os.path.isdir(args.ref_dir), "Failed to find imputation reference directory %s" % args.ref_dir
 
+	# prepend to references accordingly
+	args.ref_maps = str(args.ref_dir) +'/' + args.ref_maps
+	args.ref_haps = str(args.ref_dir) +'/' + args.ref_haps
+	args.ref_legs = str(args.ref_dir) +'/' + args.ref_legs
+	args.ref_samps = str(args.ref_dir) +'/' + args.ref_samps
 
 
 # TODO: here

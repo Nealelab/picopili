@@ -57,7 +57,7 @@ my $host = hostname;
 #############################
 
 my $ploc = &trans("p2loc");
-my $qloc = &trans("queue");
+my $qloc = &trans("cluster");
 my $email = &trans("email");
 
 my $email_on = 0;
