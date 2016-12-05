@@ -54,7 +54,7 @@ parser = argparse.ArgumentParser(prog='shape_rel.py',
                                  argparse.ArgumentDefaultsHelpFormatter(prog, max_help_position=40),
                                  parents=[parserbase, parserphase, parserref, parsercluster, parserjob])
 
-arg_ref.add_argument('--ref-dir',
+parser.add_argument('--ref-dir',
 			type=str,
 			metavar='DIRECTORY',
 			help='Directory containing imputation reference files (haps, legends, sample, and maps). ' +
@@ -130,6 +130,7 @@ if args.ref_dir is not None:
 	args.ref_haps = str(args.ref_dir) +'/' + args.ref_haps
 	args.ref_legs = str(args.ref_dir) +'/' + args.ref_legs
 	args.ref_samps = str(args.ref_dir) +'/' + args.ref_samps
+	args.ref_info = str(args.ref_dir) +'/' + args.ref_info
 
 
 # TODO: here

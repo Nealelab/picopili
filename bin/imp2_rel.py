@@ -43,7 +43,7 @@ parser = argparse.ArgumentParser(prog='imp2_rel.py',
                                  argparse.ArgumentDefaultsHelpFormatter(prog, max_help_position=40),
                                  parents=[parserbase, parserimpute, parserref, parserchunk, parsercluster, parserjob])
 
-arg_ref.add_argument('--ref-dir',
+parser.add_argument('--ref-dir',
 			type=str,
 			metavar='DIRECTORY',
 			help='Directory containing imputation reference files (haps, legends, sample, and maps). ' +
