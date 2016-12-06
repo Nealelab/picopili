@@ -118,7 +118,7 @@ shapeit_ex = find_exec('shapeit',key='shloc')
 # (to get absolute path for scripts)
 rp_bin = os.path.dirname(os.path.realpath(__file__))
 chunker_ex = rp_bin+'/chunk_snps.py'
-test_exec(chunker_ex)
+test_exec(chunker_ex,'picopili chunking script')
 
 if args.ref_dir is not None:
 	# verify exists

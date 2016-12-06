@@ -101,7 +101,7 @@ def find_exec(prog, key=None):
             print "Failed to find config file %s. Will search for %s on path." % (str(conffile), str(prog))
             
         exloc = find_from_path(str(prog),str(prog))
-        test_exec(exloc)
+        test_exec(exloc,str(prog))
         return exloc
 
 
