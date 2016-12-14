@@ -296,12 +296,12 @@ else:
     duo_txt = '--duohmm'
 
 # TODO: handle empty chromosomes
-chrstem = str(args.bfile)+'.hg19.ch.fl.chr\$tasknum'
-outstem = str(outdot)+'.chr\$tasknum'
-map_arg = str(args.ref_maps).replace('###','\$tasknum')
-hap_arg = str(args.ref_haps).replace('###','\$tasknum')
-leg_arg = str(args.ref_legs).replace('###','\$tasknum')
-samp_arg = str(args.ref_samps).replace('###','\$tasknum')
+chrstem = str(args.bfile)+'.hg19.ch.fl.chr{task}'
+outstem = str(outdot)+'.chr{task}'
+map_arg = str(args.ref_maps).replace('###','{task}')
+hap_arg = str(args.ref_haps).replace('###','{task}')
+leg_arg = str(args.ref_legs).replace('###','{task}')
+samp_arg = str(args.ref_samps).replace('###','{task}')
 
 shape_call = [shapeit_ex,
               '--input-bed', chrstem+'.bed', chrstem+'.bim', chrstem+'.fam',

@@ -28,7 +28,7 @@ import os
 import subprocess
 import argparse
 from textwrap import dedent
-from args_impute import parserbase, parserimpute, parserref, parserchunk, parsercluster, parserjob
+from args_impute import parserbase, parserimpute, parserref, parserchunk, parsercluster, parserjob, parserphase
 from py_helpers import unbuffer_stdout, file_len, link, find_exec, test_exec, read_conf
 from blueprint import send_job, read_clust_conf, init_sendjob_dict, save_job
 unbuffer_stdout()
@@ -41,7 +41,7 @@ if not (('-h' in sys.argv) or ('--help' in sys.argv)):
 parser = argparse.ArgumentParser(prog='imp2_rel.py',
                                  formatter_class=lambda prog:
                                  argparse.ArgumentDefaultsHelpFormatter(prog, max_help_position=40),
-                                 parents=[parserbase, parserimpute, parserref, parserchunk, parsercluster, parserjob])
+                                 parents=[parserbase, parserimpute, parserref, parserchunk, parsercluster, parserjob, parserphase])
 
 parser.add_argument('--ref-dir',
 			type=str,
@@ -161,7 +161,6 @@ for chrom in xrange(1,22):
     haps_out = str(shape_dir)+'/'+str(outdot)+'.chr'+str(chrom)+'.phased.haps'
     samp_out = str(shape_dir)+'/'+str(outdot)+'.chr'+str(chrom)+'.phased.sample'
 
-
     if not os.path.isfile(haps_out):
         bad_chr.append(chrom)
     elif not os.path.isfile(samp_out):
@@ -180,7 +179,7 @@ if bad_chr:
         exit(1)
     # else continue to resub
     print 'Preparing to resubmit...'
-    # note: assuming required shapeit args will be in extra_args
+    # note: assuming required shapeit args will be in args
     #   if running under --full-pipe
     #   TODO: add check on this
     #   (mem_req, threads, no_duohmm, window, shape_seed) 
@@ -221,7 +220,7 @@ if bad_chr:
     # manage additional arg pieces
     chrstem = str(args.bfile)+'.hg19.ch.fl.chr${chrom}'
     outstem = str(outdot)+'.chr${chrom}'
-    if extra_args.no_duohmm:
+    if args.no_duohmm:
         duo_txt = ''
     else:
         duo_txt = '--duohmm'
@@ -233,10 +232,10 @@ if bad_chr:
                "bed": '--input-bed '+str(chrstem)+'.bed '+str(chrstem)+'.bim '+str(chrstem)+'.fam',
                "map": '--input-map '+str(args.ref_maps).replace('###','${chrom}'),
                "ref": '--input-ref '+str(args.ref_haps).replace('###','${chrom}')+' '+str(args.ref_legs).replace('###','${chrom}')+' '+str(args.ref_samps).replace('###','${chrom}'),
-               "window": '--window '+str(extra_args.window),
+               "window": '--window '+str(args.window),
                "duo_txt": str(duo_txt),
-               "thread_str": '--thread '+str(extra_args.threads),
-               "seed_str": '--seed '+str(extra_args.shape_seed),
+               "thread_str": '--thread '+str(args.threads),
+               "seed_str": '--seed '+str(args.shape_seed),
                "outmax": '--output-max '+str(outstem)+'.phased.haps '+str(outstem)+'.phased.sample',
                "shapelog": str(outstem)+'.shape.resub_'+str(num_chr)+'.log',
 	       "cbopen":'{{',
@@ -248,10 +247,10 @@ if bad_chr:
     jobres = send_job(jobname='shape.'+str(outdot)+'.resub_'+str(num_chr),
 	              cmd=shape_cmd,
 	              logname='shape.'+str(outdot)+'.resub_'+str(num_chr)+'.sub.'+str(clust_conf['log_task_id'])+'.log',
-	              mem=int(extra_args.mem_req)*1000,
+	              mem=int(args.mem_req)*1000,
 	              walltime=30,
 	              njobs=int(num_chr),
-	              threads=extra_args.threads,
+	              threads=args.threads,
 		      sleep=args.sleep)
 
     print 'Pre-phasing jobs re-submitted for %d chromosomes.\n' % num_chr
@@ -357,13 +356,13 @@ imp_templ = dedent("""\
 jobdict = {"task": "{task}",
            "cfile": str(outdot)+'.chunks.txt',
            "impute_ex": str(impute_ex),
-           "in_haps": str(shape_dir)+'/'+str(outdot)+'.chr${cchr}.phased.haps',
-           "ref_haps": str(args.ref_haps).replace('###','${cchr}'),
-           "ref_leg": str(args.ref_legs).replace('###','${cchr}'),
-           "map": str(args.ref_maps).replace('###','${cchr}'),
+           "in_haps": str(shape_dir)+'/'+str(outdot)+'.chr${{cchr}}.phased.haps',
+           "ref_haps": str(args.ref_haps).replace('###','${{cchr}}'),
+           "ref_leg": str(args.ref_legs).replace('###','${{cchr}}'),
+           "map": str(args.ref_maps).replace('###','${{cchr}}'),
            "Ne": str(args.Ne),
            "buffer": str(args.buffer),
-           "out": str(outdot)+'.imp.${cname}',
+           "out": str(outdot)+'.imp.${{cname}}',
            "seedtxt": str(seedtxt),
 	   "cbopen":'{{',
 	   "cbclose":'}}',
