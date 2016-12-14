@@ -31,7 +31,8 @@ def send_job(jobname,
              wait_num=None,
              cluster=None,
              sleep=30,
-             testonly=False):
+             testonly=False,
+	     forcearray=False):
     
     # validate args
     if arrayfile is None and cmd is None:
@@ -121,7 +122,7 @@ def send_job(jobname,
 
 
     # for single jobs
-    if cmd is not None and (njobs is None or njobs <= 1):
+    if cmd is not None and (njobs is None or njobs <= 1) and not forcearray:
                     
         njobs = 1
         tot_threads = int(threads)
@@ -272,7 +273,7 @@ def send_job(jobname,
     sub_file.close()
     
     # finalize or remove optional lines
-    if njobs <= 1:
+    if njobs <= 1 and not forcearray:
         subprocess.check_call(['sed','-i','/^::PICO_ARRAY_ONLY::/d',str(sub_file.name)])
     else:
         subprocess.check_call(['sed','-i','s/^::PICO_ARRAY_ONLY:://',str(sub_file.name)])
@@ -282,7 +283,7 @@ def send_job(jobname,
     else:
         subprocess.check_call(['sed','-i','s/^::PICO_THREAD_ONLY:://',str(sub_file.name)])
     
-    if njobs <= 1 and threads <= 1:
+    if njobs <= 1 and not forcearray and threads <= 1:
         subprocess.check_call(['sed','-i','/^::PICO_THREADARRAY_ONLY::/d',str(sub_file.name)])
     else:
         subprocess.check_call(['sed','-i','s/^::PICO_THREADARRAY_ONLY:://',str(sub_file.name)])        

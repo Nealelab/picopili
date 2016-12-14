@@ -236,7 +236,8 @@ if len(mis_chunks) > 0:
 	              walltime=sendjob_dict['walltime'],
 	              njobs=sendjob_dict['njobs'],
 	              maxpar=sendjob_dict['maxpar'],
-	              sleep=sendjob_dict['sleep'])
+	              sleep=sendjob_dict['sleep'],
+		      forcearray=True)
         
     print 'GWAS jobs resubmitted for %d chunks.\n' % nummiss
     

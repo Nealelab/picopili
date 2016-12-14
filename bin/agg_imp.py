@@ -213,7 +213,8 @@ if len(mis_chunks) > 0:
 	              mem=sendjob_dict['mem'],
 	              walltime=sendjob_dict['walltime'],
 	              njobs=sendjob_dict['njobs'],
-	              sleep=sendjob_dict['sleep'])
+	              sleep=sendjob_dict['sleep'],
+		      forcearray=True)
         
     print 'Best-guess jobs resubmitted for %d chunks.\n' % nummiss
     
