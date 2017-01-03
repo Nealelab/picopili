@@ -61,6 +61,7 @@ GetOptions(
     "outname=s"=> \my $outname,
     "outdir=s"=> \my $outdir,
     "fam=s"=> \my $famname,
+	"idnum=s"=> \my $idnum,
     "chr=i"=> \my $chr,
     "plinkmem=i" => \$plinkmem,
 
@@ -72,6 +73,11 @@ die ($usage) unless $outname;
 die ($usage) unless $outdir;
 die ($usage) unless $chr;
 
+
+my $idnum_str = "";
+if($idnum) {
+	$idnum_str = "--update-parents $idnum";
+}
 
 # die "$usage" if (@ARGV != 1);
 
@@ -205,7 +211,7 @@ else {
 }
 
 # convert to plink format
-my $sys_loc = "$ploc/plink --threads 1 --memory $plinkmem --dosage $twodos_tmp noheader skip0=1 skip1=1 format=2  Zout --fam $famname --allow-no-sex --write-dosage --out $dosout";
+my $sys_loc = "$ploc/plink --threads 1 --memory $plinkmem --dosage $twodos_tmp noheader skip0=1 skip1=1 format=2  Zout --fam $famname $idnum_str --allow-no-sex --write-dosage --out $dosout";
 print "$sys_loc\n";
 &mysystem ($sys_loc);
 
