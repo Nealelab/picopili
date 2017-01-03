@@ -117,7 +117,7 @@ if args.info_th is None and args.max_info_th is None:
     info_txt = ''
 else:
     # init, then add thresholds
-    info_txt = '--qual-scores '+str(imp_dir)+'/'+str(outdot)+'.imp.${{cname}}_info' +' 5 2 1'
+    info_txt = '--qual-scores '+str(outdot)+'.bg.${{cname}}.info' +' 7 1 X'
     # minimum info
     if args.info_th >= 0.0 and args.info_th <= 1.0:
         info_txt = info_txt + ' --qual-threshold '+str(args.info_th)
@@ -370,7 +370,33 @@ link(str(chunk_dir)+'/'+str(outdot)+'.chunks.txt', str(outdot)+'.chunks.txt', 'g
 
 
 ######################
-print '\n...Generating best-guess genotypes...'
+print '\n...Submitting job to format dosages...'
+######################
+
+# dosage script for each chr
+# TODO: continue here
+# - write rs_trans_dos.py for translating rsids, fam ids for dosage data
+# - finish integrating haps2dos, plink --dosage for desired output
+# - manage job submission
+# - manage finish checks/resubs
+dos_templ = dedent("""\
+    cname=`awk -v a={task} 'NR==a+1{cbopen}print $4{cbclose}' {cfile}`
+    cchr=`awk -v a={task} 'NR==a+1{cbopen}print $1{cbclose}' {cfile}`
+    
+    
+    sleep {sleep}
+
+    haps2dos.pl --outname $dos_ch_out --outdir {proc_dir} --chr ${cbopen}cchr{cbclose} --fam $famname_loc --idnum {idnum} $puter_out_arr"
+
+    {rs_dos_ex} --chunk ${cbopen}cname{cbclose} --name {outdot} --imp-dir {imp_dir} --fam-trans {trans}
+
+    {plink_ex} --gen {gen_in} --sample {samp_in} --oxford-single-chr ${cbopen}cchr{cbclose} --oxford-pheno-name plink_pheno --hard-call-threshold {hard_call_th} --missing-code -9,NA,na --allow-no-sex --silent --memory 4000 --out {out_str_t1} 
+""")
+
+
+
+######################
+print '\n...Submitting job to call best-guess genotypes...'
 ######################
 
 # best-guess job script for each chunk
@@ -378,22 +404,27 @@ bg_templ = dedent("""\
     cname=`awk -v a={task} 'NR==a+1{cbopen}print $4{cbclose}' {cfile}`
     cchr=`awk -v a={task} 'NR==a+1{cbopen}print $1{cbclose}' {cfile}`
     
-    {plink_ex} --gen {gen_in} --sample {samp_in} --oxford-single-chr ${cbopen}cchr{cbclose} --oxford-pheno-name plink_pheno --hard-call-threshold {hard_call_th} --missing-code -9,NA,na --allow-no-sex --silent --memory 4000 --out {out_str} 
+    {plink_ex} --gen {gen_in} --sample {samp_in} --oxford-single-chr ${cbopen}cchr{cbclose} --oxford-pheno-name plink_pheno --hard-call-threshold {hard_call_th} --missing-code -9,NA,na --allow-no-sex --silent --memory 4000 --out {out_str_t1} 
     
     sleep {sleep}
     # note: Mendel errors checked after --update-parents, see https://www.cog-genomics.org/plink2/order
-    {plink_ex} --bfile {out_str} {mendel_txt} --pheno {idnum} --mpheno 4 --update-parents {idnum} --allow-no-sex --make-bed --silent --memory 2000 --out {out_str2}
-    rm {out_str}.bed
-    rm {out_str}.bim
-    rm {out_str}.fam
+    {plink_ex} --bfile {out_str_t1} {mendel_txt} --pheno {idnum} --mpheno 4 --update-parents {idnum} --allow-no-sex --make-bed --silent --memory 2000 --out {out_str_t2}
+    rm {out_str_t1}.bed
+    rm {out_str_t1}.bim
+    rm {out_str_t1}.fam
+
+    {rs_ex} --chunk ${cbopen}cname{cbclose} --name {outdot} --imp-dir {imp_dir} --fam-trans {trans}
     
     sleep {sleep}
-    {plink_ex} --bfile {out_str2} {maf_txt} {mac_txt} {geno_txt} {info_txt} --allow-no-sex --make-bed --silent --memory 2000 --out {out_str_filt}
-    rm {out_str2}.bed
-    rm {out_str2}.bim
-    rm {out_str2}.fam
+    {plink_ex} --bed {out_str_t2}.bed --bim {out_str_t2}.bim_rsids --fam {out_str_t2}.fam_trans --make-bed --silent --memory 2000 --out {out_str}
+    rm {out_str_t2}.bed
+    rm {out_str_t2}.bim
+    rm {out_str_t2}.fam
     
-    {rs_ex} --chunk ${cbopen}cname{cbclose} --name {outdot} --imp-dir {imp_dir} --fam-trans {trans}
+    sleep {sleep}
+    {plink_ex} --bfile {out_str3} {maf_txt} {mac_txt} {geno_txt} {info_txt} --allow-no-sex --make-bed --silent --memory 2000 --out {out_str_filt}
+    
+
 """)
 
 # get number of chunks
@@ -407,10 +438,11 @@ jobdict = {"task": "{task}",
            "gen_in": str(imp_dir)+'/'+str(outdot)+'.imp.${{cname}}.gz',
            "samp_in": str(shape_dir)+'/'+str(outdot)+'.chr${{cchr}}.phased.sample',
            "hard_call_th": str(hard_call_th),
-           "out_str": str(outdot)+'.bg.${{cname}}',
+           "out_str_t1": str(outdot)+'.bg.tmp.${{cname}}',
            "mendel_txt": str(mendel_txt),
            "info_txt": str(info_txt),
-           "out_str2": str(outdot)+'.bg.tmp.${{cname}}',
+           "out_str_t2": str(outdot)+'.bg.tmp2.${{cname}}',
+           "out_str": str(outdot)+'.bg.${{cname}}',
            "maf_txt": str(maf_txt),
            "mac_txt": str(mac_txt),
            "geno_txt": str(geno_txt),

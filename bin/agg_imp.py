@@ -28,8 +28,8 @@ import os
 import subprocess
 import argparse
 from args_impute import parserbase, parsercluster, parserjob
-from py_helpers import unbuffer_stdout, find_exec, file_len
-from blueprint import send_job, load_job, save_job, read_clust_conf
+from py_helpers import unbuffer_stdout, find_exec
+from blueprint import send_job, load_job, save_job, read_clust_conf, init_sendjob_dict
 unbuffer_stdout()
 
 #############
@@ -114,13 +114,22 @@ for line in chunks_in:
     chunks[str(chname)] = [str(chrom), int(start), int(end)]
 
     # verify output files exists
-    ch_bed = bg_dir + '/' + str(outdot) + '.bg.filtered.' + str(chname) + '.bed'
-    ch_bim = bg_dir + '/' + str(outdot) + '.bg.filtered.' + str(chname) + '.bim_rsids'
-    ch_fam = bg_dir + '/' + str(outdot) + '.bg.filtered.' + str(chname) + '.fam_trans'
-    ch_inf = bg_dir + '/' + str(outdot) + '.bg.filtered.' + str(chname) + '.info'
+    ch_bed_filt = bg_dir + '/' + str(outdot) + '.bg.filtered.' + str(chname) + '.bed'
+    ch_bim_filt = bg_dir + '/' + str(outdot) + '.bg.filtered.' + str(chname) + '.bim'
+    ch_fam_filt = bg_dir + '/' + str(outdot) + '.bg.filtered.' + str(chname) + '.fam'
+    ch_bed = bg_dir + '/' + str(outdot) + '.bg.' + str(chname) + '.bed'
+    ch_bim = bg_dir + '/' + str(outdot) + '.bg.' + str(chname) + '.bim'
+    ch_fam = bg_dir + '/' + str(outdot) + '.bg.' + str(chname) + '.fam'
+    ch_inf = bg_dir + '/' + str(outdot) + '.bg.' + str(chname) + '.info'
    
     # record failed chunks
-    if not os.path.isfile(ch_bed):
+    if not os.path.isfile(ch_bed_filt):
+        mis_chunks[str(chname)] = [str(chrom), int(start), int(end)]
+    elif not os.path.isfile(ch_bim_filt):
+        mis_chunks[str(chname)] = [str(chrom), int(start), int(end)]
+    elif not os.path.isfile(ch_fam_filt):
+        mis_chunks[str(chname)] = [str(chrom), int(start), int(end)]
+    elif not os.path.isfile(ch_bed):
         mis_chunks[str(chname)] = [str(chrom), int(start), int(end)]
     elif not os.path.isfile(ch_bim):
         mis_chunks[str(chname)] = [str(chrom), int(start), int(end)]
@@ -253,7 +262,9 @@ print '\n...Merging imputation info scores...'
 os.mkdir(out_dir)
 os.chdir(out_dir)
 merge_list = open(str(outdot)+'.chunk_merge_list.txt', 'w')
-info_file = open(str(outdot)+'.cobg.filtered.info', 'a')
+merge_list_filt = open(str(outdot)+'.chunk_merge_list.filt.txt', 'w')
+info_file_filt = open(str(outdot)+'.cobg.filtered.info', 'a')
+info_file = open(str(outdot)+'.cobg.info', 'a')
 
 chunks_in = open(str(chunk_dir) +'/'+ chunk_file_name, 'r')
 dumphead = chunks_in.readline()
@@ -269,13 +280,17 @@ for line in chunks_in:
         continue
 
     # file names
-    ch_bed = bg_dir + '/' + str(outdot) + '.bg.filtered.' + str(chname) + '.bed'
-    ch_bim = bg_dir + '/' + str(outdot) + '.bg.filtered.' + str(chname) + '.bim_rsids'
-    ch_fam = bg_dir + '/' + str(outdot) + '.bg.filtered.' + str(chname) + '.fam_trans'
-    ch_inf = bg_dir + '/' + str(outdot) + '.bg.filtered.' + str(chname) + '.info'
+    ch_bed = bg_dir + '/' + str(outdot) + '.bg.' + str(chname) + '.bed'
+    ch_bim = bg_dir + '/' + str(outdot) + '.bg.' + str(chname) + '.bim'
+    ch_fam = bg_dir + '/' + str(outdot) + '.bg.' + str(chname) + '.fam'
+    ch_bed_filt = bg_dir + '/' + str(outdot) + '.bg.filtered.' + str(chname) + '.bed'
+    ch_bim_filt = bg_dir + '/' + str(outdot) + '.bg.filtered.' + str(chname) + '.bim'
+    ch_fam_filt = bg_dir + '/' + str(outdot) + '.bg.filtered.' + str(chname) + '.fam'
+    ch_inf = bg_dir + '/' + str(outdot) + '.bg.' + str(chname) + '.info'
     
     # put chunk in merge list
     merge_list.write(' '.join([ch_bed, ch_bim, ch_fam]) + '\n')
+    merge_list_filt.write(' '.join([ch_bed_filt, ch_bim_filt, ch_fam_filt]) + '\n')
     
     # add info to full file
     if first:
@@ -285,46 +300,108 @@ for line in chunks_in:
     else:
         subprocess.check_call(['tail','-n','+2',ch_inf],
                               stdout = info_file)
+                              
+    # add filtered info to full file
+    awk1 = '\'NR==FNR{samp[$2]=99}NR!=FNR{if(samp[$1]==99||FNR==1){print $0}}\''
+    awk2 = '\'NR==FNR{samp[$2]=99}NR!=FNR{if(samp[$1]==99){print $0}}\''
+    if first:
+        subprocess.check_call(['awk',awk1,ch_bim_filt,ch_inf],
+                              stdout = info_file)
+        first = False
+    else:
+        subprocess.check_call(['awk',awk2,ch_bim_filt,ch_inf],
+                              stdout = info_file)
 
 chunks_in.close()
 merge_list.close()
 info_file.close()
-
+merge_list_filt.close()
+info_file_filt.close()
 
 
 ######################
-print '\n...Merging best-guess genotypes...'
+print '\n...Start merging best-guess genotypes...'
 ######################
 
-merge_log = open(str(outdot)+'.cobg.filtered.merge.log', 'w')
-subprocess.check_call([plink_ex,
+# merge for all best-guess
+merge_cmd1 = ' '.join([str(plink_ex),
                        '--merge-list', str(merge_list.name),
                        '--merge-mode',str(4),
                        '--make-bed',
-                       '--out', str(outdot)+'.cobg.filtered'],
-                       stderr=subprocess.STDOUT, 
-                       stdout=merge_log) 
-merge_log.close()
+                       '--out', str(outdot)+'.cobg'])
 
+merge1_log = str(outdot)+'.cobg.merge.log'
+
+job1_dict = init_sendjob_dict()
+job1_dict['jobname'] = 'merge.bg.'+str(outdot)
+job1_dict['logname'] = merge1_log
+job1_dict['mem'] = 12000
+job1_dict['walltime'] = 30
+job1_dict['sleep'] = args.sleep
+
+save_job(jfile='merge.bg.'+str(outdot)+'.pkl', cmd_templ=merge_cmd1, job_dict={}, sendjob_dict=job1_dict)
+
+jobres1 = send_job(jobname=job1_dict['jobname'],
+                   cmd=merge_cmd1,
+                   logname=job1_dict['logname'],
+                   mem=job1_dict['mem'],
+                   walltime=job1_dict['walltime'],
+                   sleep=job1_dict['sleep'])
+
+                       
+# merge for filtered best guess
+merge_cmd2 = ' '.join([str(plink_ex),
+                       '--merge-list', str(merge_list_filt.name),
+                       '--merge-mode',str(4),
+                       '--make-bed',
+                       '--out', str(outdot)+'.cobg.filtered'])
+
+merge2_log = str(outdot)+'.cobg.filtered.merge.log'
+
+job2_dict = init_sendjob_dict()
+job2_dict['jobname'] = 'merge.bg_filt.'+str(outdot)
+job2_dict['logname'] = merge2_log
+job2_dict['mem'] = 8000
+job2_dict['walltime'] = 30
+job2_dict['sleep'] = args.sleep
+
+save_job(jfile='merge.bg_filt.'+str(outdot)+'.pkl', cmd_templ=merge_cmd2, job_dict={}, sendjob_dict=job2_dict)
+
+jobres2 = send_job(jobname=job2_dict['jobname'],
+                   cmd=merge_cmd2,
+                   logname=job2_dict['logname'],
+                   mem=job2_dict['mem'],
+                   walltime=job2_dict['walltime'],
+                   sleep=job2_dict['sleep'])
 
 
 ######################
-print '\n...Verifying output...'
+print '\n...Setup final job to verify output...'
 ######################
 
-assert os.path.isfile(str(outdot)+'.cobg.filtered.bed')
-assert os.path.isfile(str(outdot)+'.cobg.filtered.bim')
-assert os.path.isfile(str(outdot)+'.cobg.filtered.fam')
-assert file_len(str(outdot)+'.cobg.filtered.bim')+1 == file_len(str(outdot)+'.cobg.filtered.info')
-# TODO: here
+final_call = ' '.join(['imp_finish.py',str(outdot)])
+
+final_dict = init_sendjob_dict()
+final_dict['jobname'] = 'imp.check_fin.'+str(outdot)
+final_dict['logname'] = 'imp.check_fin.'+str(outdot)+'.log'
+final_dict['mem'] = 100
+final_dict['walltime'] = 1
+final_dict['sleep'] = args.sleep
+final_dict['wait_name'] = job1_dict['jobname']
+final_dict['wait_num'] = str(jobres1).strip()
+
+save_job(jfile='merge.bg_filt.'+str(outdot)+'.pkl', cmd_templ=final_call, job_dict={}, sendjob_dict=final_dict)
+
+send_job(jobname=final_dict['jobname'],
+         cmd=str(final_call),
+         logname=final_dict['logname'],
+         mem=final_dict['mem'],
+         walltime=final_dict['walltime'],
+         wait_name=final_dict['wait_name'],
+         wait_num=final_dict['wait_num'],
+         sleep=final_dict['sleep'])
 
 
-
-
-# finish
-print '\n############'
-print '\n'
-print 'SUCCESS!'
 exit(0)
 
 # eof
