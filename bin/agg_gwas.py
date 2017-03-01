@@ -314,8 +314,8 @@ frq = open(args.freq_file, 'r')
 dumphead = frq.readline()
 for line in frq:
     (chrom, snp, a1, a2, mafa, mafu, nchra, nchru) = line.split()
-    maf_a_info[str(snp)] = mafa
-    maf_u_info[str(snp)] = mafu
+    maf_a_info[str(snp)] = float(mafa)
+    maf_u_info[str(snp)] = float(mafu)
     n_a_info[str(snp)] = int(nchra) / 2
     n_u_info[str(snp)] = int(nchru) / 2
     freq_a1[str(snp)] = a1
@@ -387,12 +387,12 @@ for ch in chnames:
 
         # get meta info
 	# verify use freq of correct allele
-	if str(frq_a1.pop(str(snp))) == str(a1):
-            frqa = maf_a_info.pop(str(snp))
-            frqu = maf_u_info.pop(str(snp))
+	if str(freq_a1.pop(str(snp))) == str(a1):
+            frqa = float(maf_a_info.pop(str(snp)))
+            frqu = float(maf_u_info.pop(str(snp)))
 	else:
-	    frqa = 1 - maf_a_info.pop(str(snp))
-	    frqu = 1 - maf_u_info.pop(str(snp))
+	    frqa = 1 - float(maf_a_info.pop(str(snp)))
+	    frqu = 1 - float(maf_u_info.pop(str(snp)))
         na = n_a_info.pop(str(snp))
         nu = n_u_info.pop(str(snp))
         
