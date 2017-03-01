@@ -254,7 +254,6 @@ run_admix = True
 if args.admix_p is not None and args.admix_p != "":
     run_admix = False
 
-else:
     assert os.path.isfile(args.admix_p), "Admixture .P file %s does not exist." % str(args.admix_p)
     
     if args.use_exemplars:
@@ -285,8 +284,9 @@ test_exec(args.reap_ex, 'REAP')
 # pca file
 if plot_pca:
     assert os.path.isfile(args.plot_admix_pca), "PCA file does not exist (%r)" % args.plot_admix_pca
-    assert '/' not in args.target_bfile, "--plot-admix-pca must specify only a file, not a path"
+#    assert '/' not in args.plot_admix_pca, "--plot-admix-pca must specify only a file, not a path"
 
+# TODO: allow relative paths here (os.path.normpath() should solve this; see link() for pca file)
 # verify bfiles are files, not paths
 assert '/' not in args.target_bfile, "--target-bfile must specify only a file stem, not a path"
 
@@ -320,8 +320,7 @@ link(str(wd+'/'+args.target_bfile+'.fam'), str(args.target_bfile+'.fam'), 'fam f
 
 # link pca file, if provided
 if not (args.plot_admix_pca==None or args.plot_admix_pca=="None"):
-
-    link(str(wd+'/'+args.plot_admix_pca), str(args.plot_admix_pca), 'PCA file')
+    link(os.path.normpath(str(wd+'/'+args.plot_admix_pca)), os.path.basename(str(args.plot_admix_pca)), 'PCA file')
 
 
 
