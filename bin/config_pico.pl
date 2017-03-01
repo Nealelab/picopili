@@ -342,7 +342,7 @@ if ($clusters{broad}){
 		  "i2loc", "/psych/genetics_data/ripke/references_from_debakkerscratch/impute_v2/impute_v2/impute_2.2.7_beta",
 		  "liloc","/home/unix/sripke/liftover",
 		  "eloc","/humgen/atgu1/fs03/shared_resources/shared_software/EIG6.0beta_noreq/bin",
-		  "admloc","/humgen/atgu1/fs03/shared_resources/shared_software/admixture_linux-1.23",
+		  "admloc"," /humgen/atgu1/fs03/shared_resources/shared_software/admixture_linux-1.3.0",
 		  "reaploc","/humgen/atgu1/fs03/shared_resources/shared_software/REAP",
 		  "priloc","/humgen/atgu1/fs03/shared_resources/shared_software/PRIMUS_v1.8.0/bin",
 		  "rloc","/broad/software/free/Linux/redhat_6_x86_64/pkgs/r_3.0.1/bin",
