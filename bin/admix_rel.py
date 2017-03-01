@@ -234,17 +234,23 @@ plinkx = find_exec('plink',key='p2loc')
 
 if args.admixture_ex is None or args.admixture_ex == "None":
     args.admixture_ex = find_exec('admixture', key='admloc')
-
-test_exec(args.admixture_ex, 'ADMIXTURE')
+else:
+    test_exec(args.admixture_ex, 'ADMIXTURE')
 
 if args.rscript_ex is None or args.rscript_ex == "None":
     args.rscript_ex = find_exec('Rscript', key='rscloc')
+else:
+    test_exec(args.rscript_ex, 'Rscript')
 
 if args.reap_ex is None or args.reap_ex == "None":
     args.reap_ex = find_exec('REAP', key='reaploc')
+else:
+    test_exec(args.reap_ex, 'REAP')
 
 rp_bin = os.path.dirname(os.path.realpath(__file__))
 Rplotibdx = rp_bin+'/plot_reap_ibd.Rscript'
+
+
 
 if plot_pca:
     Rplotpcax = rp_bin+'/plot_pca.Rscript'
@@ -275,11 +281,6 @@ else:
     assert os.path.isfile(str(args.unrel_bfile)+'.bim'), "bim file for unrelated individuals %s does not exist." % str(args.unrel_bfile)+'.bim'
     assert os.path.isfile(str(args.unrel_bfile)+'.fam'), "fam file for unrelated individuals %s does not exist." % str(args.unrel_bfile)+'.fam'
 
-
-# verify executables
-test_exec(plinkx, 'Plink')
-test_exec(args.rscript_ex, 'Rscript')
-test_exec(args.reap_ex, 'REAP')
 
 # pca file
 if plot_pca:
