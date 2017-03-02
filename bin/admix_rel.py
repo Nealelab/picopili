@@ -323,6 +323,8 @@ link(str(wd+'/'+args.target_bfile+'.fam'), str(args.target_bfile+'.fam'), 'fam f
 if not (args.plot_admix_pca==None or args.plot_admix_pca=="None"):
     link(os.path.normpath(str(wd+'/'+args.plot_admix_pca)), os.path.basename(str(args.plot_admix_pca)), 'PCA file')
 
+# labels for populations are popA, popB, popC, ...
+popnames = [str('pop'+ascii_uppercase[i]) for i in range(args.npops)]
 
 
 if run_admix:
@@ -353,9 +355,6 @@ if args.use_exemplars:
     # - confirm whether there are enough IDs assigned to each populations
     # - match population assignments to FID/IIDs
     # - write .pops file for target bfile, .pops.info file 
-    
-    # label for populations are popA, popB, popC, ...
-    popnames = [str('pop'+ascii_uppercase[i]) for i in range(args.npops)]
     
     # define function returning popname or '-' based on largest proportion
     # Note: ties broken in favor of first pop listed in names (possible if th <= 0.5)
@@ -714,8 +713,9 @@ if not args.no_cleanup:
                                glob(args.target_bfile+".*.admixture.plotinfo.txt") + \
                                [str(args.target_bfile)+".admixture.legend.txt"] + \
                                glob(args.out+".*.plot_admixture.log"))
-                               
-        subprocess.check_call(["tar", "-zcvf",
+        
+	if args.use_exemplars:
+            subprocess.check_call(["tar", "-zcvf",
                                str(args.out+'.plot_exemplar_files.tar.gz')] + \
                                glob(args.target_bfile+".*.exemplar.plotinfo.txt") + \
                                [str(args.target_bfile)+".exemplar.legend.txt"] + \
