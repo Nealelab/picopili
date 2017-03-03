@@ -14,7 +14,7 @@ if(length(commandArgs(TRUE)) > 2){
 require(ggplot2)
 
 # unplotted region
-tri = data.frame(x=c(1-minrel,1-((2/3)*minrel),1), y=c(0,(2/3)*minrel,0))
+tri = data.frame(x=c(1-minrel,1-(2*minrel),1), y=c(0,2*minrel,0))
 
 # read data
 infile <- read.table(infile, header=TRUE, stringsAsFactors=F)
