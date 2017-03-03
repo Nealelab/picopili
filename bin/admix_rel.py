@@ -580,12 +580,15 @@ os.makedirs("plots")
 ### IBD0/IBD1 points and density
 # plot_reap_ibd.Rscript has args <input_file> <outname> <minimum relatedness>
 r_ibd_log = open(str(args.out) + '.plot_ibd.log', 'w')
-subprocess.check_call([Rplotibdx,
-                       str('REAP_pairs_relatedness.txt'),
-                       str(args.out),
-                       str(args.min_rel)],
-                       stderr=subprocess.STDOUT,
-                       stdout=r_ibd_log)
+plot_ibd_call = [Rplotibdx,
+                 str('REAP_pairs_relatedness.txt'),
+		 str(args.out),
+                 str(args.min_rel)]
+print str(' '.join(plot_ibd_call))
+
+subprocess.check_call(plot_ibd_call,
+                      stderr=subprocess.STDOUT,
+                      stdout=r_ibd_log)
 
 r_ibd_log.close()
 print 'IBD plots: %s.IBD.png, %s.IBD_density.png' % (args.out, args.out)
@@ -673,25 +676,31 @@ if plot_pca:
     for i in xrange(args.npops):
         if args.use_exemplars:
             r_pca_ex_log = open(str(args.out) + '.' + popnames[i] + '.plot_exemplars.log', 'w')
-            subprocess.check_call([Rplotpcax,
-                                   str(args.plot_admix_pca),
+            plot_pca_exemp_call = [Rplotpcax,
+                                   str(os.path.basename(str(args.plot_admix_pca)),
                                    str(args.target_bfile) + '.' + popnames[i] + '.exemplar.plotinfo.txt',
                                    str(args.target_bfile) + '.exemplar.legend.txt',
                                    str(3),
-                                   str(args.out) + '.' + popnames[i] + '.exemplars'],
-                                   stderr=subprocess.STDOUT,
-                                   stdout=r_pca_ex_log)    
+                                   str(args.out) + '.' + popnames[i] + '.exemplars']
+
+	    print str(" ".join(plot_pca_exemp_call))
+	    subprocess.check_call(plot_pca_exemp_call,
+	                          stderr=subprocess.STDOUT,
+                                  stdout=r_pca_ex_log)
             r_pca_ex_log.close()
 
         r_pca_admix_log = open(str(args.out) + '.' + popnames[i] + '.plot_admixture.log', 'w')
-        subprocess.check_call([Rplotpcax,
-                               str(args.plot_admix_pca),
+        plot_pca_admix_call = [Rplotpcax,
+                               str(os.path.basename(str(args.plot_admix_pca)),
                                str(args.target_bfile) + '.' + popnames[i] + '.admixture.plotinfo.txt',
                                str(args.target_bfile) + '.admixture.legend.txt',
                                str(3),
-                               str(args.out) + '.' + popnames[i] + '.admixture'],
-                               stderr=subprocess.STDOUT,
-                               stdout=r_pca_admix_log)    
+                               str(args.out) + '.' + popnames[i] + '.admixture']
+
+	print str(" ".join(plot_pca_admix_call))
+        subprocess.check_call(plot_pca_admix_call,
+                              stderr=subprocess.STDOUT,
+                              stdout=r_pca_admix_log)    
         r_pca_admix_log.close()
         print 'PCA plots for %s: %s, %s (completed %d/%d populations)' % (popnames[i], str(args.out)+'.'+popnames[i]+'.exemplars.pca.pairs.png', str(args.out)+'.'+popnames[i]+'.exemplars.pca.pc##_pc##.png', i+1, args.npops)
 
