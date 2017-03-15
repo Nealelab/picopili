@@ -23,6 +23,8 @@ sleep {sleep_time}
 # setup resources
 source /broad/software/scripts/useuse
 reuse -q Anaconda
+reuse -q .curl-7.47.1
+reuse -q .cairo-1.14.2
 
 # main command line
 {cmd_string}
