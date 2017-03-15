@@ -37,8 +37,9 @@ import argparse
 import random
 import warnings
 from args_ped import parserbase, parsergeno, parseribd, parserweights
-from py_helpers import unbuffer_stdout
+from py_helpers import unbuffer_stdout, warn_format
 unbuffer_stdout()
+warnings.formatwarning = warn_format
 
 
 #############
@@ -209,6 +210,7 @@ else:
             continue
         else:
             warnings.warn('Genotyping rate not loaded for %s. Setting call rate to zero.' % str(indiv))
+	    print 'Genotyping rate not loaded for %s. Setting call rate to zero.' % str(indiv)
             genofile[indiv] = 0.0
 
 
@@ -249,12 +251,8 @@ else:
             continue
         else:
             warnings.warn('No additional weight for %s. Setting to zero.' % str(indiv))
+	    print 'No additional weight for %s. Setting to zero.' % str(indiv)
             misc_w[indiv] = 0.0
-
-
-
-
-
 
 
 #############
