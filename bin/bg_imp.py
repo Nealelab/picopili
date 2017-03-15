@@ -467,11 +467,24 @@ if args.full_pipe:
 
     agg_log = 'agg_imp.'+str(outdot)+'.sub.log'
 
+    # some dynamic adjustment of mem based on sample size population
+    # (empirically, seem to get ~2x sites from afr vs eur)
+    fam_n = file_len(str(shape_dir)+'/'+str(args.bfile)+'.hg19.ch.fl.fam')
+    if fam_n > 3000:
+        agg_mem = 32000
+    elif fam_n > 1000:
+        agg_mem = 16000
+    else:
+        agg_mem = 8000
+
+    if "afr" in sys.argv[1:]:
+        agg_mem = 2*agg_mem
+
     # TODO: consider queue/mem for agg
     send_job(jobname='agg.imp.'+str(outdot),
              cmd=next_call,
              logname=agg_log,
-             mem=8000,
+             mem=int(agg_mem),
              walltime=30,
              wait_name='bg.chunks.'+str(outdot),
 	     wait_num=str(jobres2).strip(),
