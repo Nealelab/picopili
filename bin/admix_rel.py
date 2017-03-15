@@ -677,7 +677,7 @@ if plot_pca:
         if args.use_exemplars:
             r_pca_ex_log = open(str(args.out) + '.' + popnames[i] + '.plot_exemplars.log', 'w')
             plot_pca_exemp_call = [Rplotpcax,
-                                   str(os.path.basename(str(args.plot_admix_pca)),
+                                   str(os.path.basename(str(args.plot_admix_pca))),
                                    str(args.target_bfile) + '.' + popnames[i] + '.exemplar.plotinfo.txt',
                                    str(args.target_bfile) + '.exemplar.legend.txt',
                                    str(3),
@@ -691,7 +691,7 @@ if plot_pca:
 
         r_pca_admix_log = open(str(args.out) + '.' + popnames[i] + '.plot_admixture.log', 'w')
         plot_pca_admix_call = [Rplotpcax,
-                               str(os.path.basename(str(args.plot_admix_pca)),
+                               str(os.path.basename(str(args.plot_admix_pca))),
                                str(args.target_bfile) + '.' + popnames[i] + '.admixture.plotinfo.txt',
                                str(args.target_bfile) + '.admixture.legend.txt',
                                str(3),
