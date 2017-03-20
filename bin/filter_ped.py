@@ -33,17 +33,13 @@ if not (('-h' in sys.argv) or ('--help' in sys.argv)):
 
 ### load requirements
 import os
-# import subprocess
 import argparse
-# from string import ascii_uppercase
-# from glob import glob
-# from numpy import digitize
 import random
 import warnings
-from args_ped import *
-from py_helpers import unbuffer_stdout
-# file_len, test_exec, read_conf, find_from_path, link, gz_confirm
+from args_ped import parserbase, parsergeno, parseribd, parserweights
+from py_helpers import unbuffer_stdout, warn_format
 unbuffer_stdout()
+warnings.formatwarning = warn_format
 
 
 #############
@@ -87,7 +83,10 @@ PO_IBD2_MAX = 0.2
 print 'Using settings:'
 print '--input-ibd '+str(args.input_ibd)
 print '--bfile '+str(args.bfile)
-print '--geno '+str(args.geno)
+if args.geno is not None and args.geno != "None":
+    print '--geno '+str(args.geno)
+if args.weight_file is not None and args.weight_file != "None":
+    print '--weight-file '+str(args.weight_file)
 print '--out '+str(args.out)
 print '--format '+str(args.format)
 print '--min-rel '+str(args.min_rel)
@@ -98,7 +97,8 @@ print '--fam-case-weight '+str(args.fam_case_weight)
 print '--fam-con-weight '+str(args.fam_con_weight)
 print '--fam-miss-weight '+str(args.fam_miss_weight)
 print '--cross-fid-weight '+str(args.cross_fid_weight)
-print '--geno-weight '+str(args.geno_weight)
+if args.geno is not None and args.geno != "None":
+    print '--geno-weight '+str(args.geno_weight)
 print '--rand-weight '+str(args.rand_weight)
 print '--seed '+str(args.seed)
 
@@ -111,8 +111,11 @@ print '\n...Checking dependencies...'
 assert os.path.isfile(args.input_ibd), "IBD/relatedness file does not exist (%r)" % args.input_ibd
 assert os.path.isfile(str(args.bfile)+'.fam'), "Plink fam file does not exist (%s)" % str(args.bfile)+'.fam'
 
-if str(args.geno) != 'NONE':
+if args.geno is not None and str(args.geno) != 'None':
     assert os.path.isfile(args.geno), "Missingness rate file does not exist (%r)" % args.geno
+
+if args.weight_file is not None and str(args.weight_file) != 'None':
+    assert os.path.isfile(args.weight_file), "Weight file does not exist (%r)" % args.weight_file
 
 
 print '\n'
@@ -176,7 +179,7 @@ print '\n...Loading genotyping rate information...'
 
 genorate = {}
 
-if str(args.geno) == 'NONE':
+if args.geno is None or str(args.geno) == 'None':
     print 'Skipping (no file provided).'    
     for indiv in fam_info:
         genorate[indiv] = 1.0
@@ -206,9 +209,50 @@ else:
         if indiv in genorate:
             continue
         else:
-            warnings.warn('Genotyping rate not loaded for %s. Setting to zero.' % str(indiv))
-            genofile[indiv] = 1.0
+            warnings.warn('Genotyping rate not loaded for %s. Setting call rate to zero.' % str(indiv))
+	    print 'Genotyping rate not loaded for %s. Setting call rate to zero.' % str(indiv)
+            genofile[indiv] = 0.0
 
+
+
+
+
+#############
+print '\n...Loading additional weight file...'
+# Assume FID, IID, weight
+# if no file, set to zero
+#############
+
+misc_w = {}
+
+if args.weight_file is None or str(args.weight_file) == 'None':
+    print 'Skipping (no file provided).'    
+    for indiv in fam_info:
+        misc_w[indiv] = 0.0
+
+else:
+    wfile = open(str(args.weight_file), 'r')
+    
+    # read per individual, indexed by FID:IID
+    for line in wfile:
+        (fid, iid, weight_num) = line.split()
+        
+        # id key
+        ind_id = str(fid) + ':' + str(iid)
+        
+        # record
+        misc_w[ind_id] = float(weight_num)
+    
+    wfile.close()
+    
+    # check values present for all IDs
+    for indiv in fam_info:
+        if indiv in misc_w:
+            continue
+        else:
+            warnings.warn('No additional weight for %s. Setting to zero.' % str(indiv))
+	    print 'No additional weight for %s. Setting to zero.' % str(indiv)
+            misc_w[indiv] = 0.0
 
 
 #############
@@ -509,7 +553,7 @@ if cross_ids:
 
     # define function to score preference for keeping each individual
     # lowest score will get deleted
-    def pref_score(ind_id, fam_dict, rel_dict, geno_dict, weight_dict):
+    def pref_score(ind_id, fam_dict, rel_dict, geno_dict, misc_dict, weight_dict):
         # init
         pref = 0.0
         ind_id = str(ind_id)
@@ -540,6 +584,9 @@ if cross_ids:
         # score geno rate
         pref += weight_dict['geno_rate'] * float(geno_dict[ind_id])
 
+        # score added weight
+        pref += float(misc_dict[ind_id])
+
         return pref
     
     # loop removal until no cross-fid relationship left
@@ -547,7 +594,7 @@ if cross_ids:
     while len(cross_id_list) > 0:
     
         # score each cross-FID related IID's prority for keep/remove
-        prefs = [pref_score(indiv, fam_info, iid_relatives, genorate, pref_weights) for indiv in cross_id_list]
+        prefs = [pref_score(indiv, fam_info, iid_relatives, genorate, misc_w, pref_weights) for indiv in cross_id_list]
         
         # breaks ties randomly
         if len(prefs) != len(set(prefs)):

@@ -138,7 +138,7 @@ arg_snpcrit.add_argument('--all-chr',
 # - relatedness threshhold for defining IMUS set
 # - Number of PCs to compute
 # - PCA output controls (directory, number of PCs to plot)
-# - File paths for external software not provided by ~/ricopili.conf
+# - File paths for external software not previously provided by ricopili.conf
 #
 ############                  
                     
@@ -171,7 +171,7 @@ arg_pca.add_argument('--pcadir',
 # arg_exloc.add_argument('--plink-ex',
 #                    type=str,
 #                    metavar='PATH',
-#                    help='path to plink executable, read from ~/ricopili.conf if unspecified',
+#                    help='path to plink executable, read from ~/picopili.conf if unspecified',
 #                    required=False)
 arg_exloc.add_argument('--rscript-ex',
                     type=str,
@@ -190,7 +190,7 @@ arg_exloc.add_argument('--primus-ex',
 #                    metavar='PATH',
 #                    help='path to smartpca executable',
 #                    required=False,
-#                    default="/humgen/atgu1/fs03/shared_resources/shared_software/EIG6.0beta_noreq/bin/smartpca")
+#                    default=None)
 
 
 

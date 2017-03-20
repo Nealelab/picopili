@@ -11,7 +11,7 @@ Checks for file existance, and sends success/error to ricopili email address
 ####################################
 
 import argparse
-from py_helpers import *
+from py_helpers import file_check_email, unbuffer_stdout
 unbuffer_stdout()
 
 ### parse arguments

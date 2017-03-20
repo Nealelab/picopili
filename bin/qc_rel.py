@@ -54,9 +54,8 @@ import argparse
 import warnings
 from time import strftime
 start_time = strftime("%H:%M:%S %d-%B-%Y")
-# from glob import glob
-from args_qc import *
-from py_helpers import unbuffer_stdout, read_conf, test_exec, link, file_len, warn_format
+from args_qc import parserbase, parserqc, parsermendel, parsertag
+from py_helpers import unbuffer_stdout, read_conf, test_exec, link, file_len, warn_format, find_exec
 unbuffer_stdout()
 warnings.formatwarning = warn_format
 
@@ -114,33 +113,25 @@ if args.mendel is not 'none':
 print ' '
 
 
-#############
-print '\n...Reading ricopili config file...'
-#############
-
-### read plink loc from config
-conf_file = os.environ['HOME']+"/ricopili.conf"
-configs = read_conf(conf_file)
-
-plinkx = configs['p2loc']+"plink"
-
-analyst = configs['init']
-
-if not args.skip_platform:
-    # get directory containing current script
-    # (hack to get plague script location)
-    rp_bin = os.path.dirname(os.path.realpath(__file__))
-    plague_ex = rp_bin + '/plague.pl'
-
 
 #############
 print '\n...Checking dependencies...'
 # check exists, executable
 #############
 
-# verify executables
-test_exec(plinkx, 'Plink')
+### read config
+conf_file = os.environ['HOME']+"/picopili.conf"
+configs = read_conf(conf_file)
+analyst = configs['init']
+
+# find plink
+plinkx = find_exec('plink',key='p2loc')
+
 if not args.skip_platform:
+    # get directory containing current script
+    # (hack to get plague script location)
+    rp_bin = os.path.dirname(os.path.realpath(__file__))
+    plague_ex = rp_bin + '/plague_pico.pl'
     test_exec(plague_ex, 'Platform guessing script')
 # TODO: verify plague works properly across platforms (primary concern is Compress::Zlib loading)
 

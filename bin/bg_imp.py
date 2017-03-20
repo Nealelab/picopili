@@ -32,10 +32,13 @@ if not (('-h' in sys.argv) or ('--help' in sys.argv)):
 
 ### load requirements
 import os
-import subprocess
 import warnings
-from args_impute import *
-from py_helpers import unbuffer_stdout, read_conf, file_tail, link, warn_format
+import argparse
+from warnings import warn
+from textwrap import dedent
+from args_impute import parserbase, parserbg, parsercluster, parserjob
+from py_helpers import unbuffer_stdout, find_exec, file_tail, link, warn_format, read_conf
+from blueprint import send_job, init_sendjob_dict, save_job, load_job, read_clust_conf
 unbuffer_stdout()
 warnings.formatwarning = warn_format
 
@@ -46,7 +49,7 @@ if not (('-h' in sys.argv) or ('--help' in sys.argv)):
 parser = argparse.ArgumentParser(prog='bg_imp.py',
                                  formatter_class=lambda prog:
                                  argparse.ArgumentDefaultsHelpFormatter(prog, max_help_position=40),
-                                 parents=[parserbase, parserbg, parsercluster])
+                                 parents=[parserbase, parserbg, parsercluster, parserjob])
                    
 args, extra_args = parser.parse_known_args()
 
@@ -114,7 +117,7 @@ if args.info_th is None and args.max_info_th is None:
     info_txt = ''
 else:
     # init, then add thresholds
-    info_txt = '--qual-scores '+str(imp_dir)+'/'+str(outdot)+'.imp.${cname}_info' +' 5 2 1'
+    info_txt = '--qual-scores '+str(imp_dir)+'/'+str(outdot)+'.imp.${{cname}}_info' +' 5 2 1'
     # minimum info
     if args.info_th >= 0.0 and args.info_th <= 1.0:
         info_txt = info_txt + ' --qual-threshold '+str(args.info_th)
@@ -177,30 +180,26 @@ print '--miss-th '+str(args.miss_th)
 
 print '\nCluster settings:'
 print '--sleep '+str(args.sleep)
-
+if args.full_pipe:
+    print '--full-pipe'
 
 
 #############
-print '\n...Reading ricopili config file...'
+print '\n...Checking dependencies...'
 #############
 
-### read plink loc from config
-conf_file = os.environ['HOME']+"/ricopili.conf"
-configs = read_conf(conf_file)
-
-plink_ex = configs['p2loc']+"plink"
+plink_ex = find_exec('plink',key='p2loc')
 
 # get directory containing current script
 # (to get absolute path for scripts)
 rp_bin = os.path.dirname(os.path.realpath(__file__))
 rs_ex = str(rp_bin)+'/rs_trans.py'
 
-#############
-print '\n...Checking dependencies...'
-#############
-
-
-
+# get cluster configuration
+# needed for specifying logfile names with clust_conf['log_task_id']
+conf_file = os.environ['HOME']+"/picopili.conf"
+configs = read_conf(conf_file)
+clust_conf = read_clust_conf()
 
 # TODO: here
 
@@ -280,49 +279,76 @@ if len(mis_chunks) > 0:
     
     print 'List of missing chunks: %s' % tmp_chunk_file.name
     
+    ###
     # copy original submit script
-    # replace chunk list, name, number of tasks
-    orig_uger_file = open(str(outdot)+'.imp_chunks.sub.sh', 'r')
-    new_uger_file = open(str(outdot)+'.imp_chunks.resub_'+ str(nummiss)+'_chunks.sub.sh', 'w')
-    
-    for line in orig_uger_file:
-        if '#$ -t ' in line:
-            new_uger_file.write('#$ -t 1-'+str(nummiss)+'\n')
-        elif '#$ -l m_mem_free' in line:
-	    new_uger_file.write('#$ -l m_mem_free=24g,h_vmem=24g \n')     
-        elif '#$ -q short' in line:
-	    new_uger_file.write('#$ -q long \n')
-        else:
-            line=line.replace(chunk_file_name, tmp_chunk_file_name)
-            line=line.replace('.$TASK_ID.','.tmp'+str(nummiss)+'.$TASK_ID.')
-            line=line.replace('#$ -N imp.chunks.'+str(outdot), '#$ -N imp.chunks.'+str(outdot)+'.resub_'+str(nummiss))
-            new_uger_file.write(line)
-            
-    orig_uger_file.close()
-    new_uger_file.close()
+    # replace chunk list, name, number of tasks, memory spec
+    # resubmit
+    ###
 
-    print ' '.join(['qsub',new_uger_file.name]) + '\n'
-    subprocess.check_call(' '.join(['qsub',new_uger_file.name]), shell=True)
+    # load pickle of job info
+    orig_job_conf = 'imp.chunks.'+str(outdot)+'.pkl'
+    
+    if not os.path.isfile(orig_job_conf):
+        orig_job_file = str(outdot)+'.imp_chunks.sub.sh'
+        raise IOError("Unable to find previous job configuration pickle %s.\
+            \nRefer to previous submit script %s to modify/resubmit.\n" % (str(orig_job_conf),str(orig_job_file)))
+
+    
+    cmd_templ, job_dict, sendjob_dict = load_job(orig_job_conf)
+
+    # rename resub
+    sendjob_dict['jobname'] = 'imp.chunks.'+str(outdot)+'.resub_'+str(nummiss)
+    
+    sendjob_dict['logname'] = str('imp.chunks.'+str(outdot)+'.resub_'+str(nummiss)+'.'+str(clust_conf['log_task_id'])+'.sub.log')
+
+    # increase memory and walltime
+    # TODO: consider how to scale mem/time here
+    oldmem = sendjob_dict['mem']
+    sendjob_dict['mem'] = int(oldmem)*2
+
+    oldtime = sendjob_dict['walltime']
+    sendjob_dict['walltime'] = int(oldtime)*4
+    
+    # replace chunk file and set number of new jobs
+    sendjob_dict['njobs'] = int(nummiss)
+
+    job_dict['cfile'] = tmp_chunk_file_name
+    
+    
+    # re-save new settings (primarily to track updating mem and walltime)
+    save_job(jfile=orig_job_conf, cmd_templ=cmd_templ, job_dict=job_dict, sendjob_dict=sendjob_dict)
+
+    
+    # submit
+    imp_cmd = cmd_templ.format(**job_dict)
+
+    jobres = send_job(jobname=sendjob_dict['jobname'],
+             	      cmd=imp_cmd,
+             	      logname=sendjob_dict['logname'],
+	              mem=sendjob_dict['mem'],
+	              walltime=sendjob_dict['walltime'],
+	              njobs=sendjob_dict['njobs'],
+	              sleep=sendjob_dict['sleep'],
+		      forcearray=True)
+        
     print 'GWAS jobs resubmitted for %d chunks.\n' % nummiss
+
     
     
     print '\n...Replacing this best-guess job in the queue...'
 
-    # TODO: consider queue/mem for agg
     os.chdir(wd)
-    bg_log = 'bg.'+str(outdot)+'.resub_'+str(nummiss)+'.qsub.log'
-    uger_bg = ' '.join(['qsub',
-                            '-hold_jid','imp.chunks.'+str(outdot)+'.resub_'+str(nummiss),
-                            '-q', 'short',
-                            '-l', 'm_mem_free=4g,h_vmem=8g',
-                            '-N', 'bg.chunks.'+str(outdot),
-                            '-o', bg_log,
-                            str(rp_bin)+'/uger.sub.sh',
-                            str(args.sleep),
-                            ' '.join(sys.argv[:])])
-    
-    print uger_bg + '\n'
-    subprocess.check_call(uger_bg, shell=True)
+    bg_log = 'bg.'+str(outdot)+'.resub_'+str(nummiss)+'.sub.log'
+
+    # TODO: consider queue/mem for agg
+    send_job(jobname='bg.chunks.'+str(outdot),
+             cmd=' '.join(sys.argv[:]),
+             logname=bg_log,
+             mem=8000,
+             walltime=2, # week
+             wait_name='imp.chunks.'+str(outdot)+'.resub_'+str(nummiss),
+	     wait_num=str(jobres).strip(),
+             sleep=args.sleep)
 
     print '\n############'
     print '\n'
@@ -347,82 +373,85 @@ link(str(chunk_dir)+'/'+str(outdot)+'.chunks.txt', str(outdot)+'.chunks.txt', 'g
 print '\n...Generating best-guess genotypes...'
 ######################
 
-# TODO: flex queue/mem reqs
-uger_bg_template = """#!/usr/bin/env sh
-#$ -j y
-#$ -cwd
-#$ -V
-#$ -N {jname}
-#$ -q short
-#$ -l m_mem_free=4g,h_vmem=8g
-#$ -t 1-{nchunk}
-#$ -o {outlog}
-
-source /broad/software/scripts/useuse
-reuse -q Anaconda
-sleep {sleep}
-
-cname=`awk -v a=${{SGE_TASK_ID}} 'NR==a+1{{print $4}}' {cfile}`
-cchr=`awk -v a=${{SGE_TASK_ID}} 'NR==a+1{{print $1}}' {cfile}`
-
-{plink_ex} --gen {gen_in} --sample {samp_in} --oxford-single-chr ${{cchr}} --oxford-pheno-name plink_pheno --hard-call-threshold {hard_call_th} --missing-code -9,NA,na --allow-no-sex --silent --memory 4000 --out {out_str} 
-
-sleep {sleep}
-# note: Mendel errors checked after --update-parents, see https://www.cog-genomics.org/plink2/order
-{plink_ex} --bfile {out_str} {mendel_txt} --pheno {idnum} --mpheno 4 --update-parents {idnum} --allow-no-sex --make-bed --silent --memory 2000 --out {out_str2}
-rm {out_str}.bed
-rm {out_str}.bim
-rm {out_str}.fam
-
-sleep {sleep}
-{plink_ex} --bfile {out_str2} {maf_txt} {mac_txt} {geno_txt} {info_txt} --allow-no-sex --make-bed --silent --memory 2000 --out {out_str_filt}
-rm {out_str2}.bed
-rm {out_str2}.bim
-rm {out_str2}.fam
-
-{rs_ex} --chunk ${{cname}} --name {outdot} --imp-dir {imp_dir} --fam-trans {trans}
-
-# eof
-"""
+# best-guess job script for each chunk
+bg_templ = dedent("""\
+    cname=`awk -v a={task} 'NR==a+1{cbopen}print $4{cbclose}' {cfile}`
+    cchr=`awk -v a={task} 'NR==a+1{cbopen}print $1{cbclose}' {cfile}`
     
+    {plink_ex} --gen {gen_in} --sample {samp_in} --oxford-single-chr ${cbopen}cchr{cbclose} --oxford-pheno-name plink_pheno --hard-call-threshold {hard_call_th} --missing-code -9,NA,na --allow-no-sex --silent --memory 4000 --out {out_str} 
+    
+    sleep {sleep}
+    # note: Mendel errors checked after --update-parents, see https://www.cog-genomics.org/plink2/order
+    {plink_ex} --bfile {out_str} {mendel_txt} --pheno {idnum} --mpheno 4 --update-parents {idnum} --allow-no-sex --make-bed --silent --memory 2000 --out {out_str2}
+    rm {out_str}.bed
+    rm {out_str}.bim
+    rm {out_str}.fam
+    
+    sleep {sleep}
+    {plink_ex} --bfile {out_str2} {maf_txt} {mac_txt} {geno_txt} {info_txt} --allow-no-sex --make-bed --silent --memory 2000 --out {out_str_filt}
+    rm {out_str2}.bed
+    rm {out_str2}.bim
+    rm {out_str2}.fam
+    
+    {rs_ex} --chunk ${cbopen}cname{cbclose} --name {outdot} --imp-dir {imp_dir} --fam-trans {trans}
+""")
+
 # get number of chunks
 nchunks = len(chunks)
 
-# fill in template
-jobdict = {"jname": 'bg.chunks.'+str(outdot),
-           "nchunk": str(nchunks),
-           "outlog": str('bg.chunks.'+str(outdot)+'.$TASK_ID.qsub.log'),
+# info to fill in job template
+jobdict = {"task": "{task}",
            "sleep": str(args.sleep),
            "cfile": str(outdot)+'.chunks.txt',
            "plink_ex": str(plink_ex),
-           "gen_in": str(imp_dir)+'/'+str(outdot)+'.imp.${cname}.gz',
-           "samp_in": str(shape_dir)+'/'+str(outdot)+'.chr${cchr}.phased.sample',
+           "gen_in": str(imp_dir)+'/'+str(outdot)+'.imp.${{cname}}.gz',
+           "samp_in": str(shape_dir)+'/'+str(outdot)+'.chr${{cchr}}.phased.sample',
            "hard_call_th": str(hard_call_th),
-           "out_str": str(outdot)+'.bg.${cname}',
+           "out_str": str(outdot)+'.bg.${{cname}}',
            "mendel_txt": str(mendel_txt),
            "info_txt": str(info_txt),
-           "out_str2": str(outdot)+'.bg.tmp.${cname}',
+           "out_str2": str(outdot)+'.bg.tmp.${{cname}}',
            "maf_txt": str(maf_txt),
            "mac_txt": str(mac_txt),
            "geno_txt": str(geno_txt),
-           "out_str_filt": str(outdot)+'.bg.filtered.${cname}',
+           "out_str_filt": str(outdot)+'.bg.filtered.${{cname}}',
            "rs_ex": str(rs_ex),
            "outdot": str(outdot),
            "imp_dir": str(imp_dir),
            "idnum": str(shape_dir)+'/'+str(args.bfile)+'.hg19.ch.fl.fam',
-           "trans": str(shape_dir)+'/'+str(args.bfile)+'.hg19.ch.fl.fam.transl'
+           "trans": str(shape_dir)+'/'+str(args.bfile)+'.hg19.ch.fl.fam.transl',
+	   "cbopen":'{{',
+	   "cbclose":'}}',
            }
 
-uger_bg = open(str(outdot)+'.bg_chunks.sub.sh', 'w')
-uger_bg.write(uger_bg_template.format(**jobdict))
-uger_bg.close()
+
+# store job information for possible resubs
+job_store_file = 'bg.chunks.'+str(outdot)+'.pkl'
+
+clust_dict = init_sendjob_dict()
+clust_dict['jobname'] = 'bg.chunks.'+str(outdot)
+clust_dict['logname'] = str('bg.chunks.'+str(outdot)+'.'+str(clust_conf['log_task_id'])+'.sub.log')
+clust_dict['mem'] = 8000
+clust_dict['walltime'] = 2
+clust_dict['njobs'] = int(nchunks)
+clust_dict['sleep'] = args.sleep
+
+save_job(jfile=job_store_file, cmd_templ=bg_templ, job_dict=jobdict, sendjob_dict=clust_dict)
+
 
 # submit
-print ' '.join(['qsub',uger_bg.name]) + '\n'
-subprocess.check_call(' '.join(['qsub',uger_bg.name]), shell=True)
+# TODO: flex queue/mem reqs
+bg_cmd = bg_templ.format(**jobdict)
+
+jobres2 = send_job(jobname='bg.chunks.'+str(outdot),
+	           cmd=bg_cmd,
+	           logname=str('bg.chunks.'+str(outdot)+'.'+str(clust_conf['log_task_id'])+'.sub.log'),
+	           mem=8000,
+	           walltime=2,
+	           njobs=int(nchunks),
+	           sleep=args.sleep)
+
 print 'Best-guess jobs submitted for %d chunks.\n' % nchunks
-
-
 
 
 ###
@@ -436,22 +465,30 @@ if args.full_pipe:
     os.chdir(wd)
     next_call = str(rp_bin) + '/agg_imp.py '+' '.join(sys.argv[1:])
 
-    # TODO: consider queue/mem for agg
-    agg_log = 'agg_imp.'+str(outdot)+'.qsub.log'
-    uger_agg = ' '.join(['qsub',
-                            '-hold_jid','bg.chunks.'+str(outdot),
-                            '-q', 'long',
-                            '-l', 'm_mem_free=8g,h_vmem=8g',
-                            '-N', 'agg.imp.'+str(outdot),
-                            '-o', agg_log,
-                            str(rp_bin)+'/uger.sub.sh',
-                            str(args.sleep),
-                            next_call])
-    
-    print uger_agg + '\n'
-    subprocess.check_call(uger_agg, shell=True)
+    agg_log = 'agg_imp.'+str(outdot)+'.sub.log'
 
-    
+    # some dynamic adjustment of mem based on sample size population
+    # (empirically, seem to get ~2x sites from afr vs eur)
+    fam_n = file_len(str(shape_dir)+'/'+str(args.bfile)+'.hg19.ch.fl.fam')
+    if fam_n > 3000:
+        agg_mem = 32000
+    elif fam_n > 1000:
+        agg_mem = 16000
+    else:
+        agg_mem = 8000
+
+    if "afr" in sys.argv[1:]:
+        agg_mem = 2*agg_mem
+
+    # TODO: consider queue/mem for agg
+    send_job(jobname='agg.imp.'+str(outdot),
+             cmd=next_call,
+             logname=agg_log,
+             mem=int(agg_mem),
+             walltime=30,
+             wait_name='bg.chunks.'+str(outdot),
+	     wait_num=str(jobres2).strip(),
+             sleep=args.sleep)
 
 # finish
 print '\n############'

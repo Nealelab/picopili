@@ -1,40 +1,34 @@
 #!/usr/bin/env perl
 use strict;
-BEGIN { push @INC, $ENV{rp_perlpackages}.'/Compress-Raw-Zlib-2.065/blib/lib' }
+
+#############################
+# load utility functions
+#############################
+
+use File::Basename;
+use FindBin;
+use Cwd 'abs_path';
+use lib "$FindBin::Bin";
+use rp_perl::Utils qw(trans);
 
 my $version = "1.0.0";
 my $progname = $0;
 $progname =~ s!^.*/!!;
 
+my $picodir = dirname(dirname(abs_path($0)));
 
 #############################
 # read config file
 #############################
 
-my $conf_file = $ENV{HOME}."/ricopili.conf";
-my %conf = ();
-
-die $!."($conf_file)" unless open FILE, "< $conf_file";
-while (my $line = <FILE>){
-    my @cells = split /\s+/, $line;
-    $conf{$cells[0]} = $cells[1];
-}
-close FILE;
-
-sub trans {
-    my ($expr)=@_;
-    unless (exists $conf{$expr}) {
-	die "config file without entry: $expr\n";
-    }
-    $conf{$expr};
-}
-
-my $hmloc = &trans("hmloc");
-
+my $hmloc = "$picodir/lib/plague";
+my $perlpack = &trans("perlpack");
+use lib $perlpack;
 
 #####################################################
 
 my $sc_file = "$hmloc/snp_platform_collection.txt.new.0815.gz";
+my $sc_file_0416 = "$hmloc/snp_platform_collection.txt.new.0416a.gz";
 
 my $scol = 2;
 
@@ -44,7 +38,9 @@ Usage : $progname bim-file
 
 version: $version
 
-  --scf    STRING  SNP collection file, default: $sc_file
+  --scf    STRING  SNP collection file
+                       default: $sc_file
+		       first checking this: $sc_file_0416
   --scol INT       column of SNPs, default = $scol
   --create STRING  create new entry with name STRING
   -help            print this message and exit
@@ -94,7 +90,6 @@ unless ($bim_file =~ /.bim$/) {
 
 my %bsnps=();
 
-# use lib $ENV{rp_perlpackages}.'/Compress-Raw-Zlib-2.065/blib/lib';
 use Compress::Zlib ;
 
 ## read bim-file
@@ -112,6 +107,10 @@ print "size of bim-file: $nbim\n\n";
 my @out_lines = ();
 
 ## compare with snp-collection
+
+if (-e  $sc_file_0416) {
+    $sc_file =  $sc_file_0416;
+}
 
 unless (-e $sc_file) {
     $sc_file = "$hmloc/snp_platform_collection.txt.new.0114.gz";

@@ -56,7 +56,7 @@ arg_base.add_argument('--out',
 #
 ############
 parsergeno = argparse.ArgumentParser(add_help=False)
-arg_geno = parsergeno.add_argument_group('Genotyping Rate (Optional)')
+arg_geno = parsergeno.add_argument_group('Additional Weights (Optional)')
 
 arg_geno.add_argument('--geno', 
                       type=str,
@@ -64,8 +64,15 @@ arg_geno.add_argument('--geno',
                       help='file with genotype missingness rate per individual ' + \
                            '(i.e. the .imiss file from plink --missing)',
                       required=False,
-                      default='NONE')  
-                    
+                      default=None)
+arg_geno.add_argument('--weight-file', 
+                      type=str,
+                      metavar='FILE',
+                      help='file with added weight per individual. Intentionally ' + \
+                           'flexible for arbitrary weights. Assumes 3 columns: FID,' + \
+                           'IID, and numeric weight.',
+                      required=False,
+                      default=None)                    
 
 ############
 #
@@ -187,7 +194,7 @@ arg_prefWt.add_argument('--seed',
 ############
 #
 # Software Executables
-# Locations for software dependencies not in ricopili config file
+# Locations for software dependencies not previously in ricopili config file
 #
 ############
 parserexloc = argparse.ArgumentParser(add_help=False)

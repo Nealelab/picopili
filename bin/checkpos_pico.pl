@@ -8,9 +8,12 @@ use strict;
 #
 #    checkpos6
 #
-#          created by Stephan Ripke, Broadinstitute, sripke@broadinstitute.org
+#          Created by Stephan Ripke, Broadinstitute, sripke@broadinstitute.org
 #
 #                                  01/14/10
+#
+#          Adapted for Picopili by Raymond Walters, rwalters(at)broadinstitute.org
+#
 #
 #
 #
@@ -30,7 +33,7 @@ use strict;
 # read config file
 #############################
 
-my $conf_file = $ENV{HOME}."/ricopili.conf";
+my $conf_file = $ENV{HOME}."/picopili.conf";
 my %conf = ();
 
 die $!."($conf_file)" unless open FILE, "< $conf_file";
@@ -49,8 +52,6 @@ sub trans {
 }
 
 my $sloc = &trans("sloc");
-my $hmloc = &trans("hmloc");
-#my $ploc = &trans("ploc");
 my $p2loc = &trans("p2loc");
 
 
@@ -75,9 +76,7 @@ my $cmd_line = "$progname @new_arg";
 my $subdir = "dbsnp_subdir";
 
 my $home_dir = "$ENV{HOME}";
-my $dbsnp_file = "/psych/genetics_data/ripke/references_from_debakkerscratch/ref_db/sorted_dbsnp_positions_129_b36";## created from this one  /humgen/gsa-hpprojects/GATK/data/dbsnp_129_b36.rod 
-my $dbsnp_file_lisa = "/home/gwas/1KG_reference/sorted_dbsnp_positions_129_b36";           ## including sed 's/\tY\t/\t24\t/' sorted_dbsnp_positions_129_b36 | sed 's/\tX\t/\t23\t/' | sed 's/MT/26/'
-
+my $dbsnp_file = "";
 
 
 my $usage = "
@@ -85,11 +84,8 @@ Usage : $progname [options] bim-file
 
 version: $version
 
-  --dbsnp STRING      dbSNP reference file (default is found at Broad)
-                       default: $dbsnp_file
-                       or: $dbsnp_file_lisa
-                       HM3: /home/gwas/pgc-samples/hapmap_ref/infosum.annot.markers.sorted
-  --ploc STRING       location of plink-binary (default is found at Broad)
+  --dbsnp STRING      dbSNP reference file (created by readref)
+  --ploc STRING       location of plink-binary (default read from picopili.conf)
                        default: $p2loc
   --col INT,INT,INT   snp-col,chr-col,kb-col in bim-file: default: $scol,$ccol,$kcol 
   --dbcol INT,INT,INT snp-col,chr-col,kb-col in dbsnp-file: default: $dscol,$dccol,$dkcol 
@@ -101,8 +97,6 @@ version: $version
   --help              print this message and exit
 
   --exmulti, --nokeep and --subdir are in effect, as long as --ncreate is not switched
-
- created by Stephan Ripke 2010: sripke\@broadinstitute.org
 
 ";
 
@@ -131,13 +125,7 @@ if ($dcolstr) {
 }
 
 unless (-e $dbsnp_file) {
-    if (-e $dbsnp_file_lisa) {
-	$dbsnp_file = $dbsnp_file_lisa;
-    }
-    else {
-	print  "*** Error, dbSNP file not found\n";
-	exit;
-    }
+    die "*** Error, dbSNP file not found\n";
 }
 
 

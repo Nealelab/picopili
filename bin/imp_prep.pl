@@ -23,12 +23,23 @@ use strict;
 #### 
 
 
+#############################
+# load utility functions
+#############################
+
+use FindBin;
+use lib "$FindBin::Bin";
+use rp_perl::Utils qw(trans);
+
 my $version = "1.0.24";
 my $progname = $0;
 $progname =~ s!^.*/!!;
 my $command_line = "$progname @ARGV";
 
-
+use Cwd;
+use File::Path;
+my $rootdir = &Cwd::cwd();
+my $sjainfotxt = "$rootdir\t$command_line";
 
 my $jnum = 7; ### number of imputation job per node
 
@@ -45,35 +56,17 @@ my $host = hostname;
 # read config file
 #############################
 
-my $conf_file = $ENV{HOME}."/ricopili.conf";
-my %conf = ();
-
-die $!."($conf_file)" unless open FILE, "< $conf_file";
-while (my $line = <FILE>){
-    my @cells = split /\s+/, $line;
-    $conf{$cells[0]} = $cells[1];
-}
-close FILE;
-
-sub trans {
-    my ($expr)=@_;
-    unless (exists $conf{$expr}) {
-	die "config file without entry: $expr\n";
-    }
-    $conf{$expr};
-}
-
 my $ploc = &trans("p2loc");
-my $homedir = &trans("home");
-my $qloc = &trans("queue");
-my $liloc = &trans("liloc");
+my $qloc = &trans("cluster");
 my $email = &trans("email");
-my $loloc = &trans("loloc");
 
+my $email_on = 0;
+if ($email =~ m/\@/){
+	$email_on = 1;
+}
 
 ###############################################
 
-my $rootdir = "";
 my $iname = "" ;
 
 my $suminfo = "infosum_pos";
@@ -183,17 +176,19 @@ my @test_scripts;
 my $readref_script = "readref_pico.pl";    ### my.pipeline_tar
 my $readrefsum_script = "readrefsum_pico.pl";  ### my.pipeline_tar
 my $buigue_script = "buigue_pico.pl";              ### my.pipeline_tar
+my $lift_script = "lift_to_hg19.pl";
 my $checkpos_script = "checkpos_pico.pl";         ### my.pipeline_tar
 my $checkflip_script = "checkflip_pico.pl";       ### my.pipeline_tar
 my $mutt_script = "mutt";                  ### my.pipeline_tar
-my $blue_script = "blueprint_pico.pl";             ### my.pipeline_tar
+my $blue_script = "blueprint.py";             ### my.pipeline_tar
 
 push @test_scripts, $readref_script;
 push @test_scripts, $readrefsum_script;
 push @test_scripts, $buigue_script;
+push @test_scripts, $lift_script;
 push @test_scripts, $checkpos_script;
 push @test_scripts, $checkflip_script;
-push @test_scripts,  $blue_script;
+push @test_scripts, $blue_script;
 
 #push @test_scripts, $mutt_script ;
 
@@ -215,7 +210,7 @@ foreach my $scr_name (@test_scripts) {
 	}
     }
     if ( $scr_path eq  '') {
-	push @miss_scripts, "cp /home/unix/sripke/bin/$scr_name ./\n";
+	push @miss_scripts, "$scr_name\n";
 	print "!!Error!! : No $scr_name command available\n" ;
     }
  
@@ -224,60 +219,63 @@ foreach my $scr_name (@test_scripts) {
 
 
 if (@miss_scripts > 0) {
-  if (-e "get_scripts_on_broad.txt") {
-    print "please remove this file and restart: get_scripts_on_broad.txt\n";
-  }
-  die $! unless open FILE1, "> get_scripts_on_broad.txt";
+
+#  if (-e "get_scripts_on_broad.txt") {
+#    print "please remove this file and restart: get_scripts_on_broad.txt\n";
+#  }
+  die $! unless open FILE1, "> missing_picopili_scripts.txt";
   foreach (@miss_scripts) {
     print FILE1 "$_";
   }
   close FILE1;
 
+  die "Missing required scripts. See missing_picopili_scripts.txt\n";
 
-  print "exiting now -> have a look at get_scripts_on_broad.txt\n";
-  exit;
+#  print "exiting now -> have a look at get_scripts_on_broad.txt\n";
+#  exit;
 
 }
 
 
 
 
+if($email_on){
 
+	print ".......testing email program....\n";
 
-print ".......testing email program....\n";
-
-my $err_scr = 0;
-{
-    my $scr_path = '';
+	my $err_scr = 0;
+	{
+	    my $scr_path = '';
     
-    for my $path ( split /:/, $ENV{PATH} ) {
-	if ( -f "$path/$mutt_script" && -x _ ) {
-	    print "$mutt_script\tfound in $path\n";
-	    $scr_path = "$path/$mutt_script";
-	    last;
-	}
-    }
-    unless ( $scr_path ) {
-
-	print "!!Warning!! : No $mutt_script command available, trying mail\n" ;
-
-	$mutt_script = "mail";
-	for my $path ( split /:/, $ENV{PATH} ) {
-	    if ( -f "$path/$mutt_script" && -x _ ) {
-		print "$mutt_script\tfound in $path\n";
-		$scr_path = "$path/$mutt_script";
-		last;
+	    for my $path ( split /:/, $ENV{PATH} ) {
+		if ( -f "$path/$mutt_script" && -x _ ) {
+		    print "$mutt_script\tfound in $path\n";
+		    $scr_path = "$path/$mutt_script";
+		    last;
+		}
 	    }
-	}
-	unless ( $scr_path ) {
-	    $err_scr = 1;
-	    print "!!Error!! : No $mutt_script command available\n" ;
-	}
-    }
- 
-}
-die if $err_scr == 1;
+	    unless ( $scr_path ) {
 
+		print "!!Warning!! : No $mutt_script command available, trying mail\n" ;
+
+		$mutt_script = "mail";
+		for my $path ( split /:/, $ENV{PATH} ) {
+		    if ( -f "$path/$mutt_script" && -x _ ) {
+			print "$mutt_script\tfound in $path\n";
+			$scr_path = "$path/$mutt_script";
+			last;
+		    }
+		}
+		unless ( $scr_path ) {
+		    $err_scr = 1;
+		    print "!!Error!! : No $mutt_script command available\n" ;
+		}
+	    }
+ 
+	}
+	die if $err_scr == 1;
+
+}
 
 print "....all necessary binaries found....\n";
 print "------------------------------------\n";
@@ -289,12 +287,12 @@ print "------------------------------------\n";
 # "testing environment variable rp_perlpackages
 ####################################
 
-print "testing environment variable rp_perlpackages....\n";
-unless (exists $ENV{rp_perlpackages}) {
-    print "Error: no environment variable for perl-packages, please re-install ricopili and make sure to follow all instructions\n";
-    print "------------------------------------\n";
-    exit;
-}
+# print "testing environment variable rp_perlpackages....\n";
+# unless (exists $ENV{rp_perlpackages}) {
+#     print "Error: no environment variable for perl-packages, please re-install ricopili and make sure to follow all instructions\n";
+#     print "------------------------------------\n";
+#     exit;
+# }
 print "....all set....\n";
 print "------------------------------------\n";
 
@@ -405,14 +403,10 @@ if ($qloc eq "qsub") {
 }
 
 
-my $sjainfofile = "$loloc/impute_dir_info";
+my $sjainfofile = "$rootdir/imp_prep_job_info.log";
 unless (-e $sjainfofile) {
-    print "log-file ($sjainfofile) is not existing\n";
-    print "please check loloc in ~/ricopili.conf\n";
-    exit;
+	&mysystem ("touch $sjainfofile");
 }
-#my $sjainfofile = "$homedir/impute_dir_info_35_test";
-my $sjainfotxt = "";
 my $sjamulti = 0;
 
 
@@ -430,34 +424,36 @@ sub send_jobarray {
     $now =~ s/ /_/g;
 
 
-    if ($sjaname eq "finished") {
-
-	my $fini_message ;
-	$fini_message .= "\n\n##################################################################\n";
-	$fini_message .= "##### CONGRATULATIONS: \n";
-	$fini_message .= "##### rp_pipeline finished successfully:\n";
-	$fini_message .= "##### $sjainfotxt\n";
-	$fini_message .= "##### now start with PCA (see README in subdir pcaer_sub/)\n";
-	$fini_message .= "##### or directly with postimputation analysis\n";
-	$fini_message .= "##### have a look at the wiki page\n"; 
-	$fini_message .= "##### https://sites.google.com/a/broadinstitute.org/ricopili/\n";
-	$fini_message .= "##################################################################\n";
-	print "$fini_message\n";
-
-	
-	die $! unless open SUC, "> success_file";
-	print SUC $fini_message."\n";
-	close SUC;
-
-	&mysystem ('cat success_file | '.$mutt_script.' -s RP_pipeline_finished '.$email) ;
-
-	my $sjarow      = $sjainfotxt."\t$sjaname\t$now";
-	&a2filenew_app("$sjainfofile",$sjarow);
-
-
-	exit;
-
-    }
+#    if ($sjaname eq "finished") {
+#
+#	my $fini_message ;
+#	$fini_message .= "\n\n##################################################################\n";
+#	$fini_message .= "##### CONGRATULATIONS: \n";
+#	$fini_message .= "##### rp_pipeline finished successfully:\n";
+#	$fini_message .= "##### $sjainfotxt\n";
+#	$fini_message .= "##### now start with PCA (see README in subdir pcaer_sub/)\n";
+#	$fini_message .= "##### or directly with postimputation analysis\n";
+#	$fini_message .= "##### have a look at the wiki page\n"; 
+#	$fini_message .= "##### https://sites.google.com/a/broadinstitute.org/ricopili/\n";
+#	$fini_message .= "##################################################################\n";
+#	print "$fini_message\n";
+#
+#	
+#	die $! unless open SUC, "> success_file";
+#	print SUC $fini_message."\n";
+#	close SUC;
+#
+#	if($email_on){
+#		&mysystem ('cat success_file | '.$mutt_script.' -s RP_pipeline_finished '.$email) ;
+#	}
+#
+#	my $sjarow      = $sjainfotxt."\t$sjaname\t$now";
+#	&a2filenew_app("$sjainfofile",$sjarow);
+#
+#
+#	exit;
+#
+#    }
 
 
     chdir ($sjadir);
@@ -546,10 +542,10 @@ sub send_jobarray {
 	    $err_message .= "##### step $sjaname has been done repeatedly without any progress\n";
 	    $err_message .= "##### imputation pipeline stopped: $command_line\n";
 	    $err_message .= "##### $sjainfotxt\n";
-	    $err_message .= "##### if reason does not appear obvious\n";
-	    $err_message .= "##### have a look at the wiki page\n"; 
-	    $err_message .= "##### https://sites.google.com/a/broadinstitute.org/ricopili/\n";
-	    $err_message .= "##### or contact the developers\n";
+#	    $err_message .= "##### if reason does not appear obvious\n";
+#	    $err_message .= "##### have a look at the wiki page\n"; 
+#	    $err_message .= "##### https://sites.google.com/a/broadinstitute.org/ricopili/\n";
+#	    $err_message .= "##### or contact the developers\n";
 	    $err_message .= "##################################################################\n";
 	    print "$err_message\n";
 
@@ -557,8 +553,9 @@ sub send_jobarray {
 	    print ERR $err_message."\n";
 	    close ERR;
 
-
-	    &mysystem ('cat error_file | '.$mutt_script.' -s RP_pipeline_error '.$email) ;
+		if($email_on){
+			&mysystem ('cat error_file | '.$mutt_script.' -s Picopili_pipeline_error '.$email) ;
+		}
 
 	    unless ($serial) {
 		exit;
@@ -572,27 +569,27 @@ sub send_jobarray {
     $command_line =~ s/--force1//;
 
 
-    my $wt_file = "$sjadir/blueprint_joblist_file-$sjaname.$outname";
+#    my $wt_file = "$sjadir/blueprint_joblist_file-$sjaname.$outname";
     chdir "$rootdir" or die "something strange";
-    if ($qloc eq "bsub") {
-	$wt_file =~ s/.*blueprint_joblist_file-//;
-    }
-
-    if ($qloc eq "slurm") {
-	$wt_file = "$sjadir/$jobfile.script.id";
-    }
-
-    if ($qloc eq "qsub") {
-	$wt_file = "$sjadir/j.$sjaname.$outname.id";
-    }
-    if ($qloc eq "qsub_c") {
-	$wt_file = "$sjadir/j.$sjaname.$outname.id";
-    }
-    if ($qloc eq "qsub_b") {
-	$wt_file = "$sjadir/j.$sjaname.$outname.id";
-    }
+#    if ($qloc eq "bsub") {
+#	$wt_file =~ s/.*blueprint_joblist_file-//;
+#    }
+#
+#    if ($qloc eq "slurm") {
+#	$wt_file = "$sjadir/$jobfile.script.id";
+#    }
+#
+#    if ($qloc eq "qsub") {
+#	$wt_file = "$sjadir/j.$sjaname.$outname.id";
+#    }
+#    if ($qloc eq "qsub_c") {
+#	$wt_file = "$sjadir/j.$sjaname.$outname.id";
+#    }
+#    if ($qloc eq "qsub_b") {
+#	$wt_file = "$sjadir/j.$sjaname.$outname.id";
+#    }
     
-
+    my $wt_name = "$sjaname.$outname";
 
     if ($serial) {
 	my $sys_re = "$command_line";
@@ -600,7 +597,7 @@ sub send_jobarray {
 	exit;
     }
     else {
-	my $sys_re = "$blue_script --njob $job_bn_th -b \"$command_line\" --wa 2 --di -j --fwt $wt_file --na _if_$outname";
+	my $sys_re = "$blue_script --njob $job_bn_th -b \"$command_line\" --wa 2 --di -j --wait-name $wt_name --na _if_$outname";
 	&mysystem ($sys_re);
     }
 
@@ -627,12 +624,6 @@ sub send_jobarray {
 #############  BEGIN
 ##############################################
 ##############################################
-
-
-use Cwd;
-use File::Path;
-$rootdir = &Cwd::cwd();
-$sjainfotxt = "$rootdir\t$command_line";
 
 
 unless (-e $impute_dir){

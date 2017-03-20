@@ -16,7 +16,7 @@ Runs SHAPEIT for GWAS data with related individuals
 # 4) Split plink files by chr
 #    - use shortened IDs
 # 5) Run SHAPEIT
-#    - using UGER to parallelize
+#    - parallelize on cluster
 #
 ####################################
 
@@ -38,14 +38,9 @@ if not (('-h' in sys.argv) or ('--help' in sys.argv)):
 import os
 import subprocess
 import argparse
-# from string import ascii_uppercase
-# from glob import glob
-# from numpy import digitize
-# import random
-# import warnings
-from args_impute import *
-from py_helpers import unbuffer_stdout, link, read_conf #, test_exec
-# file_len, read_conf, find_from_path, link, gz_confirm
+from args_impute import parserbase, parserphase, parserref, parsercluster, parserjob
+from py_helpers import unbuffer_stdout, link, find_exec, read_conf
+from blueprint import send_job
 unbuffer_stdout()
 
 
@@ -57,7 +52,16 @@ if not (('-h' in sys.argv) or ('--help' in sys.argv)):
 parser = argparse.ArgumentParser(prog='shape_rel.py',
                                  formatter_class=lambda prog:
                                  argparse.ArgumentDefaultsHelpFormatter(prog, max_help_position=40),
-                                 parents=[parserbase, parserphase, parserref, parsercluster])
+                                 parents=[parserbase, parserphase, parserref, parsercluster, parserjob])
+
+parser.add_argument('--ref-dir',
+			type=str,
+			metavar='DIRECTORY',
+			help='Directory containing imputation reference files (haps, legends, sample, and maps). ' +
+				'Used as prefix for specifying full paths of --ref-maps, --ref-haps, --ref-legs, and --ref-samps',
+			required=False,
+			default=None)
+
 
 args, extra_args = parser.parse_known_args()
 
@@ -92,12 +96,14 @@ print '--ref-maps '+str(args.ref_maps)
 print '--ref-haps '+str(args.ref_haps)
 print '--ref-legs '+str(args.ref_legs)
 print '--ref-samps '+str(args.ref_samps)
+print '--ref-dir '+str(args.ref_dir)
 
 print '\nJob Submission:'
 print '--sleep '+str(args.sleep)
 print '--mem-req '+str(args.mem_req)
 print '--threads '+str(args.threads)
-
+if args.full_pipe:
+    print '--full-pipe'
 
 
 if str(args.addout) != '' and args.addout is not None:
@@ -106,23 +112,25 @@ else:
     outdot = str(args.out)
 
 
-#############
-print '\n...Reading ricopili config file...'
-#############
-
-### read plink, shapeit loc from config
-conf_file = os.environ['HOME']+"/ricopili.conf"
-configs = read_conf(conf_file)
-
-plinkx = configs['p2loc']+"plink"
-shapeit_ex = configs['shloc'] + '/bin/shapeit'
-
-
 
 #############
 print '\n...Checking dependencies...'
 #############
 
+plinkx = find_exec('plink',key='p2loc')
+shapeit_ex = find_exec('shapeit',key='shloc')
+
+
+if args.ref_dir is not None:
+	# verify exists
+	assert os.path.isdir(args.ref_dir), "Failed to find imputation reference directory %s" % args.ref_dir
+
+	# prepend to references accordingly
+	args.ref_maps = str(args.ref_dir) +'/' + args.ref_maps
+	args.ref_haps = str(args.ref_dir) +'/' + args.ref_haps
+	args.ref_legs = str(args.ref_dir) +'/' + args.ref_legs
+	args.ref_samps = str(args.ref_dir) +'/' + args.ref_samps
+	args.ref_info = str(args.ref_dir) +'/' + args.ref_info
 
 
 # TODO: here
@@ -288,12 +296,12 @@ else:
     duo_txt = '--duohmm'
 
 # TODO: handle empty chromosomes
-chrstem = str(args.bfile)+'.hg19.ch.fl.chr\$tasknum'
-outstem = str(outdot)+'.chr\$tasknum'
-map_arg = str(args.ref_maps).replace('###','\$tasknum')
-hap_arg = str(args.ref_haps).replace('###','\$tasknum')
-leg_arg = str(args.ref_legs).replace('###','\$tasknum')
-samp_arg = str(args.ref_samps).replace('###','\$tasknum')
+chrstem = str(args.bfile)+'.hg19.ch.fl.chr{task}'
+outstem = str(outdot)+'.chr{task}'
+map_arg = str(args.ref_maps).replace('###','{task}')
+hap_arg = str(args.ref_haps).replace('###','{task}')
+leg_arg = str(args.ref_legs).replace('###','{task}')
+samp_arg = str(args.ref_samps).replace('###','{task}')
 
 shape_call = [shapeit_ex,
               '--input-bed', chrstem+'.bed', chrstem+'.bim', chrstem+'.fam',
@@ -308,23 +316,21 @@ shape_call = [shapeit_ex,
 
 print ' '.join(shape_call)+'\n'
 
+# setup naming from task index
+configs = read_conf(os.environ['HOME']+'/picopili.conf')
+clust_confdir = os.path.dirname(str(rp_bin))+'/cluster_templates/'
+clust_conf = read_conf(clust_confdir+str(configs['cluster']+'.conf'))
+task_id = str(clust_conf['log_task_id'])
 
-uger_call = ' '.join(['qsub',
-                      '-q','long',
-                      '-N', 'shape.'+str(outdot),
-                      '-l', 'm_mem_free='+str(args.mem_req)+'g,h_vmem='+str(args.mem_req)+'g',
-                      '-pe','smp',str(args.threads),
-                      '-t', '1-22',
-                      '-o', '\'shape.'+str(outdot)+'.chr$TASK_ID.qsub.log\'',
-                      str(rp_bin)+'/uger_array.sub.sh',
-                      str(args.sleep),
-                      ' '.join(shape_call)])
-
-print uger_call
-subprocess.check_call(uger_call, shell=True)
-
-
-
+# submit
+jobres = send_job(jobname='shape.'+str(outdot),
+                  cmd=' '.join(shape_call),
+                  logname='shape.'+str(outdot)+'.chr'+task_id+'.sub.log',
+                  mem=int(args.mem_req)*1000,
+                  walltime=30,
+                  njobs=22,
+                  threads=int(args.threads),
+                  sleep=str(args.sleep))
 
 
 ###
@@ -338,21 +344,17 @@ if args.full_pipe:
     os.chdir(wd)
     next_call = str(rp_bin) + '/imp2_rel.py '+' '.join(sys.argv[1:])
 
-    # TODO: consider queue/mem for agg
-    imp_log = 'imp_chunks.'+str(outdot)+'.qsub.log'
-    uger_imp = ' '.join(['qsub',
-                            '-hold_jid','shape.'+str(outdot),
-                            '-q', 'short',
-                            '-l', 'm_mem_free=8g,h_vmem=8g',
-                            '-N', 'imp.chunks.'+str(outdot),
-                            '-o', imp_log,
-                            str(rp_bin)+'/uger.sub.sh',
-                            str(args.sleep),
-                            next_call])
-    
-    print uger_imp + '\n'
-    subprocess.check_call(uger_imp, shell=True)
+    imp_log = 'imp_chunks.'+str(outdot)+'.sub.log'
 
+    # TODO: consider queue/mem
+    send_job(jobname='imp.chunks.'+str(outdot),
+             cmd=next_call,
+             logname=imp_log,
+             mem=8000,
+             walltime=2,
+             wait_name='shape.'+str(outdot),
+             wait_num=str(jobres).strip(),
+             sleep=str(args.sleep))
 
 
 
