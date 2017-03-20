@@ -35,11 +35,9 @@ if not (('-h' in sys.argv) or ('--help' in sys.argv)):
 #############
 
 import os
-# import subprocess
 import argparse
 import copy
-# from glob import glob
-from args_chunks import *
+from args_chunks import parserbase, parsersnpchunk
 from py_helpers import unbuffer_stdout, file_len, warn_format
 unbuffer_stdout()
 import warnings

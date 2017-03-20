@@ -35,14 +35,9 @@ import os
 import subprocess
 import argparse
 import re
-# from string import ascii_uppercase
-# from glob import glob
-# from numpy import digitize
-# import random
 import warnings
-from args_ped import *
+from args_ped import parserbase, parseribd, parserexloc
 from py_helpers import unbuffer_stdout, test_exec
-# file_len, read_conf, find_from_path, link, gz_confirm
 unbuffer_stdout()
 
 

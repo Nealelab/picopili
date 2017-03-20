@@ -39,10 +39,8 @@ if not (('-h' in sys.argv) or ('--help' in sys.argv)):
 import os
 import subprocess
 import argparse
-# from glob import glob
-from args_gwas import *
-from py_helpers import unbuffer_stdout, test_exec
-# , read_conf, link
+from args_gwas import parserbase,parsergwas,parsersoft
+from py_helpers import unbuffer_stdout, test_exec, find_exec
 unbuffer_stdout()
 
 #############
@@ -93,21 +91,16 @@ print '\nSoftware Settings:'
 print '--rplink-ex '+str(args.rplink_ex)
 
 
-##############
-#print '\n...Reading ricopili config file...'
-##############
-#
-#### read plink loc from config
-#conf_file = os.environ['HOME']+"/ricopili.conf"
-#configs = read_conf(conf_file)
-
 
 #############
 print '\n...Checking dependencies...'
 # check exists, executable
 #############
 
-# verify executables
+# R-compatible plink
+if args.rplink_ex is None or args.rplink_ex == "None":
+    args.rplink_ex = find_exec('plink',key='rplloc')
+
 test_exec(args.rplink_ex, 'Plink')
 
 # verify bfiles are files, not paths

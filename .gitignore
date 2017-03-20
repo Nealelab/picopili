@@ -1,8 +1,11 @@
 bin/py_helpers.pyc
+bin/blueprint.pyc
 bin/args_pca.pyc
 bin/args_ped.pyc
 bin/args_qc.pyc
 bin/args_gwas.pyc
 bin/args_chunks.pyc
 bin/args_impute.pyc
-
+bin/test_debug
+lib/plague*
+lib/buigue*

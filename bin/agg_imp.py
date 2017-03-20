@@ -16,9 +16,6 @@ Aggregate best-guess calls and info scores
 # 
 ####################################
 
-# TODO: enable failed chunk check
-
-
 
 import sys
 #############
@@ -29,10 +26,11 @@ if not (('-h' in sys.argv) or ('--help' in sys.argv)):
 ### load requirements
 import os
 import subprocess
-from args_impute import *
-from py_helpers import unbuffer_stdout, read_conf, file_len #, file_tail, link, warn_format
+import argparse
+from args_impute import parserbase, parsercluster, parserjob
+from py_helpers import unbuffer_stdout, find_exec, file_len
+from blueprint import send_job, load_job, save_job, read_clust_conf
 unbuffer_stdout()
-# warnings.formatwarning = warn_format
 
 #############
 if not (('-h' in sys.argv) or ('--help' in sys.argv)):
@@ -41,7 +39,7 @@ if not (('-h' in sys.argv) or ('--help' in sys.argv)):
 parser = argparse.ArgumentParser(prog='agg_imp.py',
                                  formatter_class=lambda prog:
                                  argparse.ArgumentDefaultsHelpFormatter(prog, max_help_position=40),
-                                 parents=[parserbase, parsercluster])
+                                 parents=[parserbase, parsercluster, parserjob])
                     
 args, extra_args = parser.parse_known_args()
 
@@ -73,30 +71,16 @@ else:
 
 
 
-
-
-
-#############
-print '\n...Reading ricopili config file...'
-#############
-
-### read plink loc from config
-conf_file = os.environ['HOME']+"/ricopili.conf"
-configs = read_conf(conf_file)
-
-plink_ex = configs['p2loc']+"plink"
-
-# get directory containing current script
-# (to get absolute path for scripts)
-rp_bin = os.path.dirname(os.path.realpath(__file__))
-
-
 #############
 print '\n...Checking dependencies...'
 #############
 
+plink_ex = find_exec('plink', key='p2loc')
 
-
+# get directory containing current script
+# (to get absolute path for scripts)
+rp_bin = os.path.dirname(os.path.realpath(__file__))
+clust_conf = read_clust_conf()
 
 # TODO: here
 
@@ -180,49 +164,76 @@ if len(mis_chunks) > 0:
     
     print 'List of missing chunks: %s' % tmp_chunk_file.name
     
+    ###
     # copy original submit script
-    # replace chunk list, name, number of tasks
-    orig_uger_file = open(str(outdot)+'.bg_chunks.sub.sh', 'r')
-    new_uger_file = open(str(outdot)+'.bg_chunks.resub_'+ str(nummiss)+'_chunks.sub.sh', 'w')
-    
-    for line in orig_uger_file:
-        if '#$ -t ' in line:
-            new_uger_file.write('#$ -t 1-'+str(nummiss)+'\n')
-        elif '#$ -l m_mem_free' in line:
-	    new_uger_file.write('#$ -l m_mem_free=8g,h_vmem=8g \n')     
-        elif '#$ -q short' in line:
-	    new_uger_file.write('#$ -q long \n')
-        else:
-            line=line.replace(chunk_file_name, tmp_chunk_file_name)
-            line=line.replace('.$TASK_ID.','.tmp'+str(nummiss)+'.$TASK_ID.')
-            line=line.replace('#$ -N bg.chunks.'+str(outdot), '#$ -N bg.chunks.'+str(outdot)+'.resub_'+str(nummiss))
-            new_uger_file.write(line)
-            
-    orig_uger_file.close()
-    new_uger_file.close()
+    # replace chunk list, name, number of tasks, memory spec
+    # resubmit
+    ###
 
-    print ' '.join(['qsub',new_uger_file.name]) + '\n'
-    subprocess.check_call(' '.join(['qsub',new_uger_file.name]), shell=True)
+    # load pickle of job info
+    orig_job_conf = 'bg.chunks.'+str(outdot)+'.pkl'
+    
+    if not os.path.isfile(orig_job_conf):
+        orig_job_file = str(outdot)+'.bg_chunks.sub.sh'
+        raise IOError("Unable to find previous job configuration pickle %s.\
+            \nRefer to previous submit script %s to modify/resubmit.\n" % (str(orig_job_conf),str(orig_job_file)))
+
+    
+    cmd_templ, job_dict, sendjob_dict = load_job(orig_job_conf)
+
+    # rename resub
+    sendjob_dict['jobname'] = 'bg.chunks.'+str(outdot)+'.resub_'+str(nummiss)
+    
+    sendjob_dict['logname'] = str('bg.chunks.'+str(outdot)+'.resub_'+str(nummiss)+'.'+str(clust_conf['log_task_id'])+'.sub.log')
+
+    # increase memory and walltime
+    # TODO: consider how to scale mem/time here
+    oldmem = sendjob_dict['mem']
+    sendjob_dict['mem'] = int(oldmem) + 4000
+
+    oldtime = sendjob_dict['walltime']
+    sendjob_dict['walltime'] = int(oldtime)*4
+    
+    # replace chunk file and set number of new jobs
+    sendjob_dict['njobs'] = int(nummiss)
+
+    job_dict['cfile'] = tmp_chunk_file_name
+    
+    
+    # re-save new settings (primarily to track updating mem and walltime)
+    save_job(jfile=orig_job_conf, cmd_templ=cmd_templ, job_dict=job_dict, sendjob_dict=sendjob_dict)
+
+    
+    # submit
+    bg_cmd = cmd_templ.format(**job_dict)
+
+    jobres = send_job(jobname=sendjob_dict['jobname'],
+	              cmd=bg_cmd,
+	              logname=sendjob_dict['logname'],
+	              mem=sendjob_dict['mem'],
+	              walltime=sendjob_dict['walltime'],
+	              njobs=sendjob_dict['njobs'],
+	              sleep=sendjob_dict['sleep'],
+		      forcearray=True)
+        
     print 'Best-guess jobs resubmitted for %d chunks.\n' % nummiss
+    
     
     
     print '\n...Replacing this aggregation job in the queue...'
 
-    # TODO: consider queue/mem for agg
     os.chdir(wd)
-    agg_log = 'agg_imp.'+str(outdot)+'.resub_'+str(nummiss)+'.qsub.log'
-    uger_agg = ' '.join(['qsub',
-                            '-hold_jid','bg.chunks.'+str(outdot)+'.resub_'+str(nummiss),
-                            '-q', 'long',
-                            '-l', 'm_mem_free=8g,h_vmem=8g',
-                            '-N', 'agg.imp.'+str(outdot),
-                            '-o', agg_log,
-                            str(rp_bin)+'/uger.sub.sh',
-                            str(args.sleep),
-                            ' '.join(sys.argv[:])])
-    
-    print uger_agg + '\n'
-    subprocess.check_call(uger_agg, shell=True)
+    agg_log = 'agg_imp.'+str(outdot)+'.resub_'+str(nummiss)+'.sub.log'
+
+    # TODO: consider queue/mem for agg
+    send_job(jobname='agg.imp.'+str(outdot),
+             cmd=' '.join(sys.argv[:]),
+             logname=agg_log,
+             mem=8000,
+             walltime=30,
+             wait_name='bg.chunks.'+str(outdot)+'.resub_'+str(nummiss),
+             wait_num=str(jobres).strip(),
+             sleep=args.sleep)
 
     print '\n############'
     print '\n'

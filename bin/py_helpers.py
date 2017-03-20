@@ -40,14 +40,16 @@ def file_tail(fname, n=1):
     return str(result)
 
 
-# read ricopili config file as dict    
+# read picopili config file as dict    
 def read_conf(fname):
     
     configs = {}
     
     with open(fname, 'r') as f:
         for line in f:
-            (key, val) = line.split()
+            # strips '#' comments at end of line
+            # otherwise allows aribtrary content (spaces, etc)
+            (key,val) = line.split('#',1)[0].rstrip().split(None,1)
             configs[str(key)] = val  
     
     return configs
@@ -74,6 +76,34 @@ def find_from_path(fname, name):
     else:
         print "%s found: %s" % (str(name), str(file_ex))
         return file_ex
+
+
+
+# find executables from either config or path
+def find_exec(prog, key=None):
+
+    if key is not None:    
+        import os
+        conffile = os.environ['HOME']+'/picopili.conf'
+        
+        if os.path.isfile(conffile):
+            configs = read_conf(conffile)
+            
+            if str(key) in configs:
+                exloc = configs[str(key)]+'/'+str(prog)
+                test_exec(exloc,str(prog))
+                return(exloc)
+                
+            else:
+                print "Config file %s is missing extry %s for %s. Will search on path." % (str(conffile),str(key),str(prog))
+            
+        else:
+            print "Failed to find config file %s. Will search for %s on path." % (str(conffile), str(prog))
+            
+        exloc = find_from_path(str(prog),str(prog))
+        test_exec(exloc,str(prog))
+        return exloc
+
 
 
 # symlink fromfile to tofile and verify
@@ -125,13 +155,20 @@ def pp_send_mail(subj, fname):
         import os
         import subprocess
         
+        # get mail address from config file
+        configs = read_conf(os.environ['HOME']+"/picopili.conf")        
+        addr = configs['email']
+        
+        # don't send email 
+        if addr is None or '@' not in str(addr):
+            print "Email turned off based on config file entry (%s)." % str(addr)
+            return 0
+        
         # get email script
         email_script = pp_find_mail()
         if email_script == None:
             raise IOError("Unable to find 'mutt' or 'mail' in path to send email")
-        
-        # get mail address from config file
-        configs = read_conf(os.environ['HOME']+"/ricopili.conf")
+
 
         # verify file before send
         if not os.path.isfile(fname):

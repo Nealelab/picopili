@@ -35,8 +35,8 @@ import os
 import subprocess
 import argparse
 from glob import glob
-from py_helpers import read_conf, unbuffer_stdout, test_exec, find_from_path
-from args_pca import *
+from py_helpers import find_exec, unbuffer_stdout, test_exec
+from args_pca import parserbase, parserpca
 unbuffer_stdout()
 
 #############
@@ -83,31 +83,28 @@ print '--rel-th '+str(args.rel_th)
 print '--npcs '+str(args.npcs)
 
 
- 
-#############
-print '\n...Reading ricopili config file...'
-#############
-
-### read plink loc from config
-# not getting R here since ricopili.conf currently relies on platform info
-conf_file = os.environ['HOME']+"/ricopili.conf"
-configs = read_conf(conf_file)
-
-plinkx = configs['p2loc']+"plink"
-smartpcax = configs['eloc']+"/smartpca"
-
 
 #############
 print '\n...Checking dependencies...'
 # check exists, executable
 #############
 
-# find required files
+# from config
+plinkx = find_exec('plink',key='p2loc')
+smartpcax = find_exec('smartpca',key='eloc')
+
+
+# if unspecified
 if args.rscript_ex == None or args.rscript_ex == "None":
-    args.rscript_ex = find_from_path("Rscript", 'Rscript')
+    args.rscript_ex = find_exec("Rscript", key='rscloc')
+    
+if args.primus_ex == None or args.primus_ex == "None":
+    args.primus_ex = find_exec("run_PRIMUS.pl", key='priloc')
 
-Rplotpcax = find_from_path("plot_pca.Rscript", 'PCA plotting script')
-
+# get directory containing current script
+# (to get absolute path for scripts)
+rp_bin = os.path.dirname(os.path.realpath(__file__))
+Rplotpcax = str(rp_bin)+'/plot_pca.Rscript'
 
 # test executables
 test_exec(args.primus_ex, 'PRIMUS')
@@ -241,6 +238,9 @@ pedind = open(str(args.bfile)+'.pca.pedind', 'w')
 # init dict for converting back
 id_dict = {}
 
+# track sex to add to pca output
+sex_dict = {}
+
 # process fam file by line
 bfile_fam = open(str(args.bfile+'.fam'), 'r')
 idnum=0
@@ -268,6 +268,7 @@ for line in bfile_fam:
     
     # record id pair in dict for converting back
     id_dict[pca_id] = bfile_id
+    sex_dict[pca_id] = sex
 
 pedind.close()
 id_conv.close()
@@ -331,7 +332,7 @@ pc_out = open(str(args.out+'.pca.txt'), 'w')
 
 # init header
 # ouput is FID, IID, PCs 1-npcs; all space sep.
-pc_out.write('FID IID ' + ' '.join( [str('PC'+str(i)) for i in xrange(1,args.npcs+1)] ) + '\n')
+pc_out.write('FID IID ' + ' '.join( [str('PC'+str(i)) for i in xrange(1,args.npcs+1)] ) + ' SEX\n')
 
 # read in smartpca output, strip header, convert back fid:iid, remove pop designation
 with open(str(args.bfile+'.pca.raw.txt'), 'r') as evec:
@@ -347,12 +348,15 @@ with open(str(args.bfile+'.pca.raw.txt'), 'r') as evec:
         matched_id = id_dict[pc_in[0]]
         out_id = matched_id.split(':')
         
+        # get sex
+        matched_sex = str(sex_dict[pc_in[0]])
+        
         # verify nothing weird with resulting match
         if len(out_id) != 2:
             raise ValueError("Problem parsing fid:iid for %r, check %s?" % (pc_in[0], str(args.bfile+'.pca.pedind.ids.txt')))
         
         # print
-        pc_out.write( out_id[0] +' '+ out_id[1] +' '+ ' '.join(pc_in[1:(int(args.npcs)+1) ]) + '\n' )
+        pc_out.write( out_id[0] +' '+ out_id[1] +' '+ ' '.join(pc_in[1:(int(args.npcs)+1) ]) +' '+ matched_sex + '\n' )
 
 pc_out.close()
 
@@ -462,7 +466,7 @@ if not args.no_cleanup:
     subprocess.check_call(["tar", "-zcvf",
                            args.out + '.pca_files.tar.gz',
                            args.bfile + '.pca.par',
-                           args.bfile + '.pca.eval.txt',
+#                           args.bfile + '.pca.eval.txt',
                            args.bfile + '.pca.snpw.txt',
                            args.bfile + '.pca.raw.txt',
                            args.bfile + '.pca.refpoplist.txt',
@@ -473,7 +477,7 @@ if not args.no_cleanup:
     # remove successfully zipped files
     subprocess.check_call(["rm",
                            args.bfile + '.pca.par',
-                           args.bfile + '.pca.eval.txt',
+#                           args.bfile + '.pca.eval.txt',
                            args.bfile + '.pca.snpw.txt',
                            args.bfile + '.pca.raw.txt',
                            args.bfile + '.pca.refpoplist.txt',

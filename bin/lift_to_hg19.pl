@@ -12,6 +12,8 @@ use strict;
 #
 #                                  01/14/10
 #
+#          Adapted for Picopili by Raymond Walters, rwalters(at)broadinstitute.org
+#
 #
 #
 #    lifts a plink binary from hg18 to hg19
@@ -28,40 +30,27 @@ use strict;
 #awk '{print $4,$2}' liftes > liftes.new
 #/fg/debakkerscratch/ripke/plink/1.08/src/plink --bfile ../cmc2_051310.8_toimpute --update-map liftes.new --make-bed
 
+#############################
+# load utility functions
+#############################
+
+use FindBin;
+use lib "$FindBin::Bin";
+use rp_perl::Utils qw(trans);
 
 
 #############################
 # read config file
 #############################
 
-#print "host: ".$ENV{HOST}."\n";
-#exit;
-my $conf_file = $ENV{HOME}."/ricopili.conf";
-my %conf = ();
-
-die $!."($conf_file)" unless open FILE, "< $conf_file";
-while (my $line = <FILE>){
-    my @cells = split /\s+/, $line;
-    $conf{$cells[0]} = $cells[1];
-}
-close FILE;
-
-sub trans {
-    my ($expr)=@_;
-    unless (exists $conf{$expr}) {
-	die "config file without entry: $expr\n";
-    }
-    $conf{$expr};
-}
-
 my $ploc = &trans("p2loc");
 my $liloc = &trans("liloc");
 
-if ($ENV{SYS_TYPE} =~ /redhat_6/) {
-    print "running on gold\n";
-    $liloc .= "64bit/";
-    print "using $liloc\n";
-}
+# if ($ENV{SYS_TYPE} =~ /redhat_6/) {
+#     print "running on gold\n";
+#     $liloc .= "64bit/";
+#     print "using $liloc\n";
+# }
 #exit;
 
 #######################################
@@ -96,8 +85,6 @@ version: $version
 
   here a seletion of lilofiles:
   $liloc
-
- created by Stephan Ripke 2010: sripke\@broadinstitute.org
 
 ";
 

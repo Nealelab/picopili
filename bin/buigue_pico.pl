@@ -1,48 +1,46 @@
 #!/usr/bin/env perl
 use strict;
 
+#############################
+# load utility functions
+#############################
+
+use File::Basename;
+use FindBin;
+use lib "$FindBin::Bin";
+use Cwd 'abs_path';
+use rp_perl::Utils qw(trans);
+
+
 my $version = "1.0.0";
 my $progname = $0;
 $progname =~ s!^.*/!!;
 
+my $picodir = dirname(dirname(abs_path($0)));
 
 #############################
 # read config file
 #############################
 
-my $conf_file = $ENV{HOME}."/ricopili.conf";
-my %conf = ();
-
-die $!."($conf_file)" unless open FILE, "< $conf_file";
-while (my $line = <FILE>){
-    my @cells = split /\s+/, $line;
-    $conf{$cells[0]} = $cells[1];
-}
-close FILE;
-
-sub trans {
-    my ($expr)=@_;
-    unless (exists $conf{$expr}) {
-	die "config file without entry: $expr\n";
-    }
-    $conf{$expr};
-}
-
 my $liloc = &trans("liloc");
+my $liref = "$picodir/lib/buigue";
 
-
-
+my $perlpack;
+BEGIN {
+	$perlpack = &trans("perlpack");
+}
+use lib $perlpack;
 
 #####################################################
-use lib $ENV{rp_perlpackages};
+# use lib $ENV{rp_perlpackages};
 
 
 
 my @bu_files;
-push @bu_files, "$liloc/snp.txt.pos.scz49.gz";
-push @bu_files, "$liloc/snp125.txt.pos.scz49.gz";
-push @bu_files, "$liloc/snp130.txt.pos.scz49.gz";
-push @bu_files, "$liloc/snp138.txt.pos.scz49.gz";
+push @bu_files, "$liref/snp.txt.pos.scz49.gz";
+push @bu_files, "$liref/snp125.txt.pos.scz49.gz";
+push @bu_files, "$liref/snp130.txt.pos.scz49.gz";
+push @bu_files, "$liref/snp138.txt.pos.scz49.gz";
 
 my @li_files;
 push @li_files, "$liloc/hg16ToHg19.over.chain.gz";
@@ -68,7 +66,7 @@ version: $version
  guesses the build of a bim file out of ucsc snp file
 
   find here the helping files:
-    $liloc
+    $liref
 
  created by Stephan Ripke 2014 at MGH, Boston, MA
  in the frame of the PGC

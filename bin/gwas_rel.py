@@ -26,8 +26,10 @@ import argparse
 import subprocess
 import os
 from warnings import warn
-from args_gwas import *
-from py_helpers import link, unbuffer_stdout, read_conf, find_from_path
+from textwrap import dedent
+from args_gwas import parserbase, parsergwas, parserchunk, parseragg, parsersoft
+from py_helpers import link, unbuffer_stdout, find_exec, read_conf
+from blueprint import send_job, read_clust_conf, init_sendjob_dict, save_job
 unbuffer_stdout()
 
 
@@ -130,28 +132,24 @@ if int(args.snp_chunk) % 100 == 0:
 
 
 #############
-print '\n...Reading ricopili config file...'
-#############
-
-### read plink loc from config
-conf_file = os.environ['HOME']+"/ricopili.conf"
-configs = read_conf(conf_file)
-
-plinkx = configs['p2loc']+"plink"
-
-if args.model == 'gmmat' or args.model == 'gmmat-fam':
-    if args.rscript_ex == None or args.rscript_ex == "None":
-        args.rscript_ex = find_from_path('Rscript', 'Rscript')
-
-
-#############
 print '\n...Checking dependencies...'
 #############
 
+plinkx = find_exec('plink',key='p2loc')
 
+if args.model == 'gmmat' or args.model == 'gmmat-fam':
+    if args.rscript_ex == None or args.rscript_ex == "None":
+        args.rscript_ex = find_exec('Rscript', key='rscloc')
+
+# get cluster configuration
+# needed for specifying logfile names with clust_conf['log_task_id']
+conf_file = os.environ['HOME']+"/picopili.conf"
+configs = read_conf(conf_file)
+cluster = configs['cluster']
+clust_conf = read_clust_conf()
 
 # TODO: here
-
+# TODO: move to before logging
 
 
 
@@ -398,36 +396,28 @@ if args.model == 'gmmat' or args.model == 'gmmat-fam':
 
 ######################
 print '\n...Submitting GWAS for all chunks...'
+# TODO: consider making queue/resources flexible
 ######################
 
-# gwas each chunk
-# need to write submit script to include chunk name parsing
-# TODO: consider making queue/resources flexible
-
+# basic template, depending on model
+# cbopen/cbclose are placeholders for real curly braces, 
+#     to survive .format() here and in send_job
 if args.model == 'gee' or args.model == 'dfam':
-    uger_gwas_template = """#!/usr/bin/env sh
-#$ -j y
-#$ -cwd
-#$ -V
-#$ -N {jname}
-#$ -q short
-#$ -l m_mem_free=4g,h_vmem=4g
-#$ -t 1-{nchunk}
-#$ -tc 200
-#$ -o {outlog}
+    gwas_templ = dedent("""\
+    cname=`awk -v a={task} 'NR==a+1{cbopen}print $4{cbclose}' {cfile}`
+    {misc}
+    {gwas_ex} --bfile {bfile} --out {argout} --extract {outdot}.snps.${cbopen}cname{cbclose}.txt {optargs}    
+    """)
 
-source /broad/software/scripts/useuse
-reuse -q Anaconda
-sleep {sleep}
+elif args.model == 'gmmat' or args.model == 'gmmat-fam':
+    gwas_templ = dedent("""\
+    cname=`awk -v a={task} 'NR==a+1{cbopen}print $4{cbclose}' {cfile}`
+    chrnum=`awk -v a={task} 'NR==a+1{cbopen}print $1{cbclose}' {cfile}`
 
-cname=`awk -v a=${{SGE_TASK_ID}} 'NR==a+1{{print $4}}' {cfile}`
+    {plinkx} --bfile {bfile} --extract {outdot}.snps.${cbopen}cname{cbclose}.txt {optargs} --make-bed --out {outdot}.${cbopen}cname{cbclose}
 
-{misc}
-
-{gwas_ex} --bfile {bfile} --out {argout} --extract {outdot}.snps.${{cname}}.txt {optargs}
-
-# eof
-"""
+    {rsc} --no-save --no-restore {gwas_ex} {outdot}.${cbopen}cname{cbclose} grm.{outdot}.loco_chr${cbopen}chrnum{cbclose}.rel.gz {covarsub} {outdot}.${cbopen}cname{cbclose} > {outdot}.${cbopen}cname{cbclose}.gmmat.R.log
+    """)
 
 # alternative template for GMMAT
 # Rscript --no-save --no-restore 
@@ -437,34 +427,10 @@ cname=`awk -v a=${{SGE_TASK_ID}} 'NR==a+1{{print $4}}' {cfile}`
 # ../fgwa_eur_1KGp3_postimp.pca.txt     (covariate file)
 # test1                                 (output name)
 # > test_gmm.log
-elif args.model == 'gmmat' or args.model == 'gmmat-fam':
-    uger_gwas_template = """#!/usr/bin/env sh
-#$ -j y
-#$ -cwd
-#$ -V
-#$ -N {jname}
-#$ -q short
-#$ -l m_mem_free=4gi,h_vmem=4g
-#$ -t 1-{nchunk}
-#$ -tc 200
-#$ -o {outlog}
-
-source /broad/software/scripts/useuse
-sleep {sleep}
-
-cname=`awk -v a=${{SGE_TASK_ID}} 'NR==a+1{{print $4}}' {cfile}`
-chrnum=`awk -v a=${{SGE_TASK_ID}} 'NR==a+1{{print $1}}' {cfile}`
-
-{plinkx} --bfile {bfile} --extract {outdot}.snps.${{cname}}.txt {optargs} --make-bed --out {outdot}.${{cname}}
-
-{rsc} --no-save --no-restore {gwas_ex} {outdot}.${{cname}} grm.{outdot}.loco_chr${{chrnum}}.rel.gz {covarsub} {outdot}.${{cname}} > {outdot}.${{cname}}.gmmat.R.log
-
-# eof
-"""
 
 
+# optional arguments
 gwasargs = ''
-
 if args.pheno is not None:
     gwasargs = gwasargs + ' --pheno '+str(args.pheno)
 if args.keep is not None:
@@ -472,12 +438,12 @@ if args.keep is not None:
 if args.remove is not None:
     gwasargs = gwasargs + ' --remove '+str(args.remove)
 
-# these args not passed for gmmat
+# model-specific arguments not passed for gmmat
 if args.model == 'gee' or args.model == 'dfam':
     if args.addout is not None:
-        gwasargs = gwasargs + ' --addout '+str(args.addout)+'.${cname}'
+        gwasargs = gwasargs + ' --addout '+str(args.addout)+'.${{cname}}'
     else:
-        gwasargs = gwasargs + ' --addout ${cname}'
+        gwasargs = gwasargs + ' --addout ${{cname}}'
     if args.covar is not None:
         gwasargs = gwasargs + ' --covar '+str(args.covar)
     if args.covar_number is not None:
@@ -485,16 +451,22 @@ if args.model == 'gee' or args.model == 'dfam':
 
     gwasargs = gwasargs + ' --r-ex '+str(args.r_ex)+' --rplink-ex '+str(args.rplink_ex)
 
+# model specific arguments for gee to specify Rserve port for each job
+# targeting IANA range 49152-65535 
+# (assuming here will be < 16k jobs; gwas_gee.py handles overflow check)  
+if args.model == 'gee':
+    misc_txt = 'rport=$((49151+{task}))'
+    gwasargs = str(gwasargs) +' --port $rport'
+else:
+    misc_txt = ''
+
 # TODO: pass through cleanup
 
-    
-nchunk = len(chunks.keys())
-jobdict = {"jname": 'gwas.chunks.'+str(outdot),
-           "nchunk": str(nchunk),
-           "outlog": str('gwas.chunks.'+str(outdot)+'.$TASK_ID.qsub.log'),
-           "sleep": str(args.sleep),
+
+# fill in template
+jobdict = {"task": "{task}",
            "cfile": chunk_file.name,
-           "misc": '',
+           "misc": str(misc_txt),
            "gwas_ex": str(gwas_ex),
            "bfile": str(args.bfile),
            "argout": str(args.out),
@@ -502,23 +474,41 @@ jobdict = {"jname": 'gwas.chunks.'+str(outdot),
            "optargs": str(gwasargs),
            "plinkx": str(plinkx),
            "covarsub": str(args.covar)+'.sub.txt',
-           "rsc": str(args.rscript_ex)
+           "rsc": str(args.rscript_ex),
+	   "cbopen":'{{',
+	   "cbclose":'}}',
            }
 
-# for gee, need to specify Rserve port for each job
-# targeting IANA range 49152-65535 
-# (assuming here will be < 16k jobs; gwas_gee.py handles overflow check)           
-if args.model == 'gee':
-    jobdict['misc'] = 'rport=$((49151+SGE_TASK_ID))'
-    jobdict['optargs'] = str(gwasargs) +' --port $rport'
+nchunk = len(chunks.keys())
 
 
-uger_gwas = open(str(outdot)+'.gwas_chunks.sub.sh', 'w')
-uger_gwas.write(uger_gwas_template.format(**jobdict))
-uger_gwas.close()
+# store job information for possible resubs
+job_store_file = 'gwas.chunks.'+str(outdot)+'.pkl'
 
-print ' '.join(['qsub',uger_gwas.name]) + '\n'
-subprocess.check_call(' '.join(['qsub',uger_gwas.name]), shell=True)
+clust_dict = init_sendjob_dict()
+clust_dict['jobname'] = 'gwas.chunks.'+str(outdot)
+clust_dict['logname'] = str('gwas.chunks.'+str(outdot)+'.'+str(clust_conf['log_task_id'])+'.sub.log')
+clust_dict['mem'] = 4000
+clust_dict['walltime'] = 2
+clust_dict['njobs'] = int(nchunk)
+clust_dict['maxpar'] = 200
+clust_dict['sleep'] = args.sleep
+
+save_job(jfile=job_store_file, cmd_templ=gwas_templ, job_dict=jobdict, sendjob_dict=clust_dict)
+
+
+# submit job
+gwas_cmd = gwas_templ.format(**jobdict)
+
+jobres = send_job(jobname='gwas.chunks.'+str(outdot),
+         	  cmd=gwas_cmd,
+	          logname=str('gwas.chunks.'+str(outdot)+'.'+str(clust_conf['log_task_id'])+'.sub.log'),
+	          mem=4000,
+	          walltime=2,
+	          njobs=int(nchunk),
+	          maxpar=200,
+	          sleep=args.sleep)
+
 print 'GWAS jobs submitted for %d chunks.\n' % nchunk
 
 
@@ -559,7 +549,7 @@ if args.info_file is not None and str(args.info_file) != "None":
 else:
     info_file_txt = ['','','','']
 
-agg_log = 'agg.'+str(outdot)+'.qsub.log'
+agg_log = 'agg.'+str(outdot)+'.sub.log'
 agg_call = [str(rp_bin)+'/agg_gwas.py',
             '--bfile',str(args.bfile),
             '--out',str(args.out),
@@ -574,19 +564,15 @@ agg_call = [str(rp_bin)+'/agg_gwas.py',
             '--model',str(args.model)]
 agg_call = filter(None,agg_call)
 
-uger_agg = ' '.join(['qsub',
-                        '-hold_jid','gwas.chunks.'+str(outdot),
-                        '-q', 'long',
-                        '-l', 'm_mem_free=4g,h_vmem=4g',
-                        '-N', 'agg_'+str(outdot),
-                        '-o', agg_log,
-                        str(rp_bin)+'/uger.sub.sh',
-                        str(args.sleep),
-                        ' '.join(agg_call)])
 
-print uger_agg + '\n'
-subprocess.check_call(uger_agg, shell=True)
-
+send_job(jobname='agg_'+str(outdot),
+         cmd=' '.join(agg_call),
+         logname=agg_log,
+         mem=8000,
+         walltime=30,
+         wait_name='gwas.chunks.'+str(outdot),
+         wait_num=str(jobres).strip(),
+         sleep=args.sleep)
 
 # TODO:
 # queue summarization script (plots, etc)
@@ -601,11 +587,4 @@ print 'SUCCESS!'
 print 'All jobs submitted.\n'
 exit(0)
 
-#uger_chunk = ' '.join(['qsub',
-#                        '-hold_jid',str(name),
-#                        '-q', 'short',
-#                        '-N', str('chunk_'+out),
-#                        '-o', chunk_log,
-#                        str(rp_bin)+'/uger.sub.sh',
-#                        str(sleep),
-#                        str(chunk_call)])
+# eof

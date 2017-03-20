@@ -36,12 +36,10 @@ import os
 import subprocess
 import argparse
 import gzip
-# from warnings import warn
-# from glob import glob
 from math import log10, sqrt
-from args_gwas import *
+from args_gwas import parserbase, parseragg
 from py_helpers import unbuffer_stdout, file_len, file_tail
-# , read_conf, link
+from blueprint import send_job, save_job, load_job, read_clust_conf
 unbuffer_stdout()
 
 
@@ -102,6 +100,9 @@ filtoutname = outdot +'.gwas.'+str(args.model)+'.p'+str(logp_int)+'_sort.txt.gz'
 # TODO: check dependencies
 
 
+# get cluster configuration
+# needed for specifying logfile names with clust_conf['log_task_id']
+clust_conf = read_clust_conf()
 
 
 
@@ -110,7 +111,9 @@ filtoutname = outdot +'.gwas.'+str(args.model)+'.p'+str(logp_int)+'_sort.txt.gz'
 
 
 
-
+###############
+print '\n...Checking for missing or incomplete chunks...'
+###############
 
 # read chunk def file
 chunks = {}
@@ -138,12 +141,15 @@ for line in chunks_in:
     
     # record chunks with no/partial/broken output
     if not os.path.isfile(ch_out):
+    	print 'Output not found for %s' % str(ch_out)
         mis_chunks[str(chname)] = [str(chrom), int(start), int(end)]
-    elif file_len(ch_out) != file_len(str(outdot)+'.snps.'+str(chname)+'.txt'):
+    elif file_len(ch_out) < file_len(str(outdot)+'.snps.'+str(chname)+'.txt'):
+    	print 'Output file %s is incomplete' % str(ch_out)
         mis_chunks[str(chname)] = [str(chrom), int(start), int(end)]
     else:
         ft = file_tail(ch_out)
         if len(ft.split()) != out_len:
+	    print 'Last line of output file %s is incomplete' % str(ch_out)
             mis_chunks[str(chname)] = [str(chrom), int(start), int(end)]
             
 
@@ -154,7 +160,7 @@ chunks_in.close()
 ###############
 if len(mis_chunks) > 0:
     nummiss = len(mis_chunks)
-    print 'Missing results for %d GWAS jobs. Preparing to resubmit...' % nummiss
+    print '\nMissing results for %d GWAS jobs. Preparing to resubmit...' % nummiss
     
     # just missing chunks for task array
     # fail if already tried
@@ -178,57 +184,78 @@ if len(mis_chunks) > 0:
     tmp_chunk_file.close()
     
     print 'List of missing chunks: %s' % tmp_chunk_file.name
-    
-    # copy original submit script
-    # replace chunk list, name, number of tasks
-    orig_uger_file = open(str(outdot)+'.gwas_chunks.sub.sh', 'r')
-    new_uger_file = open(str(outdot)+'.gwas_chunks.resub_'+ str(nummiss)+'_chunks.sub.sh', 'w')
-    
-    for line in orig_uger_file:
-        if '#$ -t ' in line:
-            new_uger_file.write('#$ -t 1-'+str(nummiss)+'\n')
-            continue
-#        elif '#$ -tc ' in line:
-#            if nummiss < 20:
-#                new_uger_file.write('#$ -tc 5 \n')
-#            elif nummiss < 50:
-#                new_uger_file.write('#$ -tc 10 \n')
-#            elif nummiss < 100:
-#                new_uger_file.write('#$ -tc 25 \n')
-#            else:
-#                new_uger_file.write('#$ -tc 40 \n')
-#            new_uger_file.write('#$ -tc 5 \n')
-        elif '#$ -l m_mem_free' in line:
-	    new_uger_file.write('#$ -l m_mem_free=24g,h_vmem=24g \n')
-        else:
-            line=line.replace(args.chunk_file, tmp_chunk_file.name)
-            line=line.replace('.$TASK_ID.','.tmp'+str(nummiss)+'.$TASK_ID.')
-            line=line.replace('#$ -N gwas.chunks.'+str(outdot), '#$ -N gwas.chunks.'+str(outdot)+'.resub_'+str(nummiss))
-            new_uger_file.write(line)
-            
-    orig_uger_file.close()
-    new_uger_file.close()
 
-    print ' '.join(['qsub',new_uger_file.name]) + '\n'
-    subprocess.check_call(' '.join(['qsub',new_uger_file.name]), shell=True)
+
+    ###
+    # copy original submit script
+    # replace chunk list, name, number of tasks, memory spec
+    # resubmit
+    ###
+
+    # load pickle of job info
+    orig_job_conf = 'gwas.chunks.'+str(outdot)+'.pkl'
+    
+    if not os.path.isfile(orig_job_conf):
+        orig_job_file = str(outdot)+'.gwas_chunks.sub.sh'
+        raise IOError("Unable to find previous job configuration pickle %s.\
+            \nRefer to previous submit script %s to modify/resubmit.\n" % (str(orig_job_conf),str(orig_job_file)))
+
+    
+    cmd_templ, job_dict, sendjob_dict = load_job(orig_job_conf)
+
+    # rename resub
+    sendjob_dict['jobname'] = 'gwas.chunks.'+str(outdot)+'.resub_'+str(nummiss)
+    
+    sendjob_dict['logname'] = str('gwas.chunks.'+str(outdot)+'.resub_'+str(nummiss)+'.'+str(clust_conf['log_task_id'])+'.sub.log')
+
+    # increase memory and walltime
+    # TODO: consider how to scale mem/time here
+    oldmem = sendjob_dict['mem']
+    sendjob_dict['mem'] = int(oldmem)*2
+
+    oldtime = sendjob_dict['walltime']
+    sendjob_dict['walltime'] = int(oldtime)*4
+    
+    # replace chunk file and set number of new jobs
+    sendjob_dict['njobs'] = int(nummiss)
+
+    job_dict['cfile'] = tmp_chunk_file_name
+    
+    
+    # re-save new settings (primarily to track updating mem and walltime)
+    save_job(jfile=orig_job_conf, cmd_templ=cmd_templ, job_dict=job_dict, sendjob_dict=sendjob_dict)
+
+    
+    # submit
+    gwas_cmd = cmd_templ.format(**job_dict)
+
+    jobres = send_job(jobname=sendjob_dict['jobname'],
+	              cmd=gwas_cmd,
+	              logname=sendjob_dict['logname'],
+	              mem=sendjob_dict['mem'],
+	              walltime=sendjob_dict['walltime'],
+	              njobs=sendjob_dict['njobs'],
+	              maxpar=sendjob_dict['maxpar'],
+	              sleep=sendjob_dict['sleep'],
+		      forcearray=True)
+        
     print 'GWAS jobs resubmitted for %d chunks.\n' % nummiss
     
     
     print '\n...Replacing this agg job in the queue...'
 
-    agg_log = 'agg.'+str(outdot)+'.resub_'+str(nummiss)+'.qsub.log'
-    uger_agg = ' '.join(['qsub',
-                            '-hold_jid','gwas.chunks.'+str(outdot)+'.resub_'+str(nummiss),
-                            '-q', 'long',
-                            '-l', 'm_mem_free=24g,h_vmem=24g',
-                            '-N', 'agg_'+str(outdot),
-                            '-o', agg_log,
-                            str(rp_bin)+'/uger.sub.sh',
-                            str(10), # hardcoded since chunks shouldn't normally need a sleep argument
-                            ' '.join(sys.argv[:])])
-    
-    print uger_agg + '\n'
-    subprocess.check_call(uger_agg, shell=True)
+    # TODO: adjust memory setting here
+
+    agg_log = 'agg.'+str(outdot)+'.resub_'+str(nummiss)+'.sub.log'
+
+    send_job(jobname='agg_'+str(outdot),
+             cmd=' '.join(sys.argv[:]),
+             logname=agg_log,
+             mem=16000,
+             walltime=30,
+             wait_name='gwas.chunks.'+str(outdot)+'.resub_'+str(nummiss),
+             wait_num=str(jobres).strip(),
+             sleep=10)
 
     print '\n############'
     print '\n'
@@ -238,6 +265,7 @@ if len(mis_chunks) > 0:
 
 ###############
 # if no missing chunks, proceed collecting info for aggregation
+print '\n...Loading auxilary information...'
 ###############
 
 # chnames = chunks.keys()
@@ -270,20 +298,27 @@ if args.model == 'gee' or args.model == 'dfam':
 	print 'bim loaded'
 
 # frq.cc
-# for both: maf_a, maf_u, n_a, n_u
+# for both: 
+# - maf_a = frq in affected (cases)
+# - maf_u = frq in unaffected (controls) 
+# - n_a = number affected (cases)
+# - n_u = number affected (controls)
+# - freq_a1 = a1 used for freq
 maf_a_info = {}
 maf_u_info = {}
 n_a_info = {}
 n_u_info = {}
+freq_a1 = {}
 
 frq = open(args.freq_file, 'r')
 dumphead = frq.readline()
 for line in frq:
     (chrom, snp, a1, a2, mafa, mafu, nchra, nchru) = line.split()
-    maf_a_info[str(snp)] = mafa
-    maf_u_info[str(snp)] = mafu
+    maf_a_info[str(snp)] = float(mafa)
+    maf_u_info[str(snp)] = float(mafu)
     n_a_info[str(snp)] = int(nchra) / 2
     n_u_info[str(snp)] = int(nchru) / 2
+    freq_a1[str(snp)] = a1
 frq.close()
 print 'frq loaded'
 
@@ -319,7 +354,9 @@ filt_head = out_head
 out_file.write('\t'.join(out_head) + '\n')
 filt_file.write('\t'.join(filt_head) + '\n')
 
-print 'starting chunk loop'
+###############
+print '\n...Aggregating GWAS results from chunks...'
+###############
 # loop chunks to aggregate
 for ch in chnames:
     # open output file
@@ -349,8 +386,13 @@ for ch in chnames:
 	    (chrom, snp, cm, bp, a1, a2, n, af2, scoretest, scorevar, p) = line.split()
 
         # get meta info
-        frqa = maf_a_info.pop(str(snp))
-        frqu = maf_u_info.pop(str(snp))
+	# verify use freq of correct allele
+	if str(freq_a1.pop(str(snp))) == str(a1):
+            frqa = float(maf_a_info.pop(str(snp)))
+            frqu = float(maf_u_info.pop(str(snp)))
+	else:
+	    frqa = 1 - float(maf_a_info.pop(str(snp)))
+	    frqu = 1 - float(maf_u_info.pop(str(snp)))
         na = n_a_info.pop(str(snp))
         nu = n_u_info.pop(str(snp))
         

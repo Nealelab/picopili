@@ -190,7 +190,7 @@ arg_exloc = parsersoft.add_argument_group('Executable Locations')
 arg_clust.add_argument('--sleep', 
                     type=int,
                     metavar='SEC',
-                    help='Number of seconds to delay on start of UGER jobs',
+                    help='Number of seconds to delay on start of cluster jobs',
                     required=False,
                     default=30)
 arg_exloc.add_argument('--r-ex',

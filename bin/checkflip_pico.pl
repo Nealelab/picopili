@@ -12,6 +12,8 @@ use strict;
 #
 #                                  01/14/10
 #
+#          Adapted for Picopili by Raymond Walters, rwalters(at)broadinstitute.org
+#
 #
 #
 #    checks alelles of a bim-file (plink-binary-dataset) with reference-info (created with refinfo)
@@ -30,7 +32,7 @@ use strict;
 
 #############################
 
-my $conf_file = $ENV{HOME}."/ricopili.conf";
+my $conf_file = $ENV{HOME}."/picopili.conf";
 my %conf = ();
 
 die $!."($conf_file)" unless open FILE, "< $conf_file";
@@ -49,8 +51,6 @@ sub trans {
 }
 
 my $sloc = &trans("sloc");
-my $hmloc = &trans("hmloc");
-#my $ploc = &trans("ploc");
 my $p2loc = &trans("p2loc");
 
 
@@ -66,10 +66,9 @@ my $da2col = 4;  ## chr-col in reference
 my $dfcol = 3;  ## chr-col in reference
 
 
-my $info_file = "HM3.info";
+my $info_file = "";
 
 my $refdir = "";
-my $lisadir = "/home/gwas/pgc-samples/hapmap_ref/";
 
 my $frq_th = .15;
 my $subdir = "flip_subdir";
@@ -83,7 +82,7 @@ Usage : $progname [options] bim-file1 bim-file2 ......
 version: $version
 
   --refdir STRING     location of reference-directory, default $refdir
-  --ploc STRING       location of plink-binary (default is found at Broad)
+  --ploc STRING       location of plink-binary (default is found from picopili.conf)
                        default: $p2loc
   --info STRING       other info-file (absolute path) -> overwrites --refdir
   --subdir STRING     subdir, to put end-dataset into, default: $subdir
@@ -103,21 +102,6 @@ version: $version
                         -> .5 +- .5 * sfh
 
 #  --replace           replace old dataset with new one
-
-
- for Broadies: the files are currently stored here (this script should be able to find them):
-  $refdir
-
-    /fg/debakkerscratch/ripke/hapmap_ref/subchr/infosum.sorted
-
-here 1KG
-  /home/radon01/sripke/bakker_ripke/hapmap_ref/impute2_ref/1KG_Mar12/ALL_1000G_phase1integrated_feb2012_impute/subchr/sumfrq.eur
-
-
-
- on Lisa, th files are found here: $lisadir
-
- created by Stephan Ripke 2010: sripke\@broadinstitute.org
 
 ";
 
@@ -139,23 +123,11 @@ GetOptions(
 
 die "$usage\n" if ($help);
 
-if ($info_file eq "HM3.info") {
-    
-    unless (-e "$refdir/$info_file") {
-	if (-e "$lisadir/$info_file"){
-	    $refdir = $lisadir;
-	}
-	else {
-	    print  "check reference dir and permissions for <$refdir/$info_file>\n";
-	    exit;
-	}
-    }
-    
-    $info_file = "$refdir/$info_file";
+if ($info_file eq "") {
+    die "$usage\n";
 }
-
 else {
-    die "couldn't find $info_file" unless (-e $info_file);
+    die "couldn't find info-file $info_file" unless (-e $info_file);
 }
 
 if ($dcolstr) {
