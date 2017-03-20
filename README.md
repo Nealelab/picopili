@@ -15,7 +15,7 @@
 * `impute_rel.py`: Imputation pipeline for related samples using SHAPEIT's `--duohmm` and IMPUTE2. Includes build check (with liftOver if needed), alignement to reference, phasing, imputation, and best-guess genotype calls with MAF/info score/mendelian error filtering.
 
 
-### Installation at Broad
+### Installation
 
 ##### 1. The following assumes:
 
