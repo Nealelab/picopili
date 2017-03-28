@@ -44,6 +44,7 @@ import argparse
 from glob import glob
 from py_helpers import file_len, find_exec, unbuffer_stdout
 from args_pca import parserbase, parserqc
+from args_qc import parsertech
 unbuffer_stdout()
 
 #############
@@ -54,7 +55,7 @@ if not (('-h' in sys.argv) or ('--help' in sys.argv)):
 parser = argparse.ArgumentParser(prog='strict_qc.py',
                                  formatter_class=lambda prog:
                                  argparse.ArgumentDefaultsHelpFormatter(prog, max_help_position=40),
-                                 parents=[parserbase, parserqc])
+                                 parents=[parserbase, parserqc, parsertech])
 
 args = parser.parse_args()
 
@@ -78,7 +79,7 @@ print '--miss-th '+str(args.miss_th)
 print '--ld-th '+str(args.ld_th)
 print '--ld_wind '+str(args.ld_wind)
 print '--all_chr '+str(args.all_chr)
-
+print '--plink-mem '+str(args.plink_mem)
 
 
 #############
@@ -136,7 +137,7 @@ subprocess.check_call([str(plinkx),
                "--missing",
                "--hardy",
                "--silent",
-               "--memory", str(2000),
+               "--memory", str(args.plink_mem),
                "--allow-no-sex",
                "--make-founders","require-2-missing",
                "--out", sumstat_out])
@@ -310,7 +311,7 @@ if args.all_chr:
                    "--exclude", snpout_nam,
                    "--make-bed",
                    "--silent",
-                   "--memory", str(2000),
+                   "--memory", str(args.plink_mem),
                    "--allow-no-sex",
                    "--out", filtered_out])
 else:
@@ -321,7 +322,7 @@ else:
                "--autosome",
                "--make-bed",
                "--silent",
-               "--memory", str(2000),
+               "--memory", str(args.plink_mem),
                "--allow-no-sex",
                "--out", filtered_out]) 
 
@@ -345,7 +346,7 @@ subprocess.check_call([str(plinkx),
                "--bfile", filtered_out,
                "--indep-pairwise", str(args.ld_wind), str(ld_move), str(args.ld_th),
                "--silent",
-               "--memory", str(2000),
+               "--memory", str(args.plink_mem),
                "--allow-no-sex",
                "--make-founders","require-2-missing",
                "--out", args.out + '.prune' + str(i) + '.tmp' ])
@@ -366,7 +367,7 @@ while nprune_old > nprune_new:
                "--extract", args.out + '.prune' + str(i-1) + '.tmp.prune.in',
                "--indep-pairwise", str(args.ld_wind), str(ld_move), str(args.ld_th),
                "--silent",
-               "--memory", str(2000),
+               "--memory", str(args.plink_mem),
                "--allow-no-sex",
                "--make-founders","require-2-missing",
                "--out", args.out + '.prune' + str(i) + '.tmp' ])
@@ -384,7 +385,7 @@ subprocess.check_call([str(plinkx),
                "--extract", args.out + '.prune' + str(i) + '.tmp.prune.in',
                "--make-bed",
                "--silent",
-               "--memory", str(2000),
+               "--memory", str(args.plink_mem),
                "--allow-no-sex",
                "--out", args.out + '.strictqc.pruned' ])
 

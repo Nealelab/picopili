@@ -214,4 +214,21 @@ arg_mendel.add_argument('--keep-mendel',
                         help='Prevents setting mendelian errors to missing')
 
 
+############
+#
+# Technical Arguments
+#
+############
+
+parsertech = argparse.ArgumentParser(add_help=False)
+arg_tech = parsertech.add_argument_group('Technical Settings')
+
+arg_tech.add_argument('--plink-mem',
+		       type=int,
+		       metavar='MB',
+		       help='Memory to use for plink calls. Default should be fine for most ' + \
+		       'datasets, may need to increase for large, imputed data.',
+		       default=2000,
+		       required=False)
+
 # eof
