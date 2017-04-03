@@ -31,7 +31,8 @@ if not (('-h' in sys.argv) or ('--help' in sys.argv)):
 import argparse
 import os
 from math import ceil
-from args_pca import parserbase, parsergrid, parserqc, parserpca, parsertech
+from args_pca import parserbase, parsergrid, parserqc, parserpca
+from args_qc import parsertech
 from py_helpers import file_len, unbuffer_stdout
 from blueprint import send_job
 unbuffer_stdout()
@@ -49,7 +50,7 @@ if not (('-h' in sys.argv) or ('--help' in sys.argv)):
 parser = argparse.ArgumentParser(prog='pca_rel.py',
                                  formatter_class=lambda prog:
                                  argparse.ArgumentDefaultsHelpFormatter(prog, max_help_position=40),
-                                 parents=[parserbase, parsergrid, parserqc, parserpca])
+                                 parents=[parserbase, parsergrid, parserqc, parserpca, parsertech])
                     
 args = parser.parse_args()
 
