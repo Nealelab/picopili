@@ -60,8 +60,10 @@ elif args.model == 'gmmat':
     gwas_ex = rp_bin+'/gmmat_logit_covar_grmonly.R'
 elif args.model == 'gmmat-fam':
     gwas_ex = rp_bin+'/gmmat_logit_covar.R'
+elif args.model == 'logistic':
+    gwas_ex = rp_bin+'/gwas_logis.py'
 else:
-    raise ValueError('Invalid \'--model\'. Must be one of \'gee\', \'dfam\', \'gmmat\', or \'gmmat-fam\'.')
+    raise ValueError('Invalid \'--model\'. Must be one of \'gee\', \'dfam\', \'gmmat\', \'gmmat-fam\', or \'logistic\'.')
 
 
 # get useful modified args
@@ -333,7 +335,7 @@ if args.model == 'gmmat' or args.model == 'gmmat-fam':
 ######################
     if args.covar is not None:
         print '\n...Preparing covariates...' 
-        # only for gmmat, plink handles covariates
+        # only for gmmat, plink handles covariates for GEE/logistic
 ######################
 
         cov_in = open(str(args.covar), 'r')
@@ -402,7 +404,7 @@ print '\n...Submitting GWAS for all chunks...'
 # basic template, depending on model
 # cbopen/cbclose are placeholders for real curly braces, 
 #     to survive .format() here and in send_job
-if args.model == 'gee' or args.model == 'dfam':
+if args.model == 'gee' or args.model == 'dfam' or args.model == 'logistic':
     gwas_templ = dedent("""\
     cname=`awk -v a={task} 'NR==a+1{cbopen}print $4{cbclose}' {cfile}`
     {misc}
@@ -439,7 +441,7 @@ if args.remove is not None:
     gwasargs = gwasargs + ' --remove '+str(args.remove)
 
 # model-specific arguments not passed for gmmat
-if args.model == 'gee' or args.model == 'dfam':
+if args.model == 'gee' or args.model == 'dfam' or args.model == 'logistic':
     if args.addout is not None:
         gwasargs = gwasargs + ' --addout '+str(args.addout)+'.${{cname}}'
     else:
@@ -449,6 +451,8 @@ if args.model == 'gee' or args.model == 'dfam':
     if args.covar_number is not None:
         gwasargs = gwasargs + ' --covar-number '+' '.join(args.covar_number)
 
+# TODO: not needed for dfam, but is currently in it's args
+if args.model == 'gee' or args.model == 'dfam':
     gwasargs = gwasargs + ' --r-ex '+str(args.r_ex)+' --rplink-ex '+str(args.rplink_ex)
 
 # model specific arguments for gee to specify Rserve port for each job
