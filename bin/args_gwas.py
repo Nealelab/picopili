@@ -211,6 +211,13 @@ arg_exloc.add_argument('--rplink-ex',
                     help='path to plink executable with R plugin interface and \'--dfam\'. Both currently supported by Plink1.07 and Plink1.9-dev build, but not by Plink1.9-stable. Default is currently developer preference.',
                     required=False,
                     default=os.environ['HOME']+'/dev-plink2/plink')
+arg_soft.add_argument('--plink-mem',
+                    type=int,
+		    metavar='MB',
+		    help='Memory to use for top level plink calls (freq and chunking). Default ' + \
+		    'should be fine for most datasets, may need to increase for large datasets.',
+		    default=2000,
+		    required=False)
 arg_clust.add_argument('--port',
                     type=int,
                     metavar='TCP_PORT',

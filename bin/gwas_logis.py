@@ -31,7 +31,7 @@ import os
 import subprocess
 import argparse
 from warnings import warn
-from args_gwas import parserbase, parsergwas
+from args_gwas import parserbase, parsergwas, parsersoft
 from py_helpers import unbuffer_stdout, file_len, find_exec
 unbuffer_stdout()
 
@@ -43,7 +43,7 @@ if not (('-h' in sys.argv) or ('--help' in sys.argv)):
 parser = argparse.ArgumentParser(prog='gwas_logis.py',
                                  formatter_class=lambda prog:
                                  argparse.ArgumentDefaultsHelpFormatter(prog, max_help_position=40),
-                                 parents=[parserbase,parsergwas])
+                                 parents=[parserbase,parsergwas,parsersoft])
 
 args = parser.parse_args()
 
@@ -173,7 +173,7 @@ else:
 # assemble plink call
 gwas_call = [str(plinkx)] + \
                 ['--bfile', str(args.bfile)] + \
-		['--memory', str(2000)] + \
+		['--memory', str(args.plink_mem)] + \
                 keep_txt + \
                 extract_txt + \
                 covar_txt + \

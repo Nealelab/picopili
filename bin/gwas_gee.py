@@ -232,7 +232,7 @@ else:
 # assemble plink call
 gee_call = [str(args.rplink_ex)] + \
                 ['--bfile', str(args.bfile)] + \
-		['--memory', str(2000)] + \
+		['--memory', str(args.plink_mem)] + \
                 keep_txt + \
                 extract_txt + \
                 covar_txt + \

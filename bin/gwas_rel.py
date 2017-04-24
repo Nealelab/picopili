@@ -408,7 +408,7 @@ if args.model == 'gee' or args.model == 'dfam' or args.model == 'logistic':
     gwas_templ = dedent("""\
     cname=`awk -v a={task} 'NR==a+1{cbopen}print $4{cbclose}' {cfile}`
     {misc}
-    {gwas_ex} --bfile {bfile} --out {argout} --extract {outdot}.snps.${cbopen}cname{cbclose}.txt {optargs}    
+    {gwas_ex} --bfile {bfile} --out {argout} --extract {outdot}.snps.${cbopen}cname{cbclose}.txt --plink-mem {pmem} {optargs}    
     """)
 
 elif args.model == 'gmmat' or args.model == 'gmmat-fam':
@@ -416,7 +416,7 @@ elif args.model == 'gmmat' or args.model == 'gmmat-fam':
     cname=`awk -v a={task} 'NR==a+1{cbopen}print $4{cbclose}' {cfile}`
     chrnum=`awk -v a={task} 'NR==a+1{cbopen}print $1{cbclose}' {cfile}`
 
-    {plinkx} --bfile {bfile} --extract {outdot}.snps.${cbopen}cname{cbclose}.txt {optargs} --make-bed --out {outdot}.${cbopen}cname{cbclose}
+    {plinkx} --bfile {bfile} --memory {pmem} --extract {outdot}.snps.${cbopen}cname{cbclose}.txt {optargs} --make-bed --out {outdot}.${cbopen}cname{cbclose}
 
     {rsc} --no-save --no-restore {gwas_ex} {outdot}.${cbopen}cname{cbclose} grm.{outdot}.loco_chr${cbopen}chrnum{cbclose}.rel.gz {covarsub} {outdot}.${cbopen}cname{cbclose} > {outdot}.${cbopen}cname{cbclose}.gmmat.R.log
     """)
@@ -477,6 +477,7 @@ jobdict = {"task": "{task}",
            "outdot": str(outdot),
            "optargs": str(gwasargs),
            "plinkx": str(plinkx),
+	   "pmem": str(args.plink_mem),
            "covarsub": str(args.covar)+'.sub.txt',
            "rsc": str(args.rscript_ex),
 	   "cbopen":'{{',
@@ -492,7 +493,7 @@ job_store_file = 'gwas.chunks.'+str(outdot)+'.pkl'
 clust_dict = init_sendjob_dict()
 clust_dict['jobname'] = 'gwas.chunks.'+str(outdot)
 clust_dict['logname'] = str('gwas.chunks.'+str(outdot)+'.'+str(clust_conf['log_task_id'])+'.sub.log')
-clust_dict['mem'] = 4000
+clust_dict['mem'] = max(4000,args.plink_mem)
 clust_dict['walltime'] = 2
 clust_dict['njobs'] = int(nchunk)
 clust_dict['maxpar'] = 200
@@ -507,7 +508,7 @@ gwas_cmd = gwas_templ.format(**jobdict)
 jobres = send_job(jobname='gwas.chunks.'+str(outdot),
          	  cmd=gwas_cmd,
 	          logname=str('gwas.chunks.'+str(outdot)+'.'+str(clust_conf['log_task_id'])+'.sub.log'),
-	          mem=4000,
+	          mem=max(4000,args.plink_mem),
 	          walltime=2,
 	          njobs=int(nchunk),
 	          maxpar=200,
@@ -527,7 +528,7 @@ frq_call = [plinkx,
             '--bfile',str(args.bfile),
             '--freq','case-control','--nonfounders',
             '--silent',
-            '--memory', str(2000),
+            '--memory', str(args.plink_mem),
             '--out','freqinfo.'+str(outdot)]
 if args.keep is not None:
     frq_call.extend(['--keep',str(args.keep)])
