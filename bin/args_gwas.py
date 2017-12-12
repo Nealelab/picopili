@@ -208,9 +208,9 @@ arg_exloc.add_argument('--rscript-ex',
 arg_exloc.add_argument('--rplink-ex',
                     type=str,
                     metavar='PATH',
-                    help='path to plink executable with R plugin interface and \'--dfam\'. Both currently supported by Plink1.07 and Plink1.9-dev build, but not by Plink1.9-stable. Default is currently developer preference.',
+                    help='path to plink executable with R plugin interface and \'--dfam\' (e.g. plink 1.7 or current versions of 1.9, but not older 1.9 betas). Default behavior relies on picopili.conf, but this arg is kept for legacy support.',
                     required=False,
-                    default=os.environ['HOME']+'/dev-plink2/plink')
+                    default=None)
 arg_soft.add_argument('--plink-mem',
                     type=int,
 		    metavar='MB',

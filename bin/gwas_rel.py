@@ -143,6 +143,10 @@ if args.model == 'gmmat' or args.model == 'gmmat-fam':
     if args.rscript_ex == None or args.rscript_ex == "None":
         args.rscript_ex = find_exec('Rscript', key='rscloc')
 
+if args.model == 'gee' or args.model == 'dfam':
+    if args.rplink_ex is None or args.rplink_ex == "None":
+        args.rplink_ex = find_exec('plink',key='rplloc')
+
 # get cluster configuration
 # needed for specifying logfile names with clust_conf['log_task_id']
 conf_file = os.environ['HOME']+"/picopili.conf"

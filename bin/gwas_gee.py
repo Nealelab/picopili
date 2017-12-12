@@ -131,10 +131,10 @@ print '\n...Checking dependencies...'
 #############
 
 if args.rplink_ex is None or args.rplink_ex == "None":
-    args.rplink_ex = find_exec('plink',key='rpllloc')
+    args.rplink_ex = find_exec('plink',key='rplloc')
 
 if args.r_ex is None or args.r_ex == "None":
-    args._ex = find_exec('R',key='rloc')
+    args.r_ex = find_exec('R',key='rloc')
     
 # verify executables
 test_exec(args.rplink_ex, 'Plink')
