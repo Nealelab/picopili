@@ -161,7 +161,7 @@ dfam_call = [str(args.rplink_ex)] + \
                 extract_txt + \
                 pheno_txt + \
                 ['--dfam', '--prune'] + \
-                ['--silent', '--memory', str(2000)] + \
+                ['--silent', '--memory', str(args.plink_mem)] + \
                 ['--out', outstem]
 dfam_call = filter(None,dfam_call)
 

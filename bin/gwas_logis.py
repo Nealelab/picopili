@@ -1,27 +1,16 @@
 #! /usr/bin/env python
 
 ####################################
-# gwas_gee.py
-# written by Raymond Walters, December 2015
+# gwas_logis.py
+# written by Raymond Walters, March 2017
 """
-Runs GWAS of plink data using GEE and sandwich standard error
+Runs GWAS of plink data using logistic regression
 """
 # Overview:
 # 1) argparse / file checks
-# 2) trigger rserve
-# 3) gwas
-# 
-# TODO: effective sample size? (see notes in gee_logit_covar.R)
-# TODO: support continuous phenotypes
+# 2) gwas
 #
 ####################################
-
-
-# ish benchmarks: 
-#   50 snp, n=473, 1 covar -> 2s
-#   50 snp, n=473, no covar -> 2s
-#   5k snp, n=473, no covar -> 2m, 30s
-# 110k snp, n=473, no covar -> ~1 hr (cf. near-instant w/ dfam)
 
 
 ####################################
@@ -43,7 +32,7 @@ import subprocess
 import argparse
 from warnings import warn
 from args_gwas import parserbase, parsergwas, parsersoft
-from py_helpers import unbuffer_stdout, test_exec, find_from_path, file_len, find_exec
+from py_helpers import unbuffer_stdout, file_len, find_exec
 unbuffer_stdout()
 
 #############
@@ -51,7 +40,7 @@ if not (('-h' in sys.argv) or ('--help' in sys.argv)):
     print '\n...Parsing arguments...' 
 #############
 
-parser = argparse.ArgumentParser(prog='gwas_gee.py',
+parser = argparse.ArgumentParser(prog='gwas_logis.py',
                                  formatter_class=lambda prog:
                                  argparse.ArgumentDefaultsHelpFormatter(prog, max_help_position=40),
                                  parents=[parserbase,parsergwas,parsersoft])
@@ -64,18 +53,6 @@ if args.covar_number is not None:
 else:
     cov_num_txt = ['']
 
-# range check on port number
-# capped at 65535
-# minimum 1025 to avoid reserved ports
-if args.port > 65535:
-    rport = 1025 + ((args.port-1024) % (65535-1024))
-elif args.port < 1025:
-    rport = int(args.port)
-    while rport < 1025:
-        rport += (65535-1024)
-else:
-    rport = int(args.port)
-
 
 # sanity check covariate specification, keep/exclude and extract/exclude
 if (args.covar_number is not None) and (args.covar is None):
@@ -87,9 +64,6 @@ if (args.keep is not None) and (args.remove is not None):
 if (args.extract is not None) and (args.exclude is not None):
     raise ValueError('Specifying both \'--extract\' and \'--exclude\' is redundant. Please verify.')
 
-# get R if not provided
-if args.r_ex == None or args.r_ex == "None":
-    args.r_ex = find_from_path('R', 'R')
 
 ### print settings in use
 print 'Basic Settings:'
@@ -116,39 +90,13 @@ if args.extract is not None:
 else:
     print '--exclude '+str(args.exclude)
 
-print '\nSoftware Settings:'
-#if args.rserve_active:
-#    print '--rserve-active '+str(args.rserve_active)
-#else:
-print '--r-ex '+str(args.r_ex)
-print '--rplink-ex '+str(args.rplink_ex)
-print '--port '+str(args.port)
-
 
 #############
 print '\n...Checking dependencies...'
 # check exists, executable
 #############
 
-if args.rplink_ex is None or args.rplink_ex == "None":
-    args.rplink_ex = find_exec('plink',key='rpllloc')
-
-if args.r_ex is None or args.r_ex == "None":
-    args._ex = find_exec('R',key='rloc')
-    
-# verify executables
-test_exec(args.rplink_ex, 'Plink')
-#if not args.rserve_active:
-test_exec(args.r_ex, 'R')
-# TODO: find a way to test Rserve available?
-
-# check required R scripts present
-rp_bin = os.path.dirname(os.path.realpath(__file__)) # use location of current script to get rp_bin
-if args.covar is None:
-    R_gee = rp_bin + '/gee_logit_nocov.R'
-else:
-    R_gee = rp_bin + '/gee_logit_covar.R'
-assert os.path.isfile(R_gee), 'Failed to find R GEE script %s' % str(R_gee)
+plinkx = find_exec('plink',key='p2loc')
 
 # verify bfiles are files, not paths
 assert '/' not in args.bfile, "--bfile must specify only a file stem, not a path"
@@ -175,7 +123,7 @@ elif args.exclude is not None:
 else:
     nsnp = file_len(str(args.bfile)+'.bim')
 
-if nsnp > 50000:
+if nsnp > 1000000:
     warn('Large number of SNPs present for analysis (%d). Consider splitting for efficiency.' % int(nsnp))
 
 
@@ -183,15 +131,6 @@ print '\n'
 print '############'
 print 'Begin!'
 print '############'
-
-#############
-# Start Rserve to allow Plink R-plugins
-# use unique port per process
-#if not args.rserve_active:
-print '\n...Starting Rserve...'
-#############
-print 'Using port %s' % str(rport)
-subprocess.check_call([str(args.r_ex), 'CMD', 'Rserve', '--no-save', '--RS-port', str(rport)])
 
 
 #############
@@ -201,8 +140,10 @@ print '\n...Running GWAS...'
 # setup text for covar, keep/remove, extract/exclude
 if args.covar is not None:
     covar_txt = ['--covar', str(args.covar)] + cov_num_txt
+    hide_cov_txt = ['hide-covar']
 else:
     covar_txt = ['']
+    hide_cov_txt = ['']
 
 if args.pheno is not None and str(args.pheno) != "None":
     pheno_txt = ['--pheno', str(args.pheno)]
@@ -225,48 +166,28 @@ else:
 
 # setup output name
 if args.addout is not None:
-    outstem = 'gee.' + str(args.out) + '.' + str(args.addout)
+    outstem = 'logis.' + str(args.out) + '.' + str(args.addout)
 else:
-    outstem = 'gee.' + str(args.out)
+    outstem = 'logis.' + str(args.out)
 
 # assemble plink call
-gee_call = [str(args.rplink_ex)] + \
+gwas_call = [str(plinkx)] + \
                 ['--bfile', str(args.bfile)] + \
 		['--memory', str(args.plink_mem)] + \
                 keep_txt + \
                 extract_txt + \
                 covar_txt + \
                 pheno_txt + \
-                ['--family'] + \
-                ['--R', str(R_gee)] + \
-                ['--R-port', str(rport)] + \
+                ['--logistic', 'beta'] + hide_cov_txt + \
+                ['--ci', '0.95'] + \
+                ['--silent'] + \
                 ['--out', outstem]
-gee_call = filter(None,gee_call)
+gwas_call = filter(None,gwas_call)
 
 # run
-print ' '.join(gee_call)
+print ' '.join(gwas_call)
 print ' '
-subprocess.check_call(gee_call)
-
-
-#############
-# shutdown Rserve
-#if not args.rserve_active:
-print '\n...Closing Rserve...'
-#############
-
-# get running Rserve processes
-# (will error if no process)
-ps = subprocess.check_output(' '.join(["ps","wp","$(pgrep Rserve)"]), shell=True)
-
-# cleanup text, string header
-ps_txt = [s.strip().split() for s in ps.splitlines()][1:]
-
-# pid of desired Rserve process (assumes port number is last arg)
-pid = [x[0] for x in ps_txt if x[-1]==str(rport)]
-
-# kill
-subprocess.check_call(['kill',str(pid[0])])
+subprocess.check_call(gwas_call)
 
 
 #############
@@ -274,7 +195,7 @@ print '\n...Verifying output exists...'
 #############
 
 # check proper output 
-assert file_len(outstem +'.auto.R') >= nsnp, 'Failed to generate full GWAS results file %s' % outstem +'.auto.R'
+assert file_len(outstem +'.assoc.logistic') >= nsnp, 'Failed to generate full GWAS results file %s' % outstem +'.assoc.logistic'
 
 
 print '\n############'

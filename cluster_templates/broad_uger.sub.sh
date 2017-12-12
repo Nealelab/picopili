@@ -12,6 +12,7 @@
 #$ -N {job_name}
 #$ -o {log_name}
 #$ -q {queue_name}
+#$ -l h_rt={wall_hours}:00:00
 #$ -l m_mem_free={mem_in_gb}g,h_vmem={mem_in_gb}g
 ::PICO_ARRAY_ONLY::#$ -t 1-{array_jobs}
 ::PICO_ARRAY_ONLY::#$ -tc {array_max}

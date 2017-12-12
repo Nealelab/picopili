@@ -69,7 +69,7 @@ arg_file.add_argument('--freq-file',
 
 arg_other.add_argument('--model', 
                     type=str.lower,
-                    choices=['dfam','gee','gmmat','gmmat-fam'],
+                    choices=['dfam','gee','gmmat','gmmat-fam','logistic'],
                     help='Which GWAS testing method was used. Current options are plink \'--dfam\' (generalized TDT-alike), GEE (generalized estimating equations), GMMAT (logistic mixed model with GRM for variance component), or GMMAT-fam (logistic mixed model with GRM and family clusters).',
                     required=False,
                     default='gee')
@@ -138,6 +138,9 @@ for line in chunks_in:
     elif args.model == 'gmmat-fam':
         ch_out = 'gmmatfam_score.'+str(outdot)+'.'+str(chname)+'.R.txt'
         out_len = 11
+    elif args.model == 'logistic':
+        ch_out = 'logis.'+str(outdot)+'.'+str(chname)+'.assoc.logistic'
+        out_len = 12
     
     # record chunks with no/partial/broken output
     if not os.path.isfile(ch_out):
@@ -279,17 +282,17 @@ chnames = [k for k, v in sorted(chunks.iteritems(), key=lambda (key,value): floa
 # for gee: a2
 # for dfam: bp
 # gmmat: nothing
-if args.model == 'gee':
+if args.model == 'gee' or args.model == 'logistic':
     a2_info = {}
 elif args.model == 'dfam':
     bp_info = {}
 
-if args.model == 'gee' or args.model == 'dfam':
+if args.model == 'gee' or args.model == 'dfam' or args.model == 'logistic':
 	bim = open(bim_file, 'r')
 	for line in bim:
 	    (chrom, snp, cm, bp, a1, a2) = line.split()
     
-	    if args.model == 'gee':
+	    if args.model == 'gee' or args.model == 'logistic':
 	        a2_info[str(snp)] = str(a2)
 	    elif args.model == 'dfam':
 	        bp_info[str(snp)] = int(bp)
@@ -341,7 +344,7 @@ if args.info_file is not None:
 out_file = gzip.open(outname, 'wb')
 filt_file = gzip.open(filtoutname+'.tmp.gz', 'wb')
 
-if args.model == 'gee':
+if args.model == 'gee' or args.model == 'logistic':
     out_head = ['CHR', 'SNP', 'BP', 'A1', 'A2', 'FRQ_A', 'FRQ_U', 'INFO', 'BETA', 'SE', 'CHISQ', 'P', 'N_CAS', 'N_CON', 'ngt']
 elif args.model == 'dfam':
     out_head = ['CHR', 'SNP', 'BP', 'A1', 'A2', 'FRQ_A', 'FRQ_U', 'INFO', 'OBSERVED', 'EXPECTED', 'CHISQ', 'P', 'N_CAS', 'N_CON', 'ngt']
@@ -370,7 +373,10 @@ for ch in chnames:
         dumphead = chunk_res.readline()          
     elif args.model == 'gmmat-fam':
         chunk_res = open('gmmatfam_score.'+str(outdot)+'.'+str(ch)+'.R.txt', 'r')
-        dumphead = chunk_res.readline()       
+        dumphead = chunk_res.readline()   
+    elif args.model == 'logistic':
+        chunk_res = open('logis.'+str(outdot)+'.'+str(ch)+'.assoc.logistic', 'r')
+        dumphead = chunk_res.readline() 
     
     for line in chunk_res:
         # read results
@@ -384,6 +390,14 @@ for ch in chnames:
         
         elif args.model == 'gmmat' or args.model == 'gmmat-fam':
 	    (chrom, snp, cm, bp, a1, a2, n, af2, scoretest, scorevar, p) = line.split()
+     
+        elif args.model == 'logistic':
+            (chrom, snp, bp, a1, testnam, n, beta, se, ci_lo, ci_hi, tstat, p) = line.split()
+            a2 = a2_info.pop(str(snp))
+	    if str(beta) == 'NA' or str(se) == 'NA':
+	    	continue
+            z = float(beta)/float(se)
+	    chisq = float(z)*float(z)
 
         # get meta info
 	# verify use freq of correct allele
@@ -420,7 +434,7 @@ for ch in chnames:
             
  
         # construct output
-        if args.model == 'gee':
+        if args.model == 'gee' or args.model == 'logistic':
             # ditch gee results with implausible SEs (likely errors / numerical instability)
             if str(se) == 'NA' or float(se) > float(args.max_se):
                 continue
@@ -452,13 +466,13 @@ for ch in chnames:
 out_file.close()
 filt_file.close()
 # final file data
-# gee: chr, snp, bp, a1, a2, frq_a, frq_u, info, beta, se, chi, p, nca, nco, ngt
+# gee/logistic: chr, snp, bp, a1, a2, frq_a, frq_u, info, beta, se, chi, p, nca, nco, ngt
 # dfam: chr, snp, bp, a1, a2, frq_a, frq_u, info, obs, exp, chi, p, nca, nco, ngt
 # gmmat: chr, snp, bp, a1, a2, frq_a, frq_u, info, score, var, z, chi, p, nca, nco, ngt
 
 
 # sort filtered file
-if args.model == 'dfam' or args.model == 'gee':
+if args.model == 'dfam' or args.model == 'gee' or args.model == 'logistic':
     pcol = '12,12'
 elif args.model == 'gmmat' or args.model == 'gmmat-fam':
     pcol = '13,13'
