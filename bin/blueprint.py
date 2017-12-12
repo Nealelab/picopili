@@ -147,7 +147,7 @@ def send_job(jobname,
         if j_per_core == 1:
             task_index = str(clust_conf['task_id'])
         else:
-            task_index = "${tid}"
+            task_index = "$1"
 
         # cmd or array file spec
         if cmd is not None:
@@ -174,7 +174,7 @@ def send_job(jobname,
             
             # max simul tasks with memory limit
             node_mem = float(clust_conf['array_mem_mb'])
-            task_mem_lim = floor((node_mem-1.0)/float(mem))
+            task_mem_lim = int(floor((node_mem-1.0)/float(mem)))
             
             # max simul tasks with threading
             if task_mem_lim > floor(int(j_per_core)/int(threads)):
@@ -184,18 +184,19 @@ def send_job(jobname,
                 task_mem_lim=1            
             
             # number of jobs to cover all tasks
-            array_jobs = ceil(float(njobs)/float(task_mem_lim))
+            array_jobs = int(ceil(float(njobs)/float(task_mem_lim)))
             
             # convert multi-line command to script
             if len(cmd_line.splitlines()) > 1:
                 tmp_script = open('temp_cmd.'+str(jobname)+'.sh','w')
                 tmp_script.write(cmd_line)
                 tmp_script.close()
-                os.chmod(tmp_script.name, stat.S_IEXEC)
+                os.chmod(tmp_script.name, stat.S_IEXEC | stat.S_IREAD | stat.S_IWRITE)
                 cmd_line = './'+tmp_script.name
                 
             # setup to do task_mem_lim jobs on each node
-            # note: specified above that cmd_line uses ${tid} as task index 
+            # note: specified above that cmd_line uses $1 (first arg) as task index 
+            # we manage that here with ${tid}
             par_tmp = dedent("""\
                 # array index for this job            
                 jj={job_index}
@@ -211,15 +212,16 @@ def send_job(jobname,
                 
                 # find index of last task for this node
                 # - from either node task limit (nodej)
-                #   or total numebr of tasks (maxj)
-                if [$tid -le $(($maxj - $nodej + 1))]; then
-                    last_task = $(($tid + $nodej - 1))
+                #   or total number of tasks (maxj)
+                if [ "$tid" -le $(($maxj - $nodej + 1)) ]; then
+                    last_task=$(($tid + $nodej - 1))
                 else
-                    last_task = $(($maxj))
+                    last_task=$(($maxj))
+                fi
                 
                 # start the tasks
-                while [ $tid -le max_task ]; do
-                    {cmd_line} &
+                while [ "$tid" -le "$last_task" ]; do
+                    {cmd_line} $tid &
                     tid=$(($tid+1))
                 done
                 
