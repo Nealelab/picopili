@@ -469,7 +469,7 @@ if args.model == 'gee' or args.model == 'dfam':
 # (assuming here will be < 16k jobs; gwas_gee.py handles overflow check)  
 if args.model == 'gee':
     misc_txt = 'rport=$((49151+{task}))'
-    gwasargs = str(gwasargs) + '--rserve-ex '+str(args.rserve_ex) +' --port $rport'
+    gwasargs = str(gwasargs) + ' --rserve-ex '+str(args.rserve_ex) +' --port $rport'
 else:
     misc_txt = ''
 
