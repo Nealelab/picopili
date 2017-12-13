@@ -87,10 +87,6 @@ if (args.keep is not None) and (args.remove is not None):
 if (args.extract is not None) and (args.exclude is not None):
     raise ValueError('Specifying both \'--extract\' and \'--exclude\' is redundant. Please verify.')
 
-# get R if not provided
-if args.r_ex == None or args.r_ex == "None":
-    args.r_ex = find_from_path('R', 'R')
-
 ### print settings in use
 print 'Basic Settings:'
 print '--bfile '+str(args.bfile)
@@ -122,6 +118,7 @@ print '\nSoftware Settings:'
 #else:
 print '--r-ex '+str(args.r_ex)
 print '--rplink-ex '+str(args.rplink_ex)
+print '--rserve-ex '+str(args.rserve_ex)
 print '--port '+str(args.port)
 
 
@@ -133,14 +130,21 @@ print '\n...Checking dependencies...'
 if args.rplink_ex is None or args.rplink_ex == "None":
     args.rplink_ex = find_exec('plink',key='rplloc')
 
+# get R if not provided
+if args.r_ex == None or args.r_ex == "None":
+    args.r_ex = find_from_path('R', 'R')
+
+# if still fail, try config
 if args.r_ex is None or args.r_ex == "None":
     args.r_ex = find_exec('R',key='rloc')
-    
+
+if args.rserve_ex is None or args.rserve_ex == "None":
+    args.rserve_ex = find_exec('Rserve',key='rservloc')
+
 # verify executables
 test_exec(args.rplink_ex, 'Plink')
-#if not args.rserve_active:
 test_exec(args.r_ex, 'R')
-# TODO: find a way to test Rserve available?
+test_exec(args.rserve_ex, 'Rserve')
 
 # check required R scripts present
 rp_bin = os.path.dirname(os.path.realpath(__file__)) # use location of current script to get rp_bin
@@ -191,7 +195,7 @@ print '############'
 print '\n...Starting Rserve...'
 #############
 print 'Using port %s' % str(rport)
-subprocess.check_call([str(args.r_ex), 'CMD', 'Rserve', '--no-save', '--RS-port', str(rport)])
+subprocess.check_call([str(args.r_ex), 'CMD', str(args.rserve_ex), '--no-save', '--RS-port', str(rport)])
 
 
 #############

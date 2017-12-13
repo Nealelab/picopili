@@ -147,6 +147,11 @@ if args.model == 'gee' or args.model == 'dfam':
     if args.rplink_ex is None or args.rplink_ex == "None":
         args.rplink_ex = find_exec('plink',key='rplloc')
 
+if args.model == 'gee':
+    if args.rserve_ex is None or args.rserve_ex == "None":
+        args.rserve_ex = find_exec('Rserve',key='rservloc')
+
+
 # get cluster configuration
 # needed for specifying logfile names with clust_conf['log_task_id']
 conf_file = os.environ['HOME']+"/picopili.conf"
@@ -464,7 +469,7 @@ if args.model == 'gee' or args.model == 'dfam':
 # (assuming here will be < 16k jobs; gwas_gee.py handles overflow check)  
 if args.model == 'gee':
     misc_txt = 'rport=$((49151+{task}))'
-    gwasargs = str(gwasargs) +' --port $rport'
+    gwasargs = str(gwasargs) + '--rserve-ex '+str(args.rserve_ex) +' --port $rport'
 else:
     misc_txt = ''
 
