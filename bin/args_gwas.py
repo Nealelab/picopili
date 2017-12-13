@@ -205,7 +205,7 @@ arg_exloc.add_argument('--rscript-ex',
                     help='path to Rscript executable, tries reading from PATH if unspecified',
                     required=False,
                     default=None)
-arg_exloc.add_argument('--rscript-ex',
+arg_exloc.add_argument('--rserve-ex',
                     type=str,
 		    metavar='PATH',
 		    help='path to Rserve executable. Defaults to picopili.conf value. Only required for \'--model gee\'.',
