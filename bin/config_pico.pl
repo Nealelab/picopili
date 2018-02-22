@@ -315,6 +315,7 @@ my %longvar = ("p2loc","PLINK2",
 		   "priloc","PRIMUS",
 	       "rloc","R",
 		   "rscloc","Rscript",
+		   "rservloc", "Rserve",
 		   "rplloc","R-enabled Plink (e.g. v1.07, or a dev build of 1.90)",
 	       "perlpack","Perl packages (for Compress::Zlib)",
     );
@@ -330,6 +331,7 @@ my %variables = ("p2loc", "",
 		  "priloc","",
 		  "rloc","",
 		  "rscloc","",
+		  "rservloc","",
 		  "rplloc","",
 		  "perlpack","",
     );
@@ -347,6 +349,7 @@ if ($clusters{broad}){
 		  "priloc","/humgen/atgu1/fs03/shared_resources/shared_software/PRIMUS_v1.8.0/bin",
 		  "rloc","/broad/software/free/Linux/redhat_6_x86_64/pkgs/r_3.0.1/bin",
 		  "rscloc","/broad/software/free/Linux/redhat_6_x86_64/pkgs/r_3.0.1/bin",
+		  "rservloc","/broad/software/free/Linux/redhat_6_x86_64/pkgs/r_3.0.1/lib64/R/library/Rserve/libs/",
 		  "rplloc","/home/unix/sripke/plink_src/src/",
 		  "perlpack","/home/unix/sripke/perl_modules",
 	);
@@ -373,6 +376,7 @@ elsif ($clusters{lisa}){
 		  "priloc","",
 		  "rloc","/sara/sw/R-3.1.2/bin",
 		  "rscloc","/sara/sw/R-3.1.2/bin",
+		  "rservloc","",
 		  "rplloc","/home/gwas/plink/1.08/src",
 		  "perlpack","/home/gwas/perl_modules",
 	);
@@ -399,6 +403,7 @@ elsif ($clusters{computerome}){
 		  "priloc","",
 		  "rloc","/services/tools/R-3.1.2/bin",
 		  "rscloc","/services/tools/R-3.1.2/bin",
+		  "rservloc","",
 		  "rplloc","/services/tools/R-3.1.2/bin",
 		  "perlpack","/home/people/sripke/rp_external_bins/perl_packages",
 	);
@@ -424,6 +429,7 @@ elsif ($clusters{co_ipsych}){
 		  "priloc","",
 		  "rloc","/data/tools/R-3.2.1/bin",
 		  "rscloc","/data/tools/R-3.2.1/bin",
+		  "rservloc","",
 		  "rplloc","/data/tools/plink-1.07",
 		  "perlpack","/data/user_tools/rp_external_bins/perl_packages",
 	);
@@ -450,6 +456,7 @@ elsif ($clusters{genomedk}){
 		  "priloc","",
 		  "rloc","/com/extra/R/3.1.0/bin",
 		  "rscloc","/com/extra/R/3.1.0/bin",
+		  "rservloc","",
 		  "rplloc","/project/ricopili/plink_src",
 		  "perlpack","/project/ricopili/perl_packages/",
 	);
@@ -475,6 +482,7 @@ elsif ($clusters{mssm}){
 		  "priloc","",
 		  "rloc","/hpc/packages/minerva-common/R/2.15.3/lib64/R/bin",
 		  "rscloc","/hpc/packages/minerva-common/R/2.15.3/lib64/R/bin",
+		  "rservloc","",
 		  "rplloc","/hpc/users/xripkes01/ricopili/3rd_binaries/plink-1.07-src-sripke",
 		  "perlpack","/hpc/users/xripkes01/perl_modules",
 	);
