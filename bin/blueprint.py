@@ -189,10 +189,11 @@ def send_job(jobname,
             # convert multi-line command to script
             if len(cmd_line.splitlines()) > 1:
                 tmp_script = open('temp_cmd.'+str(jobname)+'.sh','w')
+		tmp_script.write('tid=$1'+'\n')
                 tmp_script.write(cmd_line)
                 tmp_script.close()
                 os.chmod(tmp_script.name, stat.S_IEXEC | stat.S_IREAD | stat.S_IWRITE)
-                cmd_line = './'+tmp_script.name
+                cmd_line = './'+tmp_script.name+' ${tid}'
                 
             # setup to do task_mem_lim jobs on each node
             # note: specified above that cmd_line uses $1 (first arg) as task index 
