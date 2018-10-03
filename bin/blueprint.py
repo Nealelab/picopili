@@ -147,7 +147,7 @@ def send_job(jobname,
         if j_per_core == 1:
             task_index = str(clust_conf['task_id'])
         else:
-            task_index = "$1"
+            task_index = "${tid}"
 
         # cmd or array file spec
         if cmd is not None:
@@ -221,7 +221,7 @@ def send_job(jobname,
                 
                 # start the tasks
                 while [ "$tid" -le "$last_task" ]; do
-                    {cmd_line} $tid &
+                    {cmd_line} &
                     tid=$(($tid+1))
                 done
                 
@@ -229,8 +229,8 @@ def send_job(jobname,
                 wait
             """)
             
-            cmd_str = par_tmp.format(njobs=str(njobs),
-                                     nodej=str(task_mem_lim),
+            cmd_str = par_tmp.format(njobs=str(int(njobs)),
+                                     nodej=str(int(task_mem_lim)),
                                      job_index=str(clust_conf['task_id']),
                                      cmd_line=cmd_line)
             
