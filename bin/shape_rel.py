@@ -338,7 +338,7 @@ jobres = send_job(jobname='shapeit.'+str(outdot),
 ###
 if args.full_pipe:
     ######################
-    print '\n...Queuing best-guess script...'
+    print '\n...Queuing imputation script...'
     ######################
     
     os.chdir(wd)
