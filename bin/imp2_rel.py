@@ -218,8 +218,8 @@ if bad_chr:
 #                  '--output-log', outstem+'.shape.log']
     
     # manage additional arg pieces
-    chrstem = str(args.bfile)+'.hg19.ch.fl.chr${chrom}'
-    outstem = str(outdot)+'.chr${chrom}'
+    chrstem = str(args.bfile)+'.hg19.ch.fl.chr${{chrom}}'
+    outstem = str(outdot)+'.chr${{chrom}}'
     if args.no_duohmm:
         duo_txt = ''
     else:
@@ -230,8 +230,8 @@ if bad_chr:
                "chr_list": ' '.join(bad_chr),
                "shape_ex": str(shapeit_ex),
                "bed": '--input-bed '+str(chrstem)+'.bed '+str(chrstem)+'.bim '+str(chrstem)+'.fam',
-               "map": '--input-map '+str(args.ref_maps).replace('###','${chrom}'),
-               "ref": '--input-ref '+str(args.ref_haps).replace('###','${chrom}')+' '+str(args.ref_legs).replace('###','${chrom}')+' '+str(args.ref_samps).replace('###','${chrom}'),
+               "map": '--input-map '+str(args.ref_maps).replace('###','${{chrom}}'),
+               "ref": '--input-ref '+str(args.ref_haps).replace('###','${{chrom}}')+' '+str(args.ref_legs).replace('###','${{chrom}}')+' '+str(args.ref_samps).replace('###','${{chrom}}'),
                "window": '--window '+str(args.window),
                "duo_txt": str(duo_txt),
                "thread_str": '--thread '+str(args.threads),
