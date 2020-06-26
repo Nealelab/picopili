@@ -45,7 +45,7 @@ Follow on screen instructions for each script. If dependencies are missing or ne
 In `~/.my.bashrc` (or equivalent for your shell) add the line:
 
 ```
-PATH=$HOME/github/picopili/rp_bin:$PATH
+PATH=$HOME/github/picopili/bin:$PATH
 ```
 
 ##### 5. Logout and log back in.
