@@ -64,8 +64,8 @@ arg_subset = parsergwas.add_argument_group('Analysis Subset')
 
 arg_test.add_argument('--model', 
                     type=str.lower,
-                    choices=['dfam','gee','gmmat','gmmat-fam','logistic'],
-                    help='which GWAS testing method to use for family data. Current options are plink \'--dfam\' (generalized TDT-alike) or GEE (generalized estimating equations)',
+                    choices=['dfam','gee','gmmat','gmmat-fam','logistic','linear'],
+                    help='which GWAS testing method to use for family data. Current options are plink \'--dfam\' (generalized TDT-alike), GEE (generalized estimating equations), GMMAT (logistic mixed model), or classic linear or logistic regression (i.e. without controlling for family structure)',
                     required=False,
                     default='gee')
 arg_test.add_argument('--pheno', 

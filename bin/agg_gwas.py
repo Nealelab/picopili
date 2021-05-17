@@ -69,10 +69,17 @@ arg_file.add_argument('--freq-file',
 
 arg_other.add_argument('--model', 
                     type=str.lower,
-                    choices=['dfam','gee','gmmat','gmmat-fam','logistic'],
+                    choices=['dfam','gee','gmmat','gmmat-fam','logistic','linear'],
                     help='Which GWAS testing method was used. Current options are plink \'--dfam\' (generalized TDT-alike), GEE (generalized estimating equations), GMMAT (logistic mixed model with GRM for variance component), or GMMAT-fam (logistic mixed model with GRM and family clusters).',
                     required=False,
                     default='gee')
+
+arg_other.add_argument('--sleep',
+                        type=int,
+                        metavar='SEC',
+                        help='Number of seconds to delay on start of cluster jobs',
+                        required=False,
+                        default=30)
 
 args = parser.parse_args()
 
@@ -141,6 +148,9 @@ for line in chunks_in:
     elif args.model == 'logistic':
         ch_out = 'logis.'+str(outdot)+'.'+str(chname)+'.assoc.logistic'
         out_len = 12
+    elif args.model == 'linear':
+        ch_out = 'linear.'+str(outdot)+'.'+str(chname)+'.assoc.linear'
+	out_len = 12
     
     # record chunks with no/partial/broken output
     if not os.path.isfile(ch_out):
@@ -258,7 +268,7 @@ if len(mis_chunks) > 0:
              walltime=30,
              wait_name='gwas.chunks.'+str(outdot)+'.resub_'+str(nummiss),
              wait_num=str(jobres).strip(),
-             sleep=10)
+             sleep=args.sleep)
 
     print '\n############'
     print '\n'
@@ -282,17 +292,17 @@ chnames = [k for k, v in sorted(chunks.iteritems(), key=lambda (key,value): floa
 # for gee: a2
 # for dfam: bp
 # gmmat: nothing
-if args.model == 'gee' or args.model == 'logistic':
+if args.model == 'gee' or args.model == 'logistic' or args.model == 'linear':
     a2_info = {}
 elif args.model == 'dfam':
     bp_info = {}
 
-if args.model == 'gee' or args.model == 'dfam' or args.model == 'logistic':
+if args.model == 'gee' or args.model == 'dfam' or args.model == 'logistic' or args.model == 'linear':
 	bim = open(bim_file, 'r')
 	for line in bim:
 	    (chrom, snp, cm, bp, a1, a2) = line.split()
     
-	    if args.model == 'gee' or args.model == 'logistic':
+	    if args.model == 'gee' or args.model == 'logistic' or args.model == 'linear':
 	        a2_info[str(snp)] = str(a2)
 	    elif args.model == 'dfam':
 	        bp_info[str(snp)] = int(bp)
@@ -315,14 +325,23 @@ freq_a1 = {}
 
 frq = open(args.freq_file, 'r')
 dumphead = frq.readline()
-for line in frq:
-    (chrom, snp, a1, a2, mafa, mafu, nchra, nchru) = line.split()
-    maf_a_info[str(snp)] = float(mafa)
-    maf_u_info[str(snp)] = float(mafu)
-    n_a_info[str(snp)] = int(nchra) / 2
-    n_u_info[str(snp)] = int(nchru) / 2
-    freq_a1[str(snp)] = a1
-frq.close()
+if args.model == 'linear':
+    # .frq insted of .frq.cc
+    for line in frq:
+        (chrom, snp, a1, a2, mafa, nchra) = line.split()
+        maf_a_info[str(snp)] = float(mafa)
+        n_a_info[str(snp)] = int(nchra) / 2
+        freq_a1[str(snp)] = a1
+    frq.close()
+else:
+    for line in frq:
+        (chrom, snp, a1, a2, mafa, mafu, nchra, nchru) = line.split()
+        maf_a_info[str(snp)] = float(mafa)
+        maf_u_info[str(snp)] = float(mafu)
+        n_a_info[str(snp)] = int(nchra) / 2
+        n_u_info[str(snp)] = int(nchru) / 2
+        freq_a1[str(snp)] = a1
+    frq.close()
 print 'frq loaded'
 
 # info, ngt if available
@@ -350,6 +369,8 @@ elif args.model == 'dfam':
     out_head = ['CHR', 'SNP', 'BP', 'A1', 'A2', 'FRQ_A', 'FRQ_U', 'INFO', 'OBSERVED', 'EXPECTED', 'CHISQ', 'P', 'N_CAS', 'N_CON', 'ngt']
 elif args.model == 'gmmat' or args.model == 'gmmat-fam':
     out_head = ['CHR', 'SNP', 'BP', 'A1', 'A2', 'FRQ_A', 'FRQ_U', 'INFO', 'SCORE', 'VAR', 'Z', 'CHISQ', 'P', 'N_CAS', 'N_CON', 'ngt']
+elif args.model == 'linear':
+    out_head = ['CHR', 'SNP', 'BP', 'A1', 'A2', 'FRQ', 'INFO', 'BETA', 'SE', 'CHISQ', 'P', 'N', 'ngt']
 
 filt_head = out_head
 
@@ -377,6 +398,9 @@ for ch in chnames:
     elif args.model == 'logistic':
         chunk_res = open('logis.'+str(outdot)+'.'+str(ch)+'.assoc.logistic', 'r')
         dumphead = chunk_res.readline() 
+    elif args.model == 'linear':
+        chunk_res = open('linear.'+str(outdot)+'.'+str(ch)+'.assoc.linear', 'r')
+        dumphead = chunk_res.readline()
     
     for line in chunk_res:
         # read results
@@ -391,7 +415,7 @@ for ch in chnames:
         elif args.model == 'gmmat' or args.model == 'gmmat-fam':
 	    (chrom, snp, cm, bp, a1, a2, n, af2, scoretest, scorevar, p) = line.split()
      
-        elif args.model == 'logistic':
+        elif args.model == 'logistic' or args.model == 'linear':
             (chrom, snp, bp, a1, testnam, n, beta, se, ci_lo, ci_hi, tstat, p) = line.split()
             a2 = a2_info.pop(str(snp))
 	    if str(beta) == 'NA' or str(se) == 'NA':
@@ -403,12 +427,15 @@ for ch in chnames:
 	# verify use freq of correct allele
 	if str(freq_a1.pop(str(snp))) == str(a1):
             frqa = float(maf_a_info.pop(str(snp)))
-            frqu = float(maf_u_info.pop(str(snp)))
+	    if args.model != 'linear':
+                frqu = float(maf_u_info.pop(str(snp)))
 	else:
 	    frqa = 1 - float(maf_a_info.pop(str(snp)))
-	    frqu = 1 - float(maf_u_info.pop(str(snp)))
+	    if args.model != 'linear':
+	        frqu = 1 - float(maf_u_info.pop(str(snp)))
         na = n_a_info.pop(str(snp))
-        nu = n_u_info.pop(str(snp))
+	if args.model != 'linear':
+            nu = n_u_info.pop(str(snp))
         
         # info_info will be empty if no file specified
         if str(snp) in info_info:
@@ -425,9 +452,9 @@ for ch in chnames:
             continue
         elif float(frqa) > 1.0 - float(args.maf_a_th):
             continue
-        elif float(frqu) < float(args.maf_u_th):
+        elif args.model != 'linear' and float(frqu) < float(args.maf_u_th):
             continue
-        elif float(frqu) > 1.0 - float(args.maf_u_th):
+        elif args.model != 'linear' and float(frqu) > 1.0 - float(args.maf_u_th):
             continue
         elif str(info) != 'NA' and float(info) < float(args.info_th):
             continue
@@ -451,6 +478,12 @@ for ch in chnames:
 	        z = -1.0*float(scoretest)/sqrt(float(scorevar))
 		chisq = float(z)*float(z)
                 outline = [chrom, snp, bp, a1, a2, frqa, frqu, info, -1.0*float(scoretest), scorevar, z, chisq, p, na, nu, ngt]
+	
+	elif args.model == 'linear':
+	    if str(se) == 'NA' or float(se) > float(args.max_se):
+	        continue
+	    else:
+	        outline = [chrom, snp, bp, a1, a2, frqa, info, beta, se, chisq, p, na, ngt]
 
         outline = [str(val) for val in outline]        
         
@@ -469,13 +502,15 @@ filt_file.close()
 # gee/logistic: chr, snp, bp, a1, a2, frq_a, frq_u, info, beta, se, chi, p, nca, nco, ngt
 # dfam: chr, snp, bp, a1, a2, frq_a, frq_u, info, obs, exp, chi, p, nca, nco, ngt
 # gmmat: chr, snp, bp, a1, a2, frq_a, frq_u, info, score, var, z, chi, p, nca, nco, ngt
-
+# linear: chr, snp, bp, a1, a2, frq, info, beta, se, chi, p, n, ngt
 
 # sort filtered file
 if args.model == 'dfam' or args.model == 'gee' or args.model == 'logistic':
     pcol = '12,12'
 elif args.model == 'gmmat' or args.model == 'gmmat-fam':
     pcol = '13,13'
+elif args.model == 'linear':
+    pcol= '11,11'
 subprocess.check_call(' '.join([
                             'zless',
                             filtoutname+'.tmp.gz',
