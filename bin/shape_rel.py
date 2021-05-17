@@ -323,9 +323,9 @@ clust_conf = read_conf(clust_confdir+str(configs['cluster']+'.conf'))
 task_id = str(clust_conf['log_task_id'])
 
 # submit
-jobres = send_job(jobname='shape.'+str(outdot),
+jobres = send_job(jobname='shapeit.'+str(outdot),
                   cmd=' '.join(shape_call),
-                  logname='shape.'+str(outdot)+'.chr'+task_id+'.sub.log',
+                  logname='shapeit.'+str(outdot)+'.chr'+task_id+'.sub.log',
                   mem=int(args.mem_req)*1000,
                   walltime=30,
                   njobs=22,
@@ -338,7 +338,7 @@ jobres = send_job(jobname='shape.'+str(outdot),
 ###
 if args.full_pipe:
     ######################
-    print '\n...Queuing best-guess script...'
+    print '\n...Queuing imputation script...'
     ######################
     
     os.chdir(wd)
@@ -352,7 +352,7 @@ if args.full_pipe:
              logname=imp_log,
              mem=8000,
              walltime=2,
-             wait_name='shape.'+str(outdot),
+             wait_name='shapeit.'+str(outdot),
              wait_num=str(jobres).strip(),
              sleep=str(args.sleep))
 
