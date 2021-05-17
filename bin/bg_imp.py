@@ -37,7 +37,7 @@ import argparse
 from warnings import warn
 from textwrap import dedent
 from args_impute import parserbase, parserbg, parsercluster, parserjob
-from py_helpers import unbuffer_stdout, find_exec, file_tail, file_len, link, warn_format, read_conf
+from py_helpers import unbuffer_stdout, find_exec, file_tail, link, warn_format, read_conf
 from blueprint import send_job, init_sendjob_dict, save_job, load_job, read_clust_conf
 unbuffer_stdout()
 warnings.formatwarning = warn_format
@@ -468,6 +468,7 @@ if args.full_pipe:
     agg_log = 'agg_imp.'+str(outdot)+'.sub.log'
 
     # some dynamic adjustment of mem based on sample size population
+    # (empirically, seem to get ~2x sites from afr vs eur)
     fam_n = file_len(str(shape_dir)+'/'+str(args.bfile)+'.hg19.ch.fl.fam')
     if fam_n > 3000:
         agg_mem = 32000
@@ -476,8 +477,6 @@ if args.full_pipe:
     else:
         agg_mem = 8000
 
-    # (empirically, seem to get ~2x sites from afr vs eur)
-    # (admittedly this method of catching/handling it is _very_ informal)
     if "afr" in sys.argv[1:]:
         agg_mem = 2*agg_mem
 

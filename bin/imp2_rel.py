@@ -157,14 +157,14 @@ print '\n...Verifying pre-phasing was successful...'
 
 bad_chr = []
 
-for chrom in xrange(1,23):
+for chrom in xrange(1,22):
     haps_out = str(shape_dir)+'/'+str(outdot)+'.chr'+str(chrom)+'.phased.haps'
     samp_out = str(shape_dir)+'/'+str(outdot)+'.chr'+str(chrom)+'.phased.sample'
 
     if not os.path.isfile(haps_out):
-        bad_chr.append(str(chrom))
+        bad_chr.append(chrom)
     elif not os.path.isfile(samp_out):
-        bad_chr.append(str(chrom))
+        bad_chr.append(chrom)
         
 
 # if any shapeit jobs failed, 
@@ -187,7 +187,7 @@ if bad_chr:
     os.chdir(shape_dir)
         
     # verify haven't already tried this resub
-    phase_sub_name = 'shapeit.'+str(outdot)+'.resub_'+str(num_chr)+'.sub.sh'
+    phase_sub_name = 'shape.'+str(outdot)+'.resub_'+str(num_chr)+'.sub.sh'
     if os.path.isfile(phase_sub_name):
         print '\n####################'
         print 'ERROR:'
@@ -218,8 +218,8 @@ if bad_chr:
 #                  '--output-log', outstem+'.shape.log']
     
     # manage additional arg pieces
-    chrstem = str(args.bfile)+'.hg19.ch.fl.chr${{chrom}}'
-    outstem = str(outdot)+'.chr${{chrom}}'
+    chrstem = str(args.bfile)+'.hg19.ch.fl.chr${chrom}'
+    outstem = str(outdot)+'.chr${chrom}'
     if args.no_duohmm:
         duo_txt = ''
     else:
@@ -230,8 +230,8 @@ if bad_chr:
                "chr_list": ' '.join(bad_chr),
                "shape_ex": str(shapeit_ex),
                "bed": '--input-bed '+str(chrstem)+'.bed '+str(chrstem)+'.bim '+str(chrstem)+'.fam',
-               "map": '--input-map '+str(args.ref_maps).replace('###','${{chrom}}'),
-               "ref": '--input-ref '+str(args.ref_haps).replace('###','${{chrom}}')+' '+str(args.ref_legs).replace('###','${{chrom}}')+' '+str(args.ref_samps).replace('###','${{chrom}}'),
+               "map": '--input-map '+str(args.ref_maps).replace('###','${chrom}'),
+               "ref": '--input-ref '+str(args.ref_haps).replace('###','${chrom}')+' '+str(args.ref_legs).replace('###','${chrom}')+' '+str(args.ref_samps).replace('###','${chrom}'),
                "window": '--window '+str(args.window),
                "duo_txt": str(duo_txt),
                "thread_str": '--thread '+str(args.threads),
@@ -244,9 +244,9 @@ if bad_chr:
     shape_cmd = cmd_templ.format(**jobdict)
 
     # submit
-    jobres = send_job(jobname='shapeit.'+str(outdot)+'.resub_'+str(num_chr),
+    jobres = send_job(jobname='shape.'+str(outdot)+'.resub_'+str(num_chr),
 	              cmd=shape_cmd,
-	              logname='shapeit.'+str(outdot)+'.resub_'+str(num_chr)+'.sub.'+str(clust_conf['log_task_id'])+'.log',
+	              logname='shape.'+str(outdot)+'.resub_'+str(num_chr)+'.sub.'+str(clust_conf['log_task_id'])+'.log',
 	              mem=int(args.mem_req)*1000,
 	              walltime=30,
 	              njobs=int(num_chr),
@@ -268,7 +268,7 @@ if bad_chr:
              logname=imp_log,
              mem=8000,
              walltime=2, # week
-             wait_name='shapeit.'+str(outdot)+'.resub_'+str(num_chr),
+             wait_name='shape.'+str(outdot)+'.resub_'+str(num_chr),
 	     wait_num=str(jobres).strip(),
              sleep=args.sleep)
 

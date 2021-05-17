@@ -147,7 +147,7 @@ def send_job(jobname,
         if j_per_core == 1:
             task_index = str(clust_conf['task_id'])
         else:
-            task_index = "${tid}"
+            task_index = "$1"
 
         # cmd or array file spec
         if cmd is not None:
@@ -189,11 +189,10 @@ def send_job(jobname,
             # convert multi-line command to script
             if len(cmd_line.splitlines()) > 1:
                 tmp_script = open('temp_cmd.'+str(jobname)+'.sh','w')
-		tmp_script.write('tid=$1'+'\n')
                 tmp_script.write(cmd_line)
                 tmp_script.close()
                 os.chmod(tmp_script.name, stat.S_IEXEC | stat.S_IREAD | stat.S_IWRITE)
-                cmd_line = './'+tmp_script.name+' ${tid}'
+                cmd_line = './'+tmp_script.name
                 
             # setup to do task_mem_lim jobs on each node
             # note: specified above that cmd_line uses $1 (first arg) as task index 
@@ -222,7 +221,7 @@ def send_job(jobname,
                 
                 # start the tasks
                 while [ "$tid" -le "$last_task" ]; do
-                    {cmd_line} &
+                    {cmd_line} $tid &
                     tid=$(($tid+1))
                 done
                 
@@ -230,8 +229,8 @@ def send_job(jobname,
                 wait
             """)
             
-            cmd_str = par_tmp.format(njobs=str(int(njobs)),
-                                     nodej=str(int(task_mem_lim)),
+            cmd_str = par_tmp.format(njobs=str(njobs),
+                                     nodej=str(task_mem_lim),
                                      job_index=str(clust_conf['task_id']),
                                      cmd_line=cmd_line)
             

@@ -606,7 +606,8 @@ sub send_jobarray {
     print "------------------------------------------------------------\n";
     print "$nsja jobs successfully submitted\n";
     print "please see tail of $sjainfofile for regular updates\n";
-    print "check you cluster's queue for running jobs (e.g. qstat or squeue -u USER)\n";
+    print "also check bjobs -w for running jobs\n";
+    print "possibly differnt command on different computer cluster: e.g. qstat -u USER\n";
     print "you will be informed via email if errors or successes occur\n";
     print "------------------------------------------------------------\n";
 
