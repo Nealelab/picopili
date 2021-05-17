@@ -62,8 +62,10 @@ elif args.model == 'gmmat-fam':
     gwas_ex = rp_bin+'/gmmat_logit_covar.R'
 elif args.model == 'logistic':
     gwas_ex = rp_bin+'/gwas_logis.py'
+elif args.model == 'linear':
+    gwas_ex = rp_bin+'/gwas_linear.py'
 else:
-    raise ValueError('Invalid \'--model\'. Must be one of \'gee\', \'dfam\', \'gmmat\', \'gmmat-fam\', or \'logistic\'.')
+    raise ValueError('Invalid \'--model\'. Must be one of \'gee\', \'dfam\', \'gmmat\', \'gmmat-fam\', \'logistic\', or \'linear\'.')
 
 
 # get useful modified args
@@ -413,7 +415,7 @@ print '\n...Submitting GWAS for all chunks...'
 # basic template, depending on model
 # cbopen/cbclose are placeholders for real curly braces, 
 #     to survive .format() here and in send_job
-if args.model == 'gee' or args.model == 'dfam' or args.model == 'logistic':
+if args.model == 'gee' or args.model == 'dfam' or args.model == 'logistic' or args.model == 'linear':
     gwas_templ = dedent("""\
     cname=`awk -v a={task} 'NR==a+1{cbopen}print $4{cbclose}' {cfile}`
     {misc}
@@ -450,7 +452,7 @@ if args.remove is not None:
     gwasargs = gwasargs + ' --remove '+str(args.remove)
 
 # model-specific arguments not passed for gmmat
-if args.model == 'gee' or args.model == 'dfam' or args.model == 'logistic':
+if args.model == 'gee' or args.model == 'dfam' or args.model == 'logistic' or args.model == 'linear':
     if args.addout is not None:
         gwasargs = gwasargs + ' --addout '+str(args.addout)+'.${{cname}}'
     else:
@@ -533,12 +535,20 @@ print '\n...Preparing meta-data for aggregation...'
 # TODO: any prep for info score file?
 ######################
 
+if args.model == 'linear':
+    frq_cc = '--prune'
+    freqname = 'freqinfo.'+str(outdot)+'.frq'
+else:
+    frq_cc = 'case-control'
+    freqname = 'freqinfo.'+str(outdot)+'.frq.cc'
+
 frq_call = [plinkx,
             '--bfile',str(args.bfile),
-            '--freq','case-control','--nonfounders',
+            '--freq',frq_cc,'--nonfounders',
             '--silent',
             '--memory', str(args.plink_mem),
             '--out','freqinfo.'+str(outdot)]
+frq_call = filter(None, frq_call)
 if args.keep is not None:
     frq_call.extend(['--keep',str(args.keep)])
 elif args.remove is not None:
@@ -546,7 +556,6 @@ elif args.remove is not None:
 if args.pheno is not None and str(args.pheno) != "None":
     frq_call.extend(['--pheno',str(args.pheno)])
 
-freqname = 'freqinfo.'+str(outdot)+'.frq.cc'
 
 frq_log = open('freqinfo.'+str(outdot)+'.plink.log', 'w')
 subprocess.check_call(frq_call, stderr=subprocess.STDOUT, stdout=frq_log)
