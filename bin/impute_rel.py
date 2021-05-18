@@ -115,8 +115,10 @@ if not os.path.isfile(args.ref_info.replace('###','1')):
 
 # TODO: full sanity check of the args here
 
-
-
+if args.imp_seed is not None and str(args.imp_seed) != '' and int(args.imp_seed) > 0:
+    if args.imp_version==4:
+        print "\n\nWARNING: --seed is ignored for IMPUTE4 \n"
+        args.imp_seed = None
 
 # print args
 print '\nBasic settings:'
@@ -145,12 +147,12 @@ print '--mem-req '+str(args.mem_req)
 print '--threads '+str(args.threads)
 
 
-print '\nIMPUTE2 arguments:'
+print '\nIMPUTE arguments:'
+print '--imp-version '+str(args.imp_version)
 print '--Ne '+str(args.Ne)
 print '--buffer '+str(args.buffer)
 if args.imp_seed is not None and str(args.imp_seed) != '' and int(args.imp_seed) > 0:
     print '--seed '+str(args.imp_seed)
-
 
 print '\nGenomic chunks:'
 print '--Mb-size '+str(args.Mb_size)

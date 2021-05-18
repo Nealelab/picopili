@@ -168,6 +168,13 @@ arg_snpchunk.add_argument('--chr-info-file',
 parserimpute = argparse.ArgumentParser(add_help=False)
 arg_imp = parserimpute.add_argument_group('IMPUTE2 Arguments')
 
+
+arg_imp.add_argument('--imp-version',
+                     type=int,
+                     choices=[2,4],
+                     help="which version of IMPUTE to use. Currently supports version 2 or 4.",
+                     required=False,
+                     default=2)
 arg_imp.add_argument('--Ne',
                      type=int,
                      metavar='INT',
