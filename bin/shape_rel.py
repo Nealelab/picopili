@@ -89,6 +89,8 @@ print '\nPrephasing:'
 print '--window '+str(args.window)
 if args.no_duohmm:
     print '--no-duohmm '
+if args.no_phaseref:
+    print '--no-phaseref '
 print '--shape-seed '+str(args.shape_seed)
 
 print '\nImputation Reference Files:'
@@ -290,10 +292,6 @@ for i in xrange(1,23):
 print '\n...Submitting SHAPEIT jobs...'
 ######################
 
-if args.no_duohmm:
-    duo_txt = ''
-else:
-    duo_txt = '--duohmm'
 
 # TODO: handle empty chromosomes
 chrstem = str(args.bfile)+'.hg19.ch.fl.chr{task}'
@@ -303,10 +301,20 @@ hap_arg = str(args.ref_haps).replace('###','{task}')
 leg_arg = str(args.ref_legs).replace('###','{task}')
 samp_arg = str(args.ref_samps).replace('###','{task}')
 
+if args.no_duohmm:
+    duo_txt = ''
+else:
+    duo_txt = '--duohmm'
+
+if args.no_phaseref:
+    ph_ref_txt =''
+else:
+    ph_ref_txt =' '.join(['--input-ref', hap_arg, leg_arg, samp_arg])
+
 shape_call = [shapeit_ex,
               '--input-bed', chrstem+'.bed', chrstem+'.bim', chrstem+'.fam',
               '--input-map', map_arg,
-              '--input-ref', hap_arg, leg_arg, samp_arg,
+              str(ph_ref_txt),
               '--window', str(args.window),
               str(duo_txt),
               '--thread', str(args.threads),
@@ -342,7 +350,7 @@ if args.full_pipe:
     ######################
     
     os.chdir(wd)
-    next_call = str(rp_bin) + '/imp2_rel.py '+' '.join(sys.argv[1:])
+    next_call = str(rp_bin) + '/imp_rel.py '+' '.join(sys.argv[1:])
 
     imp_log = 'imp_chunks.'+str(outdot)+'.sub.log'
 

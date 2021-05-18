@@ -103,6 +103,10 @@ arg_shape.add_argument('--no-duohmm',
                         action='store_true',
                         help='omit --duohmm flag for family-aware pre-phasing in shapeit',
                         required=False)
+arg_shape.add_argument('--no-phaseref',
+                        action='store_true',
+                        help='omit the reference panel from phasing (reduces performance, but lower compute burden)',
+                        required=False)
 arg_shape.add_argument('--shape-seed',
                         type=int,
                         metavar='INT',

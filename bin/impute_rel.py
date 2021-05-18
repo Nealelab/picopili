@@ -9,7 +9,7 @@ Impute GWAS data with related individuals
 # 
 # Is a wrapper for:
 # - shape_rel.py
-# - imp2_rel.py
+# - imp_rel.py
 # - bg_imp.py
 # - agg_imp.py
 # 
