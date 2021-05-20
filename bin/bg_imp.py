@@ -120,7 +120,7 @@ else:
     if args.imp_version==2:
         info_txt = '--qual-scores '+str(imp_dir)+'/'+str(outdot)+'.imp.${{cname}}_info' +' 5 2 1'
     elif args.imp_version==4:
-        info_txt = '--qual-scores '+str(imp_dir)+'/'+str(outdot)+'.imp.${{cname}}.qctool_info.txt' +' 17 2 \'#\''
+        info_txt = '--qual-scores '+str(imp_dir)+'/'+str(outdot)+'.imp.${{cname}}.qctool_info.txt' +' 18 2 \'#\''
     # minimum info
     if args.info_th >= 0.0 and args.info_th <= 1.0:
         info_txt = info_txt + ' --qual-threshold '+str(args.info_th)
