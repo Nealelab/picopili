@@ -120,6 +120,7 @@ if args.imp_version==2:
     impute_ex = find_exec('impute2',key='i2loc')
 elif args.imp_version==4:
     impute_ex = find_exec('impute4',key='i4loc')
+    qctool_ex = find_exec('qctool', key='qctoolloc')
 else:
     raise ValueError("Currently --imp-version can only be 2 or 4")
 shapeit_ex = find_exec('shapeit',key='shloc')
@@ -368,14 +369,19 @@ imp_templ = dedent("""\
     cname=`awk -v a={task} 'NR==a+1{cbopen}print $4{cbclose}' {cfile}`
 
     {impute_ex} {version_args} {g_arg} {in_haps} -h {ref_haps} -l {ref_leg} -m {map} -int ${cbopen}cstart{cbclose} ${cbopen}cend{cbclose} -buffer {buffer} -Ne {Ne} -o_gz -o {out} {seedtxt}
+
+    {info_cmd}
 """)
 
 if args.imp_version==2:
     version_args = '-allow_large_regions'
     g_arg = '-use_prephased_g -known_haps_g'
+    info_cmd = ''
 elif args.imp_version==4:
     version_args = '-no_maf_align'
     g_arg = '-g'
+    info_cmd = qctool_ex + ' -g {out}.gen.gz -snp-stats -osnp {out}.qctool_info.txt -log {out}.qctool_info.log'
+
 
 # fill in template
 jobdict = {"task": "{task}",
@@ -391,8 +397,9 @@ jobdict = {"task": "{task}",
            "buffer": str(args.buffer),
            "out": str(outdot)+'.imp.${{cname}}',
            "seedtxt": str(seedtxt),
-	   "cbopen":'{{',
-	   "cbclose":'}}',
+           "cbopen":'{{',
+           "cbclose":'}}',
+           "info_cmd": str(info_cmd)
            }
 
 

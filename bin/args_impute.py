@@ -48,7 +48,12 @@ arg_base.add_argument('--addout',
 #arg_base.add_argument('--no-cleanup',
 #                    action='store_true',
 #                    help='skip cleanup of interim files')
-
+arg_base.add_argument('--imp-version',
+                    type=int,
+                    choices=[2,4],
+                    help="which version of IMPUTE to use. Currently supports version 2 or 4.",
+                    required=False,
+                    default=2)
 
 
 
@@ -169,12 +174,6 @@ parserimpute = argparse.ArgumentParser(add_help=False)
 arg_imp = parserimpute.add_argument_group('IMPUTE2 Arguments')
 
 
-arg_imp.add_argument('--imp-version',
-                     type=int,
-                     choices=[2,4],
-                     help="which version of IMPUTE to use. Currently supports version 2 or 4.",
-                     required=False,
-                     default=2)
 arg_imp.add_argument('--Ne',
                      type=int,
                      metavar='INT',
@@ -190,9 +189,9 @@ arg_imp.add_argument('--buffer',
 arg_imp.add_argument('--imp-seed',
                      type=int,
                      metavar='INT',
-                     help='random seed for impute2',
+                     help='random seed for IMPUTE. Only used for IMPUTE2.',
                      required=False,
-                     default=54321)
+                     default=None)
 
 
 ############
