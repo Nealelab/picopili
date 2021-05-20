@@ -381,7 +381,7 @@ elif args.imp_version==4:
     version_args = '-no_maf_align'
     g_arg = '-g'
     info_cmd = qctool_ex + ' -g {out}.gen.gz -snp-stats -osnp {out}.qctool_info.txt -log {out}.qctool_info.log'
-
+    info_cmd = info_cmd.format({"out": str(outdot)+'.imp.${{cname}}'})
 
 # fill in template
 jobdict = {"task": "{task}",
