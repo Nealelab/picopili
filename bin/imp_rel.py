@@ -174,7 +174,7 @@ for chrom in xrange(1,23):
     samp_out = str(shape_dir)+'/'+str(outdot)+'.chr'+str(chrom)+'.phased.sample'
     
     # glob to catch logs from any previous resubs
-    log_list = glob.glob(str(outdot)+'.chr'+str(chrom)+'.shape.*log')
+    log_list = glob.glob(shape_dir)+'/'+str(outdot)+'.chr'+str(chrom)+'.shape.*log')
     log_out = max(log_list, key=os.path.getctime)
 
     # probably overkill to check all of this, but file existence isn't enough
