@@ -30,7 +30,7 @@ import subprocess
 import argparse
 from textwrap import dedent
 from args_impute import parserbase, parserimpute, parserref, parserchunk, parsercluster, parserjob, parserphase
-from py_helpers import unbuffer_stdout, file_len, link, find_exec, test_exec, read_conf
+from py_helpers import unbuffer_stdout, file_len, file_tail, link, find_exec, test_exec, read_conf
 from blueprint import send_job, read_clust_conf, init_sendjob_dict, save_job
 unbuffer_stdout()
 
@@ -178,9 +178,9 @@ for chrom in xrange(1,23):
     log_out = max(log_list, key=os.path.getctime)
 
     # probably overkill to check all of this, but file existence isn't enough
-    if not os.path.isfile(haps_out) or not os.path.size(haps_out) > 1:
+    if not os.path.isfile(haps_out) or not os.path.getsize(haps_out) > 1:
         bad_chr.append(str(chrom))
-    elif not os.path.isfile(samp_out) or not os.path.size(samp_out) > 1:
+    elif not os.path.isfile(samp_out) or not os.path.getsize(samp_out) > 1:
         bad_chr.append(str(chrom))
     elif 'Running time:' not in file_tail(log_out, n=1):
         bad_chr.append(str(chrom))
