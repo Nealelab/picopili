@@ -221,7 +221,7 @@ if bad_chr:
     chrs=({chr_list})
     chrom=${cbopen}chrs[{task}-1]{cbclose}
 
-    {shape_ex} {bed} {map} {ph_ref_txt} {window} {duo_txt} {thread_str} {seed_str} {outmax} {shapelog}    
+    {shape_ex} {bed} {map} {ph_ref} {window} {duo_txt} {thread_str} {seed_str} {outmax} {shapelog}    
     """)
 
 #    shape_call = [shapeit_ex,
@@ -257,7 +257,7 @@ if bad_chr:
                "shape_ex": str(shapeit_ex),
                "bed": '--input-bed '+str(chrstem)+'.bed '+str(chrstem)+'.bim '+str(chrstem)+'.fam',
                "map": '--input-map '+str(args.ref_maps).replace('###','${chrom}'),
-               "ref": str(ph_ref_txt),
+               "ph_ref": str(ph_ref_txt),
                "window": '--window '+str(args.window),
                "duo_txt": str(duo_txt),
                "thread_str": '--thread '+str(args.threads),
