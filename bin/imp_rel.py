@@ -236,8 +236,8 @@ if bad_chr:
 #                  '--output-log', outstem+'.shape.log']
     
     # manage additional arg pieces
-    chrstem = str(args.bfile)+'.hg19.ch.fl.chr${chrom}'
-    outstem = str(outdot)+'.chr${chrom}'
+    chrstem = str(args.bfile)+'.hg19.ch.fl.chr${{chrom}}'
+    outstem = str(outdot)+'.chr${{chrom}}'
     if args.no_duohmm:
         duo_txt = ''
     else:
@@ -247,23 +247,23 @@ if bad_chr:
         ph_ref_txt =''
     else:
         ph_ref_txt ='--input-ref '+ \
-                        str(args.ref_haps).replace('###','${chrom}')+' '+ \
-                        str(args.ref_legs).replace('###','${chrom}')+' '+ \
-                        str(args.ref_samps).replace('###','${chrom}')
+                        str(args.ref_haps).replace('###','${{chrom}}')+' '+ \
+                        str(args.ref_legs).replace('###','${{chrom}}')+' '+ \
+                        str(args.ref_samps).replace('###','${{chrom}}')
     
     # fill in shapeit template
     jobdict = {"task": "{task}",
                "chr_list": ' '.join(bad_chr),
                "shape_ex": str(shapeit_ex),
                "bed": '--input-bed '+str(chrstem)+'.bed '+str(chrstem)+'.bim '+str(chrstem)+'.fam',
-               "map": '--input-map '+str(args.ref_maps).replace('###','${chrom}'),
+               "map": '--input-map '+str(args.ref_maps).replace('###','${{chrom}}'),
                "ph_ref": str(ph_ref_txt),
                "window": '--window '+str(args.window),
                "duo_txt": str(duo_txt),
                "thread_str": '--thread '+str(args.threads),
                "seed_str": '--seed '+str(args.shape_seed),
                "outmax": '--output-max '+str(outstem)+'.phased.haps '+str(outstem)+'.phased.sample',
-               "shapelog": str(outstem)+'.shape.resub_'+str(num_chr)+'.log',
+               "shapelog": '--output-log '+str(outstem)+'.shape.resub_'+str(num_chr)+'.log',
 	       "cbopen":'{{',
 	       "cbclose":'}}',
                }    
