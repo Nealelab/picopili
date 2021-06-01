@@ -25,6 +25,7 @@ if not (('-h' in sys.argv) or ('--help' in sys.argv)):
 
 ### load requirements
 import os
+import glob
 import subprocess
 import argparse
 from textwrap import dedent
@@ -171,12 +172,18 @@ bad_chr = []
 for chrom in xrange(1,23):
     haps_out = str(shape_dir)+'/'+str(outdot)+'.chr'+str(chrom)+'.phased.haps'
     samp_out = str(shape_dir)+'/'+str(outdot)+'.chr'+str(chrom)+'.phased.sample'
+    
+    # glob to catch logs from any previous resubs
+    log_list = glob.glob(str(outdot)+'.chr'+str(chrom)+'.shape.*log')
+    log_out = max(log_list, key=os.path.getctime)
 
-    if not os.path.isfile(haps_out):
+    # probably overkill to check all of this, but file existence isn't enough
+    if not os.path.isfile(haps_out) or not os.path.size(haps_out) > 1:
         bad_chr.append(str(chrom))
-    elif not os.path.isfile(samp_out):
+    elif not os.path.isfile(samp_out) or not os.path.size(samp_out) > 1:
         bad_chr.append(str(chrom))
-        
+    elif 'Running time:' not in file_tail(log_out, n=1):
+        bad_chr.append(str(chrom))
 
 # if any shapeit jobs failed, 
 # resubmit them and re-queue this job
