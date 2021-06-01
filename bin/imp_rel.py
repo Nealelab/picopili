@@ -243,13 +243,13 @@ if bad_chr:
     else:
         duo_txt = '--duohmm'
 
-if args.no_phaseref:
-    ph_ref_txt =''
-else:
-    ph_ref_txt ='--input-ref '+ \
-                    str(args.ref_haps).replace('###','${chrom}')+' '+ \
-                    str(args.ref_legs).replace('###','${chrom}')+' '+ \
-                    str(args.ref_samps).replace('###','${chrom}')
+    if args.no_phaseref:
+        ph_ref_txt =''
+    else:
+        ph_ref_txt ='--input-ref '+ \
+                        str(args.ref_haps).replace('###','${chrom}')+' '+ \
+                        str(args.ref_legs).replace('###','${chrom}')+' '+ \
+                        str(args.ref_samps).replace('###','${chrom}')
     
     # fill in shapeit template
     jobdict = {"task": "{task}",
