@@ -37,7 +37,7 @@ import argparse
 from warnings import warn
 from textwrap import dedent
 from args_impute import parserbase, parserbg, parsercluster, parserjob
-from py_helpers import unbuffer_stdout, find_exec, file_tail, link, warn_format, read_conf
+from py_helpers import unbuffer_stdout, find_exec, file_tail, file_len, link, warn_format, read_conf
 from blueprint import send_job, init_sendjob_dict, save_job, load_job, read_clust_conf
 unbuffer_stdout()
 warnings.formatwarning = warn_format
@@ -404,7 +404,7 @@ bg_templ = dedent("""\
     rm {out_str2}.bim
     rm {out_str2}.fam
     
-    {rs_ex} --chunk ${cbopen}cname{cbclose} --name {outdot} --imp-dir {imp_dir} --fam-trans {trans}
+    {rs_ex} --chunk ${cbopen}cname{cbclose} --name {outdot} --imp-dir {imp_dir} --fam-trans {trans} --info-file {info}
 """)
 
 # get number of chunks
@@ -414,9 +414,10 @@ nchunks = len(chunks)
 
 if args.imp_version==2:
     gen_in = str(imp_dir)+'/'+str(outdot)+'.imp.${{cname}}.gz'
+    info = str(imp_dir)+'/'+str(outdot)+'.imp.${{cname}}_info'
 elif args.imp_version==4:
     gen_in = str(imp_dir)+'/'+str(outdot)+'.imp.${{cname}}.gen.gz'
-
+    info = str(imp_dir)+'/'+str(outdot)+'.imp.${{cname}}.qctool_info.txt'
 
 jobdict = {"task": "{task}",
            "sleep": str(args.sleep),
@@ -438,8 +439,9 @@ jobdict = {"task": "{task}",
            "imp_dir": str(imp_dir),
            "idnum": str(shape_dir)+'/'+str(args.bfile)+'.hg19.ch.fl.fam',
            "trans": str(shape_dir)+'/'+str(args.bfile)+'.hg19.ch.fl.fam.transl',
-	   "cbopen":'{{',
-	   "cbclose":'}}',
+           "info": str(info),
+           "cbopen":'{{',
+           "cbclose":'}}'
            }
 
 
