@@ -59,9 +59,6 @@ args = parser.parse_args()
 # rename args
 chname = str(args.chunk)
 outdot = str(args.name)
-imp_dir = str(args.imp_dir)
-
-
 
 
 ###
@@ -159,6 +156,11 @@ for line in info_in:
     if args.imp_version==2:
         (foo, snpid, bpinf, exp_frq, info, certain, imptype, info0, concord0, r2_0) = line.split()
     elif args.imp_version==4:
+        
+        # catch completion message at end of file
+        if '#' in line:
+            continue
+
         # assumes QC tool snpstats will provide:
         # alternate_ids rsid chromosome position alleleA alleleB comment HW_exact_p_value HW_lrt_p_value alleleA_count alleleB_count alleleA_frequency alleleB_frequency minor_allele_frequency minor_allele major_allele info impute_info missing_proportion A B AA AB BB NULL total
         (aid, snpid, chrinf, bpinf, aA, aB, com, hwe, hwe2, Acount, Bcount, Afreq, exp_frq, maf, minorA, majorA, qcinfo, info, miss, A, B, AA, AB, BB, null, total) = line.split()
