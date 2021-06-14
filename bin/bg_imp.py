@@ -404,7 +404,7 @@ bg_templ = dedent("""\
     rm {out_str2}.bim
     rm {out_str2}.fam
     
-    {rs_ex} --chunk ${cbopen}cname{cbclose} --name {outdot} --imp-dir {imp_dir} --fam-trans {trans} --info-file {info}
+    {rs_ex} --chunk ${cbopen}cname{cbclose} --name {outdot} --imp-version {imp_v} --fam-trans {trans} --gt-bim {bim} --info-file {info}
 """)
 
 # get number of chunks
@@ -436,9 +436,10 @@ jobdict = {"task": "{task}",
            "out_str_filt": str(outdot)+'.bg.filtered.${{cname}}',
            "rs_ex": str(rs_ex),
            "outdot": str(outdot),
-           "imp_dir": str(imp_dir),
+           "imp_v": str(args.imp_version),
            "idnum": str(shape_dir)+'/'+str(args.bfile)+'.hg19.ch.fl.fam',
            "trans": str(shape_dir)+'/'+str(args.bfile)+'.hg19.ch.fl.fam.transl',
+           "bim": str(shape_dir)+'/'+str(args.bfile)+'.hg19.ch.fl.bim',
            "info": str(info),
            "cbopen":'{{',
            "cbclose":'}}'
