@@ -4,7 +4,7 @@
 # bg_imp.py
 # written by Raymond Walters, January 2016
 """
-Generate best-guess calls from IMPUTE2 output
+Generate best-guess calls from IMPUTE output
 """
 # Overview:
 # 1) Parse arguments
@@ -37,7 +37,7 @@ import argparse
 from warnings import warn
 from textwrap import dedent
 from args_impute import parserbase, parserbg, parsercluster, parserjob
-from py_helpers import unbuffer_stdout, find_exec, file_tail, link, warn_format, read_conf
+from py_helpers import unbuffer_stdout, find_exec, file_tail, file_len, link, warn_format, read_conf
 from blueprint import send_job, init_sendjob_dict, save_job, load_job, read_clust_conf
 unbuffer_stdout()
 warnings.formatwarning = warn_format
@@ -117,7 +117,10 @@ if args.info_th is None and args.max_info_th is None:
     info_txt = ''
 else:
     # init, then add thresholds
-    info_txt = '--qual-scores '+str(imp_dir)+'/'+str(outdot)+'.imp.${{cname}}_info' +' 5 2 1'
+    if args.imp_version==2:
+        info_txt = '--qual-scores '+str(imp_dir)+'/'+str(outdot)+'.imp.${{cname}}_info' +' 5 2 1'
+    elif args.imp_version==4:
+        info_txt = '--qual-scores '+str(imp_dir)+'/'+str(outdot)+'.imp.${{cname}}.qctool_info.txt' +' 18 2 \'#\''
     # minimum info
     if args.info_th >= 0.0 and args.info_th <= 1.0:
         info_txt = info_txt + ' --qual-threshold '+str(args.info_th)
@@ -232,16 +235,24 @@ for line in chunks_in:
     chunks[str(chname)] = [str(chrom), int(start), int(end)]
 
     # verify output file exists
-    ch_imp = imp_dir + '/' + str(outdot) + '.imp.' + str(chname) + '.gz'
+    if args.imp_version==2:
+        ch_imp = imp_dir + '/' + str(outdot) + '.imp.' + str(chname) + '.gz'
+    elif args.imp_version==4:
+        ch_imp = imp_dir + '/' + str(outdot) + '.imp.' + str(chname) + '.gen.gz'
     
     # verify completed successfully
-    # - based on expected output of concordance table on last line
-    ch_sum = imp_dir + '/' + str(outdot) + '.imp.' + str(chname) + '_summary'
+    # make sure use most recent log for resubs
+    if args.imp_version==2:
+        ch_sum = imp_dir + '/' + str(outdot) + '.imp.' + str(chname) + '_summary'
+        fin_string = '[0.9-1.0]'
+    elif args.imp_version==4:
+        ch_sum = imp_dir + '/' + str(outdot) + '.imp.' + str(chname) + '.qctool_info.log'
+        fin_string = 'Thank you for using qctool'
     
     # record failed chunks
     if not os.path.isfile(ch_imp):
         mis_chunks[str(chname)] = [str(chrom), int(start), int(end)]
-    elif '[0.9-1.0]' not in file_tail(ch_sum, n=1):
+    elif fin_string not in file_tail(ch_sum, n=1):
         mis_chunks[str(chname)] = [str(chrom), int(start), int(end)]
 
 chunks_in.close()
@@ -364,7 +375,7 @@ print '\n...Setting up working directory...'
 # working directories
 proc_dir = wd + '/imp_postproc'
 os.mkdir(proc_dir)
-print 'Impute2 output processing: %s' % proc_dir
+print 'Impute output processing: %s' % proc_dir
 os.chdir(proc_dir)
 link(str(chunk_dir)+'/'+str(outdot)+'.chunks.txt', str(outdot)+'.chunks.txt', 'genomic chunk results')
 
@@ -393,18 +404,26 @@ bg_templ = dedent("""\
     rm {out_str2}.bim
     rm {out_str2}.fam
     
-    {rs_ex} --chunk ${cbopen}cname{cbclose} --name {outdot} --imp-dir {imp_dir} --fam-trans {trans}
+    {rs_ex} --chunk ${cbopen}cname{cbclose} --name {outdot} --imp-version {imp_v} --fam-trans {trans} --gt-bim {bim} --info-file {info}
 """)
 
 # get number of chunks
 nchunks = len(chunks)
 
 # info to fill in job template
+
+if args.imp_version==2:
+    gen_in = str(imp_dir)+'/'+str(outdot)+'.imp.${{cname}}.gz'
+    info = str(imp_dir)+'/'+str(outdot)+'.imp.${{cname}}_info'
+elif args.imp_version==4:
+    gen_in = str(imp_dir)+'/'+str(outdot)+'.imp.${{cname}}.gen.gz'
+    info = str(imp_dir)+'/'+str(outdot)+'.imp.${{cname}}.qctool_info.txt'
+
 jobdict = {"task": "{task}",
            "sleep": str(args.sleep),
            "cfile": str(outdot)+'.chunks.txt',
            "plink_ex": str(plink_ex),
-           "gen_in": str(imp_dir)+'/'+str(outdot)+'.imp.${{cname}}.gz',
+           "gen_in": str(gen_in),
            "samp_in": str(shape_dir)+'/'+str(outdot)+'.chr${{cchr}}.phased.sample',
            "hard_call_th": str(hard_call_th),
            "out_str": str(outdot)+'.bg.${{cname}}',
@@ -417,11 +436,13 @@ jobdict = {"task": "{task}",
            "out_str_filt": str(outdot)+'.bg.filtered.${{cname}}',
            "rs_ex": str(rs_ex),
            "outdot": str(outdot),
-           "imp_dir": str(imp_dir),
+           "imp_v": str(args.imp_version),
            "idnum": str(shape_dir)+'/'+str(args.bfile)+'.hg19.ch.fl.fam',
            "trans": str(shape_dir)+'/'+str(args.bfile)+'.hg19.ch.fl.fam.transl',
-	   "cbopen":'{{',
-	   "cbclose":'}}',
+           "bim": str(shape_dir)+'/'+str(args.bfile)+'.hg19.ch.fl.bim',
+           "info": str(info),
+           "cbopen":'{{',
+           "cbclose":'}}'
            }
 
 
