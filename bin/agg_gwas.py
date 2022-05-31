@@ -36,7 +36,7 @@ import os
 import subprocess
 import argparse
 import gzip
-from math import log10, sqrt
+from math import log10, log, sqrt
 from args_gwas import parserbase, parseragg
 from py_helpers import unbuffer_stdout, file_len, file_tail
 from blueprint import send_job, save_job, load_job, read_clust_conf
@@ -69,8 +69,8 @@ arg_file.add_argument('--freq-file',
 
 arg_other.add_argument('--model', 
                     type=str.lower,
-                    choices=['dfam','gee','gmmat','gmmat-fam','logistic','linear'],
-                    help='Which GWAS testing method was used. Current options are plink \'--dfam\' (generalized TDT-alike), GEE (generalized estimating equations), GMMAT (logistic mixed model with GRM for variance component), or GMMAT-fam (logistic mixed model with GRM and family clusters).',
+                    choices=['dfam','gee','gmmat','gmmat-fam','unphased','logistic','linear'],
+                    help='Which GWAS testing method was used. Current options include plink \'--dfam\' (generalized TDT-alike), GEE (generalized estimating equations), GMMAT (logistic mixed model with GRM for variance component), GMMAT-fam (logistic mixed model with GRM and family clusters), or UNPHASED (likelihood-based method of Dudbridge 2008).',
                     required=False,
                     default='gee')
 
@@ -151,12 +151,16 @@ for line in chunks_in:
     elif args.model == 'linear':
         ch_out = 'linear.'+str(outdot)+'.'+str(chname)+'.assoc.linear'
 	out_len = 12
+    elif args.model == 'unphased':
+        ch_out = 'unphased.'+str(outdot)+'.'+str(chname)+'.Disease.family.out'
+	out_len = 14
     
     # record chunks with no/partial/broken output
     if not os.path.isfile(ch_out):
     	print 'Output not found for %s' % str(ch_out)
         mis_chunks[str(chname)] = [str(chrom), int(start), int(end)]
-    elif file_len(ch_out) < file_len(str(outdot)+'.snps.'+str(chname)+'.txt'):
+    elif file_len(ch_out) < file_len(str(outdot)+'.snps.'+str(chname)+'.txt') and args.model != 'unphased':
+    # unphased filters its ouput for monomorphic, so line count check doesn't work
     	print 'Output file %s is incomplete' % str(ch_out)
         mis_chunks[str(chname)] = [str(chrom), int(start), int(end)]
     else:
@@ -294,16 +298,22 @@ chnames = [k for k, v in sorted(chunks.iteritems(), key=lambda (key,value): floa
 # gmmat: nothing
 if args.model == 'gee' or args.model == 'logistic' or args.model == 'linear':
     a2_info = {}
+elif args.model=='unphased':
+    a2_info = {}
+    a1_info = {}
 elif args.model == 'dfam':
     bp_info = {}
 
-if args.model == 'gee' or args.model == 'dfam' or args.model == 'logistic' or args.model == 'linear':
+if args.model == 'gee' or args.model == 'dfam' or args.model == 'logistic' or args.model == 'linear' or args.model=='unphased':
 	bim = open(bim_file, 'r')
 	for line in bim:
 	    (chrom, snp, cm, bp, a1, a2) = line.split()
     
 	    if args.model == 'gee' or args.model == 'logistic' or args.model == 'linear':
 	        a2_info[str(snp)] = str(a2)
+	    elif args.model=='unphased':
+	        a2_info[str(snp)] = str(a2)
+		a1_info[str(snp)] = str(a1)
 	    elif args.model == 'dfam':
 	        bp_info[str(snp)] = int(bp)
 
@@ -363,7 +373,7 @@ if args.info_file is not None:
 out_file = gzip.open(outname, 'wb')
 filt_file = gzip.open(filtoutname+'.tmp.gz', 'wb')
 
-if args.model == 'gee' or args.model == 'logistic':
+if args.model == 'gee' or args.model == 'logistic' or args.model == 'unphased':
     out_head = ['CHR', 'SNP', 'BP', 'A1', 'A2', 'FRQ_A', 'FRQ_U', 'INFO', 'BETA', 'SE', 'CHISQ', 'P', 'N_CAS', 'N_CON', 'ngt']
 elif args.model == 'dfam':
     out_head = ['CHR', 'SNP', 'BP', 'A1', 'A2', 'FRQ_A', 'FRQ_U', 'INFO', 'OBSERVED', 'EXPECTED', 'CHISQ', 'P', 'N_CAS', 'N_CON', 'ngt']
@@ -401,6 +411,9 @@ for ch in chnames:
     elif args.model == 'linear':
         chunk_res = open('linear.'+str(outdot)+'.'+str(ch)+'.assoc.linear', 'r')
         dumphead = chunk_res.readline()
+    elif args.model == 'unphased':
+        chunk_res = open('unphased.'+str(outdot)+'.'+str(ch)+'.Disease.family.out', 'r')
+	dumphead = chunk_res.readline()
     
     for line in chunk_res:
         # read results
@@ -422,6 +435,24 @@ for ch in chnames:
 	    	continue
             z = float(beta)/float(se)
 	    chisq = float(z)*float(z)
+
+        elif args.model == 'unphased':
+	    (chrom, snp, bp, bp2, a1, fa, fu, chisq, df, p, oddr, se, ci_lo, ci_hi) = line.lstrip().split()
+	    if str(se)=='NA' or float(se)==0:
+	        continue # excludes results for omni, ref allele
+
+	    # unphased appears to use alleles alphabetically rather than in plink coding, so need determine allele
+	    a2_v1 = a2_info.pop(str(snp))
+	    a2_v2 = a1_info.pop(str(snp))
+	    if str(a1)==str(a2_v1):
+	        a2 = a2_v2
+	    elif str(a1)==str(a2_v2):
+	        a2 = a2_v1
+	    else:
+	        # just as a precaution
+	        a2 = 'NA??'
+	        
+	    beta = str(round(log(float(oddr)),6))
 
         # get meta info
 	# verify use freq of correct allele
@@ -461,8 +492,8 @@ for ch in chnames:
             
  
         # construct output
-        if args.model == 'gee' or args.model == 'logistic':
-            # ditch gee results with implausible SEs (likely errors / numerical instability)
+        if args.model == 'gee' or args.model == 'logistic' or args.model == 'unphased':
+            # ditch gee/unphased results with implausible SEs (likely errors / numerical instability)
             if str(se) == 'NA' or float(se) > float(args.max_se):
                 continue
             else:
@@ -479,8 +510,9 @@ for ch in chnames:
 		chisq = float(z)*float(z)
                 outline = [chrom, snp, bp, a1, a2, frqa, frqu, info, -1.0*float(scoretest), scorevar, z, chisq, p, na, nu, ngt]
 	
+
 	elif args.model == 'linear':
-	    if str(se) == 'NA' or float(se) > float(args.max_se):
+	    if str(se) == 'NA' or str(se) == 'nan' or float(se) > float(args.max_se):
 	        continue
 	    else:
 	        outline = [chrom, snp, bp, a1, a2, frqa, info, beta, se, chisq, p, na, ngt]
@@ -499,13 +531,13 @@ for ch in chnames:
 out_file.close()
 filt_file.close()
 # final file data
-# gee/logistic: chr, snp, bp, a1, a2, frq_a, frq_u, info, beta, se, chi, p, nca, nco, ngt
+# gee/logistic/unphased: chr, snp, bp, a1, a2, frq_a, frq_u, info, beta, se, chi, p, nca, nco, ngt
 # dfam: chr, snp, bp, a1, a2, frq_a, frq_u, info, obs, exp, chi, p, nca, nco, ngt
 # gmmat: chr, snp, bp, a1, a2, frq_a, frq_u, info, score, var, z, chi, p, nca, nco, ngt
 # linear: chr, snp, bp, a1, a2, frq, info, beta, se, chi, p, n, ngt
 
 # sort filtered file
-if args.model == 'dfam' or args.model == 'gee' or args.model == 'logistic':
+if args.model == 'dfam' or args.model == 'gee' or args.model == 'logistic' or args.model=='unphased':
     pcol = '12,12'
 elif args.model == 'gmmat' or args.model == 'gmmat-fam':
     pcol = '13,13'
