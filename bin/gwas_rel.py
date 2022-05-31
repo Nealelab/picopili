@@ -25,6 +25,7 @@ if not (('-h' in sys.argv) or ('--help' in sys.argv)):
 import argparse
 import subprocess
 import os
+import pandas as pd
 from warnings import warn
 from textwrap import dedent
 from args_gwas import parserbase, parsergwas, parserchunk, parseragg, parsersoft
@@ -64,8 +65,10 @@ elif args.model == 'logistic':
     gwas_ex = rp_bin+'/gwas_logis.py'
 elif args.model == 'linear':
     gwas_ex = rp_bin+'/gwas_linear.py'
+elif args.model == 'unphased':
+    gwas_ex = rp_bin+'/gwas_unphased.py'
 else:
-    raise ValueError('Invalid \'--model\'. Must be one of \'gee\', \'dfam\', \'gmmat\', \'gmmat-fam\', \'logistic\', or \'linear\'.')
+    raise ValueError('Invalid \'--model\'. Must be one of \'gee\', \'dfam\', \'gmmat\', \'gmmat-fam\', \'unphased\', \'logistic\', or \'linear\'.')
 
 
 # get useful modified args
@@ -266,7 +269,7 @@ bim = open(str(args.bfile)+'.bim', 'r')
 for line in bim:
     (chrom, snp, cm, bp, a1, a2) = line.split()
 
-    # reocrd novel chrs
+    # record novel chrs
     if int(chrom) not in chrs:
         chrs.append(int(chrom))
 
@@ -344,64 +347,155 @@ if args.model == 'gmmat' or args.model == 'gmmat-fam':
 
 
 ######################
-    if args.covar is not None:
-        print '\n...Preparing covariates...' 
-        # only for gmmat, plink handles covariates for GEE/logistic
+if args.model == 'unphased':
+    print '\n...Preparing fam/phenotype file...'
+# pedfile w/ 1=control 2=case 0=missing
 ######################
 
-        cov_in = open(str(args.covar), 'r')
-        covhead = cov_in.readline().split()
-        
-        if 'FID' not in covhead or 'IID' not in covhead:
-            ValueError('Covariate file is missing header with FID and IID (required for GMMAT).')
-    
-        # extract covariates to use, if necessary        
-        if args.covar_number is not None:
-            cov_out = open(str(args.covar)+'.sub.txt', 'w')
-            
-            # split eg. 1-10,12
-            cov1 = [x.split(',') for x in args.covar_number]
-    
-            # flatten list of lists
-            cov2 = [item for sublist in cov1 for item in sublist]
-            
-            # remove empty strings
-            cov3 = [x.replace(',','') for x in cov2 if x is not None and str(x) != '']
-    
-            # interpret ranges
-            # credit: http://stackoverflow.com/questions/6405208/how-to-convert-numeric-string-ranges-to-a-list-in-python
-            covnum = []
-            for part in cov3:
-                    if '-' in part:
-                            a, b = part.split('-')
-                            a, b = int(a), int(b)
-                            covnum.extend(range(a, b+1))
-                    else:
-                            a = int(part)
-                            covnum.append(a)
-    
-            abscol = [0, 1]
-            # +1 here is +2 for FID/IID cols, -1 for python's base-0 index
-            abscol.extend([x+1 for x in covnum])
-    
-            # write header line
-            head_out = ' '.join([str(covhead[int(x)]) for x in abscol])
-            cov_out.write(head_out + '\n')
-    
-            # write data lines
-            for line in cov_in:
-                line_out = ' '.join([str(line.split()[int(x)]) for x in abscol])
-                cov_out.write(line_out + '\n')
-            
-            cov_out.close()
-            cov_in.close()
-            
-        else:
-            cov_in.close()
-        
-    # no covariates
+    formatted_phenofile = str(args.bfile)+'.fam.unphased_pheno_formatted.txt'
+    outphen = open(formatted_phenofile, 'w')
+    nca = 0
+    nco = 0
+
+    fam = pd.read_csv(str(args.bfile)+'.fam', header=None, names=['FID','IID','pat','mat','sex','phen'], delim_whitespace=True, dtype=str)
+    fam['key'] = fam['FID'].astype(str)+'::'+fam['IID'].astype(str)
+
+
+    if args.pheno is not None:
+
+        pheno = pd.read_csv(args.pheno, header=None,delim_whitespace=True, dtype=str)
+	pheno['key'] = pheno.iloc[:,0].astype(str) + '::' + pheno.iloc[:,1].astype(str)
+	pheno.set_index('key', inplace=True)
+
+        for k, v in fam.iterrows():
+	    if str(v['key']) in pheno.index.tolist():
+	        new_phen = pheno.iloc[:,2][v['key']]
+		if int(new_phen)==2:
+		    nca += 1
+		    outphen.write('\t'.join([v['FID'],v['IID'],v['pat'],v['mat'],v['sex'],str(new_phen)])+'\n')
+		elif int(new_phen)==1:
+		    nco +=1
+		    outphen.write('\t'.join([v['FID'],v['IID'],v['pat'],v['mat'],v['sex'],str(new_phen)])+'\n')
+		elif int(new_phen)==0:
+		    outphen.write('\t'.join([v['FID'],v['IID'],v['pat'],v['mat'],v['sex'],str(new_phen)])+'\n')
+		elif int(new_phen)==-9:
+		    outphen.write('\t'.join([v['FID'],v['IID'],v['pat'],v['mat'],v['sex'],"0"])+'\n')
+		else:
+		    raise IOError("unexpected phenotype value "+str(new_phen)+" for "+str(k))
+	    else:
+	        outphen.write('\t'.join([v['FID'],v['IID'],v['pat'],v['mat'],v['sex'],"0"])+'\n')
+
+
     else:
-        raise ValueError('GMMAT without covariates not currently implemented.\n')
+
+        for k, v in fam.iterrows():
+
+	    if int(v['phen']) == 2:
+	        nca += 1
+		outphen.write('\t'.join([v['FID'],v['IID'],v['pat'],v['mat'],v['sex'],v['phen']])+'\n')
+	    elif int(v['phen']) == 1:
+	        nco += 1
+		outphen.write('\t'.join([v['FID'],v['IID'],v['pat'],v['mat'],v['sex'],v['phen']])+'\n')
+	    elif int(v['phen']) == 0:
+	        outphen.write('\t'.join([v['FID'],v['IID'],v['pat'],v['mat'],v['sex'],v['phen']])+'\n')
+	    elif int(v['phen']) == -9:
+	        outphen.write('\t'.join([v['FID'],v['IID'],v['pat'],v['mat'],v['sex'],"0"])+'\n')
+	    else:
+	        raise IOError("unexpected phenotype value "+str(v['phen'])+" for "+str(k))
+
+
+    outphen.close()
+
+    if nca==0:
+        raise IOError("Found 0 cases (and ",str(nco)," controls); phenotype coded 0/1 instead of 1/2?")
+
+
+######################
+if args.covar is not None and (args.model == 'gmmat' or args.model == 'gmmat-fam' or args.model == 'unphased'):
+    print '\n...Preparing covariates...' 
+    # only for gmmat or unphased, plink handles covariates for GEE/logistic
+######################
+
+    cov_in = pd.read_csv(str(args.covar), header=None, delim_whitespace=True, dtype=str)
+        
+    if cov_in.iloc[0,0] != 'FID' or cov_in.iloc[0,1] != 'IID':
+        ValueError('Covariate file does not have header starting with FID and IID.')
+    
+    cov_in['key'] = cov_in.iloc[:,0].astype(str) + '::' + cov_in.iloc[:,1].astype(str)
+    cov_in.set_index('key', inplace=True)
+
+    ncovs = len(cov_in.columns)
+	
+    cov_in.columns = cov_in.iloc[0,:]
+    covnames = [str(cov_in.columns.values.tolist()[x]) for x in range(2,ncovs)]
+    cov_in.drop(cov_in.index.tolist()[0])
+
+    # extract covariates to use, if necessary        
+    if args.covar_number is not None:
+            
+        # split eg. 1-10,12
+        cov1 = [x.split(',') for x in args.covar_number]
+    
+        # flatten list of lists
+        cov2 = [item for sublist in cov1 for item in sublist]
+            
+        # remove empty strings
+        cov3 = [x.replace(',','') for x in cov2 if x is not None and str(x) != '']
+    
+        # interpret ranges
+        # credit: http://stackoverflow.com/questions/6405208/how-to-convert-numeric-string-ranges-to-a-list-in-python
+        covnum = []
+        for part in cov3:
+            if '-' in part:
+                a, b = part.split('-')
+                a, b = int(a), int(b)
+                covnum.extend(range(a, b+1))
+            else:
+                a = int(part)
+                covnum.append(a)
+    
+        abscol = [0, 1]
+        # +1 here is +2 for FID/IID cols, -1 for python's base-0 index
+        abscol.extend([x+1 for x in covnum])
+	
+    else:
+	abscol = range(0, ncovs+1)
+
+
+    # write out covariate file in appropriate format
+    cov_out = open(str(args.covar)+'.sub.txt', 'w')
+
+    if args.model == 'gmmat' or args.model == 'gmmat-fam':
+
+        # write header line
+        head_out = ' '.join([str(cov_in.columns.values.tolist()[x]) for x in abscol])
+        cov_out.write(head_out + '\n')
+    
+        # write data lines
+        for k, line in cov_in.iterrows():
+            line_out = ' '.join([str(line[int(x)]) for x in abscol])
+            cov_out.write(line_out + '\n')
+
+    elif args.model == 'unphased':
+
+        cov_out.write('\t'.join(['FID','IID','pat','mat','sex']+covnames)+'\n')
+
+	for k, v in fam.iterrows():
+
+	    if str(v['key']) in cov_in.index.tolist():
+	        rowcovs = [str(x) if x is not None else "-" for x in cov_in.loc[v['key']][range(2,ncovs)]]
+		cov_out.write('\t'.join([v['FID'],v['IID'],v['pat'],v['mat'],v['sex']]+rowcovs)+'\n')
+
+	    else:
+	        rowcovs = ["-" for x in range(2,ncovs)]
+		cov_out.write('\t'.join([v['FID'],v['IID'],v['pat'],v['mat'],v['sex']]+rowcovs)+'\n')
+
+    cov_out.close()
+            
+        
+# no covariates
+elif args.covar is None and (args.model == 'gmmat' or args.model == 'gmmat-fam'):
+    raise ValueError('GMMAT without covariates not currently implemented.\n')
 
 
 
@@ -427,23 +521,34 @@ elif args.model == 'gmmat' or args.model == 'gmmat-fam':
     cname=`awk -v a={task} 'NR==a+1{cbopen}print $4{cbclose}' {cfile}`
     chrnum=`awk -v a={task} 'NR==a+1{cbopen}print $1{cbclose}' {cfile}`
 
-    {plinkx} --bfile {bfile} --memory {pmem} --extract {outdot}.snps.${cbopen}cname{cbclose}.txt {optargs} --make-bed --out {outdot}.${cbopen}cname{cbclose}
+    {plinkx} --bfile {bfile} --memory {pmem} --keep-allele-order --extract {outdot}.snps.${cbopen}cname{cbclose}.txt {optargs} --make-bed --out {outdot}.${cbopen}cname{cbclose}
 
     {rsc} --no-save --no-restore {gwas_ex} {outdot}.${cbopen}cname{cbclose} grm.{outdot}.loco_chr${cbopen}chrnum{cbclose}.rel.gz {covarsub} {outdot}.${cbopen}cname{cbclose} > {outdot}.${cbopen}cname{cbclose}.gmmat.R.log
     """)
+    # alternative template for GMMAT
+    # Rscript --no-save --no-restore 
+    # ~/github/picopili/bin/gmmat_logit_covar.R 
+    # fgwa.chr15_073_077_head               (bfile stem)
+    # fgw_grm_loco15.rel.gz                 (square GRM from plink matching bfile)
+    # ../fgwa_eur_1KGp3_postimp.pca.txt     (covariate file)
+    # test1                                 (output name)
+    # > test_gmm.log
 
-# alternative template for GMMAT
-# Rscript --no-save --no-restore 
-# ~/github/picopili/bin/gmmat_logit_covar.R 
-# fgwa.chr15_073_077_head               (bfile stem)
-# fgw_grm_loco15.rel.gz                 (square GRM from plink matching bfile)
-# ../fgwa_eur_1KGp3_postimp.pca.txt     (covariate file)
-# test1                                 (output name)
-# > test_gmm.log
+elif args.model == 'unphased':
+    gwas_templ = dedent("""\
+    cname=`awk -v a={task} 'NR==a+1{cbopen}print $4{cbclose}' {cfile}`
+    chrnum=`awk -v a={task} 'NR==a+1{cbopen}print $1{cbclose}' {cfile}`
+
+    {plinkx} --bfile {bfile} --memory {pmem} --keep-allele-order --extract {outdot}.snps.${cbopen}cname{cbclose}.txt {optargs} --make-bed --out {outdot}.${cbopen}cname{cbclose}
+
+    {gwas_ex} --bfile {outdot}.${cbopen}cname{cbclose} --out {argout} --extract {outdot}.snps.${cbopen}cname{cbclose}.txt --plink-mem {pmem} {optargs2}
+    """)
+
 
 
 # optional arguments
 gwasargs = ''
+gwasargs2 = ''
 if args.pheno is not None:
     gwasargs = gwasargs + ' --pheno '+str(args.pheno)
 if args.keep is not None:
@@ -461,6 +566,30 @@ if args.model == 'gee' or args.model == 'dfam' or args.model == 'logistic' or ar
         gwasargs = gwasargs + ' --covar '+str(args.covar)
     if args.covar_number is not None:
         gwasargs = gwasargs + ' --covar-number '+' '.join(args.covar_number)
+
+# parsed phenotype file and model-specific args for unphased
+if args.model == 'unphased':
+    gwasargs2 = gwasargs2 + ' --phenofile '+str(formatted_phenofile)
+
+    if args.addout is not None:
+        gwasargs2 = gwasargs2 + ' --addout '+str(args.addout)+'.${{cname}}'
+    else:
+	gwasargs2 = gwasargs2 + ' --addout ${{cname}}'
+
+    if args.covar is not None:
+        gwasargs2 = gwasargs2 + ' --covar '+str(args.covar)
+        gwasargs2 = gwasargs2 + ' --covfile '+str(args.covar)+'.sub.txt'
+    if args.covar_number is not None:
+        gwasargs2 = gwasargs2 + ' --covar-number '+' '.join(args.covar_number)
+
+    if args.unphased_model is not None:
+        gwasargs2 = gwasargs2 + ' --unphased-model '+str(args.unphased_model)
+    if args.unphased_no_missing:
+        gwasargs2 = gwasargs2 + ' --unphased-no-missing'
+    if args.unphased_linkage:
+        gwasargs2 = gwasargs2 + ' --unphased-linkage'
+    if args.unphased_no_parentrisk:
+        gwasargs2 = gwasargs2 + ' --unphased-no-parentrisk'
 
 # TODO: not needed for dfam, but is currently in it's args
 if args.model == 'gee' or args.model == 'dfam':
@@ -487,6 +616,7 @@ jobdict = {"task": "{task}",
            "argout": str(args.out),
            "outdot": str(outdot),
            "optargs": str(gwasargs),
+	   "optargs2": str(gwasargs2),
            "plinkx": str(plinkx),
 	   "pmem": str(args.plink_mem),
            "covarsub": str(args.covar)+'.sub.txt',
@@ -546,6 +676,7 @@ frq_call = [plinkx,
             '--bfile',str(args.bfile),
             '--freq',frq_cc,'--nonfounders',
             '--silent',
+	    '--keep-allele-order',
             '--memory', str(args.plink_mem),
             '--out','freqinfo.'+str(outdot)]
 frq_call = filter(None, frq_call)
