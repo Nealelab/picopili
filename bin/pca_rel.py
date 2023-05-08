@@ -96,6 +96,10 @@ if args.plot_all:
 else:
     plotall_txt = ''
 
+if args.imus_file == None or args.imus_file == 'None':
+    imus_txt = str('--imus_file ' + args.imus_file)
+else:
+    imus_txt = ''
 
 ### print settings in use
 print 'Basic settings:'
@@ -188,6 +192,7 @@ imuspca_call = ' '.join(['imus_pca.py',
                          '--out', args.out,
                          clean_txt,
                          '--rel-th', str(args.rel_th),
+                         imus_txt,
                          '--npcs', str(args.npcs),
                          plotall_txt,
                          '--pcadir', str(args.pcadir),

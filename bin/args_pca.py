@@ -154,6 +154,12 @@ arg_imus.add_argument('--rel-th',
                          'Default is halfway between 3rd and 4th degree relatives.',
                     required=False,
                     default=.09375)
+arg_imus.add_argument('--imus-file',
+                    type=str,
+                    metavar='FILE',
+                    help='pre-computed independent set to use instead of running PRIMUS; ' + \
+                         'assumes matches format of *.genome_maximum_independent_set from PRIMUS',
+                    required=False)
 arg_pca.add_argument('--npcs',
                     type=int,
                     metavar='INT',
