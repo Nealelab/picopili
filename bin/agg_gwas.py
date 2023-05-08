@@ -168,6 +168,13 @@ for line in chunks_in:
         if len(ft.split()) != out_len:
 	    print 'Last line of output file %s is incomplete' % str(ch_out)
             mis_chunks[str(chname)] = [str(chrom), int(start), int(end)]
+	
+    if args.model == 'unphased':
+        # check for completion message in log instead of output with known expected length
+	ch_log = 'unphased.'+str(outdot)+'.'+str(chname)+'.log'
+        if 'END OF UNPHASED' not in file_tail(ch_log, 2):
+	    print 'Log %s appears incomplete' % str(ch_log)
+	    mis_chunks[str(chname)] = [str(chrom), int(start), int(end)]
             
 
 chunks_in.close()
