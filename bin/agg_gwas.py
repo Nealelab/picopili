@@ -447,6 +447,8 @@ for ch in chnames:
 	    (chrom, snp, bp, bp2, a1, fa, fu, chisq, df, p, oddr, se, ci_lo, ci_hi) = line.lstrip().split()
 	    if str(se)=='NA' or float(se)==0:
 	        continue # excludes results for omni, ref allele
+	    elif float(oddr) <= 0:
+	        continue # edge case of ==0 has been observed (probably rounding error)
 
 	    # unphased appears to use alleles alphabetically rather than in plink coding, so need determine allele
 	    a2_v1 = a2_info.pop(str(snp))
@@ -459,7 +461,7 @@ for ch in chnames:
 	        # just as a precaution
 	        a2 = 'NA??'
 	        
-	    beta = str(round(log(float(oddr)),6))
+	    beta = log(float(oddr))
 
         # get meta info
 	# verify use freq of correct allele
@@ -499,13 +501,29 @@ for ch in chnames:
             
  
         # construct output
-        if args.model == 'gee' or args.model == 'logistic' or args.model == 'unphased':
-            # ditch gee/unphased results with implausible SEs (likely errors / numerical instability)
+        if args.model == 'gee' or args.model == 'logistic':
+            # ditch results with implausible SEs (likely errors / numerical instability)
             if str(se) == 'NA' or float(se) > float(args.max_se):
                 continue
             else:
                 outline = [chrom, snp, bp, a1, a2, frqa, frqu, info, beta, se, chisq, p, na, nu, ngt]
-            
+        
+	elif args.model == 'unphased':
+	    if str(se) == 'NA' or float(se) > float(args.max_se):
+	        continue
+	    # should be impossible but has been observed; skip here to avoid sqrt error
+	    elif float(chisq) < 0:
+	        continue
+	    # oddr filtered on read, but noting here for reference
+	    # elif oddr <= 0:
+	    #    continue
+	    # disagreement between LRT p-val and Wald (likely unstable, bad for IVW meta)
+	    elif abs(sqrt(float(chisq)) - abs(beta/float(se))) > args.wald_diff:
+	        continue
+	    
+	    beta = str(round(log(float(oddr)),6))
+	    outline = [chrom, snp, bp, a1, a2, frqa, frqu, info, beta, se, chisq, p, na, nu, ngt]
+
         elif args.model == 'dfam':
             outline = [chrom, snp, bp, a1, a2, frqa, frqu, info, obs, exp, chisq, p, na, nu, ngt]
         

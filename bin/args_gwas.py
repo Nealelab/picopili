@@ -195,9 +195,16 @@ arg_agg.add_argument('--p-th2',
 arg_agg.add_argument('--max-se', 
                     type=float,
                     metavar='FLOAT',
-                    help='Maximum SE allowed for GWAS results. Only applies to GEE model. Useful for filtering out numerically unstable results.',
+                    help='Maximum SE allowed for GWAS results. Does not apply to GMMAT or dfam model. Useful for filtering out numerically unstable results.',
                     required=False,
                     default=100.0)
+arg_agg.add_argument('--wald-diff',
+                    type=float,
+		    metavar='FLOAT',
+		    help='Maximum difference between Wald and likihood ratio Z score. Only applies to UNPHASED model.',
+		    required=False,
+		    default=0.15)
+
 
 ############
 #
