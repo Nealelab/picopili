@@ -97,9 +97,9 @@ else:
     plotall_txt = ''
 
 if args.imus_file == None or args.imus_file == 'None':
-    imus_txt = str('--imus_file ' + args.imus_file)
-else:
     imus_txt = ''
+else:
+    imus_txt = str('--imus-file ' + args.imus_file)
 
 ### print settings in use
 print 'Basic settings:'
