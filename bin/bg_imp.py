@@ -252,7 +252,7 @@ for line in chunks_in:
     # record failed chunks
     if not os.path.isfile(ch_imp):
         mis_chunks[str(chname)] = [str(chrom), int(start), int(end)]
-    elif fin_string not in file_tail(ch_sum, n=1):
+    elif not os.path.isfile(ch_sum) or fin_string not in file_tail(ch_sum, n=1):
         mis_chunks[str(chname)] = [str(chrom), int(start), int(end)]
 
 chunks_in.close()
