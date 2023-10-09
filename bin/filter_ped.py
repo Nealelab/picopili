@@ -211,7 +211,7 @@ else:
         else:
             warnings.warn('Genotyping rate not loaded for %s. Setting call rate to zero.' % str(indiv))
 	    print 'Genotyping rate not loaded for %s. Setting call rate to zero.' % str(indiv)
-            genofile[indiv] = 0.0
+            genorate[indiv] = 0.0
 
 
 
