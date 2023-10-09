@@ -154,7 +154,23 @@ for line in chunks_in:
     elif args.model == 'unphased':
         ch_out = 'unphased.'+str(outdot)+'.'+str(chname)+'.Disease.family.out'
 	out_len = 14
+        unphased_fam_out = True
+
+    if args.model == 'unphased':
+        # check for completion message in log instead of output with known expected length
+	ch_log = 'unphased.'+str(outdot)+'.'+str(chname)+'.log'
+	if 'END OF UNPHASED' not in file_tail(ch_log, 2):
+	    print 'Log %s appears incomplete' % str(ch_log)
+	    mis_chunks[str(chname)] = [str(chrom), int(start), int(end)]
+	else: # confirm family.out is output (isn't for e.g. sibs)
+	    ch_out_alt = 'unphased.'+str(outdot)+'.'+str(chname)+'.Disease.unrelated.out'
+	    ft = file_tail(ch_out)
+	    ft2 = file_tail(ch_out_alt)
+	    if file_len(ch_out) < 2 and len(ft.split()) != out_len and len(ft2.split()) == out_len:
+	        ch_out = ch_out_alt
+		unphased_fam_out = False
     
+
     # record chunks with no/partial/broken output
     if not os.path.isfile(ch_out):
     	print 'Output not found for %s' % str(ch_out)
@@ -169,15 +185,11 @@ for line in chunks_in:
 	    print 'Last line of output file %s is incomplete' % str(ch_out)
             mis_chunks[str(chname)] = [str(chrom), int(start), int(end)]
 	
-    if args.model == 'unphased':
-        # check for completion message in log instead of output with known expected length
-	ch_log = 'unphased.'+str(outdot)+'.'+str(chname)+'.log'
-        if 'END OF UNPHASED' not in file_tail(ch_log, 2):
-	    print 'Log %s appears incomplete' % str(ch_log)
-	    mis_chunks[str(chname)] = [str(chrom), int(start), int(end)]
-            
 
 chunks_in.close()
+
+if args.model == 'unphased' and not unphased_fam_out:
+    print 'WARNING: Using *.unrelated.out for output. May be expected (e.g. sibs) but recommend confirming fam file specification.'
 
 ###############
 # if there are missing chunks, restart their gwas and resub agg script
@@ -419,7 +431,10 @@ for ch in chnames:
         chunk_res = open('linear.'+str(outdot)+'.'+str(ch)+'.assoc.linear', 'r')
         dumphead = chunk_res.readline()
     elif args.model == 'unphased':
-        chunk_res = open('unphased.'+str(outdot)+'.'+str(ch)+'.Disease.family.out', 'r')
+        if unphased_fam_out:
+            chunk_res = open('unphased.'+str(outdot)+'.'+str(ch)+'.Disease.family.out', 'r')
+	else: 
+	    chunk_res = open('unphased.'+str(outdot)+'.'+str(ch)+'.Disease.unrelated.out', 'r')
 	dumphead = chunk_res.readline()
     
     for line in chunk_res:
