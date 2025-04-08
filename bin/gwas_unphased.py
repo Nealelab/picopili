@@ -135,13 +135,14 @@ print '############'
 print 'Begin!'
 print '############'
 
-#############
-print '\n...Getting covariates...'
-#############
 
-cov_in = pd.read_csv(str(args.covfile), header=0, delim_whitespace=True, dtype=str, nrows=2)
-ncovs = len(cov_in.columns)
-covnames = [str(cov_in.columns.values.tolist()[x]) for x in range(5,ncovs)]
+if args.covar is not None:
+#############
+    print '\n...Getting covariates...'
+#############
+    cov_in = pd.read_csv(str(args.covfile), header=0, delim_whitespace=True, dtype=str, nrows=2)
+    ncovs = len(cov_in.columns)
+    covnames = [str(cov_in.columns.values.tolist()[x]) for x in range(5,ncovs)]
 
 #############
 print '\n...Running GWAS...'
