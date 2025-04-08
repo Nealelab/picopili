@@ -693,6 +693,24 @@ subprocess.check_call(frq_call, stderr=subprocess.STDOUT, stdout=frq_log)
 frq_log.close()
 
 
+# fix freq calc if no controls (e.g. for trios with NA parent phenos)
+if args.model is not 'linear':
+
+    frq_out_tmp = pd.read_csv(freqname, header=0, delim_whitespace=True, dtype=str, nrows=2000)
+
+    if all(frq_out_tmp.NCHROBS_U.astype('int') == 0) and not all(frq_out_tmp.NCHROBS_A.astype('int') == 0):
+
+        print 'No controls found, using NA phenotypes for MAF'
+
+	# makes phenoypes <= 0 controls (e.g. missing codes 0 or -9), with > 0 as cases
+	# alt missing code required to make plink temporarily treat -9/1/2 values as continuous
+	frq_call.extend(['--tail-pheno','0','--missing-phenotype','-200'])
+
+	frq_log2 = open('freqinfo.'+str(outdot)+'.plink.log', 'w')
+	subprocess.check_call(frq_call, stderr=subprocess.STDOUT, stdout=frq_log2)
+	frq_log2.close()
+
+
 ######################
 print '\n...Queuing GWAS results aggregation script...'
 # call to agg_gwas.py
