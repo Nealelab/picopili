@@ -159,7 +159,10 @@ for line in chunks_in:
     if args.model == 'unphased':
         # check for completion message in log instead of output with known expected length
 	ch_log = 'unphased.'+str(outdot)+'.'+str(chname)+'.log'
-	if 'END OF UNPHASED' not in file_tail(ch_log, 2):
+	if not os.path.isfile(ch_log):
+	    print 'Output not found for %s' % str(ch_out)
+	    mis_chunks[str(chname)] = [str(chrom), int(start), int(end)]
+	elif 'END OF UNPHASED' not in file_tail(ch_log, 2):
 	    print 'Log %s appears incomplete' % str(ch_log)
 	    mis_chunks[str(chname)] = [str(chrom), int(start), int(end)]
 	else: # confirm family.out is output (isn't for e.g. sibs)
@@ -320,6 +323,7 @@ if args.model == 'gee' or args.model == 'logistic' or args.model == 'linear':
 elif args.model=='unphased':
     a2_info = {}
     a1_info = {}
+    omnibus = {} # init here, but loaded on the fly in gwas results
 elif args.model == 'dfam':
     bp_info = {}
 
@@ -460,6 +464,9 @@ for ch in chnames:
 
         elif args.model == 'unphased':
 	    (chrom, snp, bp, bp2, a1, fa, fu, chisq, df, p, oddr, se, ci_lo, ci_hi) = line.lstrip().split()
+	    if str(a1) == "OMNIBUS":
+	    	# store for comparison to primary result line
+	    	omnibus[str(snp)] = chisq
 	    if str(se)=='NA' or float(se)==0:
 	        continue # excludes results for omni, ref allele
 	    elif float(oddr) <= 0:
@@ -532,8 +539,12 @@ for ch in chnames:
 	    # oddr filtered on read, but noting here for reference
 	    # elif oddr <= 0:
 	    #    continue
-	    # disagreement between LRT p-val and Wald (likely unstable, bad for IVW meta)
+	    # disagreement between LRT, score test, and Wald (likely unstable, bad for IVW meta)
 	    elif abs(sqrt(float(chisq)) - abs(beta/float(se))) > args.wald_diff:
+	        continue
+	    elif float(omnibus[str(snp)]) < 0:
+	        continue
+	    elif abs(sqrt(float(chisq)) - sqrt(float(omnibus[str(snp)]))) > args.wald_diff:
 	        continue
 	    
 	    beta = str(round(log(float(oddr)),6))
