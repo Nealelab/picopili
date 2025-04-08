@@ -303,7 +303,7 @@ def send_job(jobname,
 
     # run
     if not testonly:
-        p = subprocess.Popen(launch_str.split(), stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
+        p = subprocess.Popen(launch_str.split(), stderr=None, stdout=subprocess.PIPE)
         out, err = p.communicate()
         if p.returncode is None or p.returncode == 0:
             return out

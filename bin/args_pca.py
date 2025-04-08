@@ -190,7 +190,7 @@ arg_exloc.add_argument('--primus-ex',
                     metavar='PATH',
                     help='path to main PRIMUS executable',
                     required=False,
-                    default=os.environ['HOME']+"/PRIMUS_v1.8.0/bin/run_PRIMUS.pl")
+                    default=None)
 # arg_exloc.add_argument('--smartpca-ex',
 #                    type=str,
 #                    metavar='PATH',
