@@ -29,6 +29,7 @@ use lib $perlpack;
 
 my $sc_file = "$hmloc/snp_platform_collection.txt.new.0815.gz";
 my $sc_file_0416 = "$hmloc/snp_platform_collection.txt.new.0416a.gz";
+my $sc_file_0718 = "$hmloc/snp_platform_collection.txt.new.0718a.gz";
 
 my $scol = 2;
 
@@ -40,7 +41,8 @@ version: $version
 
   --scf    STRING  SNP collection file
                        default: $sc_file
-		       first checking this: $sc_file_0416
+		       first checking this: $sc_file_0718
+		       then this: $sc_file_0416
   --scol INT       column of SNPs, default = $scol
   --create STRING  create new entry with name STRING
   -help            print this message and exit
@@ -111,6 +113,10 @@ my @out_lines = ();
 if (-e  $sc_file_0416) {
     $sc_file =  $sc_file_0416;
 }
+if (-e  $sc_file_0718) {
+    $sc_file =  $sc_file_0718;
+}
+
 
 unless (-e $sc_file) {
     $sc_file = "$hmloc/snp_platform_collection.txt.new.0114.gz";
