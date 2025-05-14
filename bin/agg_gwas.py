@@ -472,16 +472,31 @@ for ch in chnames:
 	    elif float(oddr) <= 0:
 	        continue # edge case of ==0 has been observed (probably rounding error)
 
-	    # unphased appears to use alleles alphabetically rather than in plink coding, so need determine allele
-	    a2_v1 = a2_info.pop(str(snp))
-	    a2_v2 = a1_info.pop(str(snp))
-	    if str(a1)==str(a2_v1):
-	        a2 = a2_v2
-	    elif str(a1)==str(a2_v2):
-	        a2 = a2_v1
+	    # unphased appears to (a) truncate alleles to the 1st character and 
+	    # (b) use alleles alphabetically rather than in plink coding.
+	    # So need rescue alleles here.
+	    a2_v1 = str(a2_info.pop(str(snp)))
+	    a2_v2 = str(a1_info.pop(str(snp)))
+	    if len(a2_v1)>1 or len(a2_v2)>1:
+	        if a2_v1[0]==a2_v2[0]: 
+		    a2 = "NA_UNPHASED_INDEL"
+		elif str(a1) == str(a2_v1)[0]:
+		    a2 = a2_v2
+		    a1 = a2_v1
+		elif str(a1)==str(a2_v2)[0]:
+		    a2 = a2_v1
+		    a1 = a2_v2
+		else:
+		    a2 = "NA_WRONG_INDEL_A1"
 	    else:
-	        # just as a precaution
-	        a2 = 'NA??'
+	        if str(a1)==str(a2_v1):
+		    a2 = a2_v2
+		elif str(a1)==str(a2_v2):
+		    a2 = a2_v1
+		else:
+		    # just as a precaution
+		    a2 = "NA_WRONG_SNP_A1"
+
 	        
 	    beta = log(float(oddr))
 
