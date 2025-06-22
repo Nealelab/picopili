@@ -36,7 +36,7 @@ import os
 import subprocess
 import argparse
 import gzip
-from math import log10, sqrt
+from math import log10, log, sqrt
 from args_gwas import parserbase, parseragg
 from py_helpers import unbuffer_stdout, file_len, file_tail
 from blueprint import send_job, save_job, load_job, read_clust_conf
@@ -69,8 +69,8 @@ arg_file.add_argument('--freq-file',
 
 arg_other.add_argument('--model', 
                     type=str.lower,
-                    choices=['dfam','gee','gmmat','gmmat-fam','logistic','linear'],
-                    help='Which GWAS testing method was used. Current options are plink \'--dfam\' (generalized TDT-alike), GEE (generalized estimating equations), GMMAT (logistic mixed model with GRM for variance component), or GMMAT-fam (logistic mixed model with GRM and family clusters).',
+                    choices=['dfam','gee','gmmat','gmmat-fam','unphased','logistic','linear'],
+                    help='Which GWAS testing method was used. Current options include plink \'--dfam\' (generalized TDT-alike), GEE (generalized estimating equations), GMMAT (logistic mixed model with GRM for variance component), GMMAT-fam (logistic mixed model with GRM and family clusters), or UNPHASED (likelihood-based method of Dudbridge 2008).',
                     required=False,
                     default='gee')
 
@@ -151,12 +151,35 @@ for line in chunks_in:
     elif args.model == 'linear':
         ch_out = 'linear.'+str(outdot)+'.'+str(chname)+'.assoc.linear'
 	out_len = 12
+    elif args.model == 'unphased':
+        ch_out = 'unphased.'+str(outdot)+'.'+str(chname)+'.Disease.family.out'
+	out_len = 14
+        unphased_fam_out = True
+
+    if args.model == 'unphased':
+        # check for completion message in log instead of output with known expected length
+	ch_log = 'unphased.'+str(outdot)+'.'+str(chname)+'.log'
+	if not os.path.isfile(ch_log):
+	    print 'Output not found for %s' % str(ch_out)
+	    mis_chunks[str(chname)] = [str(chrom), int(start), int(end)]
+	elif 'END OF UNPHASED' not in file_tail(ch_log, 2):
+	    print 'Log %s appears incomplete' % str(ch_log)
+	    mis_chunks[str(chname)] = [str(chrom), int(start), int(end)]
+	else: # confirm family.out is output (isn't for e.g. sibs)
+	    ch_out_alt = 'unphased.'+str(outdot)+'.'+str(chname)+'.Disease.unrelated.out'
+	    ft = file_tail(ch_out)
+	    ft2 = file_tail(ch_out_alt)
+	    if file_len(ch_out) < 2 and len(ft.split()) != out_len and len(ft2.split()) == out_len:
+	        ch_out = ch_out_alt
+		unphased_fam_out = False
     
+
     # record chunks with no/partial/broken output
     if not os.path.isfile(ch_out):
     	print 'Output not found for %s' % str(ch_out)
         mis_chunks[str(chname)] = [str(chrom), int(start), int(end)]
-    elif file_len(ch_out) < file_len(str(outdot)+'.snps.'+str(chname)+'.txt'):
+    elif file_len(ch_out) < file_len(str(outdot)+'.snps.'+str(chname)+'.txt') and args.model != 'unphased':
+    # unphased filters its ouput for monomorphic, so line count check doesn't work
     	print 'Output file %s is incomplete' % str(ch_out)
         mis_chunks[str(chname)] = [str(chrom), int(start), int(end)]
     else:
@@ -164,9 +187,12 @@ for line in chunks_in:
         if len(ft.split()) != out_len:
 	    print 'Last line of output file %s is incomplete' % str(ch_out)
             mis_chunks[str(chname)] = [str(chrom), int(start), int(end)]
-            
+	
 
 chunks_in.close()
+
+if args.model == 'unphased' and not unphased_fam_out:
+    print 'WARNING: Using *.unrelated.out for output. May be expected (e.g. sibs) but recommend confirming fam file specification.'
 
 ###############
 # if there are missing chunks, restart their gwas and resub agg script
@@ -294,16 +320,23 @@ chnames = [k for k, v in sorted(chunks.iteritems(), key=lambda (key,value): floa
 # gmmat: nothing
 if args.model == 'gee' or args.model == 'logistic' or args.model == 'linear':
     a2_info = {}
+elif args.model=='unphased':
+    a2_info = {}
+    a1_info = {}
+    omnibus = {} # init here, but loaded on the fly in gwas results
 elif args.model == 'dfam':
     bp_info = {}
 
-if args.model == 'gee' or args.model == 'dfam' or args.model == 'logistic' or args.model == 'linear':
+if args.model == 'gee' or args.model == 'dfam' or args.model == 'logistic' or args.model == 'linear' or args.model=='unphased':
 	bim = open(bim_file, 'r')
 	for line in bim:
 	    (chrom, snp, cm, bp, a1, a2) = line.split()
     
 	    if args.model == 'gee' or args.model == 'logistic' or args.model == 'linear':
 	        a2_info[str(snp)] = str(a2)
+	    elif args.model=='unphased':
+	        a2_info[str(snp)] = str(a2)
+		a1_info[str(snp)] = str(a1)
 	    elif args.model == 'dfam':
 	        bp_info[str(snp)] = int(bp)
 
@@ -363,7 +396,7 @@ if args.info_file is not None:
 out_file = gzip.open(outname, 'wb')
 filt_file = gzip.open(filtoutname+'.tmp.gz', 'wb')
 
-if args.model == 'gee' or args.model == 'logistic':
+if args.model == 'gee' or args.model == 'logistic' or args.model == 'unphased':
     out_head = ['CHR', 'SNP', 'BP', 'A1', 'A2', 'FRQ_A', 'FRQ_U', 'INFO', 'BETA', 'SE', 'CHISQ', 'P', 'N_CAS', 'N_CON', 'ngt']
 elif args.model == 'dfam':
     out_head = ['CHR', 'SNP', 'BP', 'A1', 'A2', 'FRQ_A', 'FRQ_U', 'INFO', 'OBSERVED', 'EXPECTED', 'CHISQ', 'P', 'N_CAS', 'N_CON', 'ngt']
@@ -401,6 +434,12 @@ for ch in chnames:
     elif args.model == 'linear':
         chunk_res = open('linear.'+str(outdot)+'.'+str(ch)+'.assoc.linear', 'r')
         dumphead = chunk_res.readline()
+    elif args.model == 'unphased':
+        if unphased_fam_out:
+            chunk_res = open('unphased.'+str(outdot)+'.'+str(ch)+'.Disease.family.out', 'r')
+	else: 
+	    chunk_res = open('unphased.'+str(outdot)+'.'+str(ch)+'.Disease.unrelated.out', 'r')
+	dumphead = chunk_res.readline()
     
     for line in chunk_res:
         # read results
@@ -422,6 +461,44 @@ for ch in chnames:
 	    	continue
             z = float(beta)/float(se)
 	    chisq = float(z)*float(z)
+
+        elif args.model == 'unphased':
+	    (chrom, snp, bp, bp2, a1, fa, fu, chisq, df, p, oddr, se, ci_lo, ci_hi) = line.lstrip().split()
+	    if str(a1) == "OMNIBUS":
+	    	# store for comparison to primary result line
+	    	omnibus[str(snp)] = chisq
+	    if str(se)=='NA' or float(se)==0:
+	        continue # excludes results for omni, ref allele
+	    elif float(oddr) <= 0:
+	        continue # edge case of ==0 has been observed (probably rounding error)
+
+	    # unphased appears to (a) truncate alleles to the 1st character and 
+	    # (b) use alleles alphabetically rather than in plink coding.
+	    # So need rescue alleles here.
+	    a2_v1 = str(a2_info.pop(str(snp)))
+	    a2_v2 = str(a1_info.pop(str(snp)))
+	    if len(a2_v1)>1 or len(a2_v2)>1:
+	        if a2_v1[0]==a2_v2[0]: 
+		    a2 = "NA_UNPHASED_INDEL"
+		elif str(a1) == str(a2_v1)[0]:
+		    a2 = a2_v2
+		    a1 = a2_v1
+		elif str(a1)==str(a2_v2)[0]:
+		    a2 = a2_v1
+		    a1 = a2_v2
+		else:
+		    a2 = "NA_WRONG_INDEL_A1"
+	    else:
+	        if str(a1)==str(a2_v1):
+		    a2 = a2_v2
+		elif str(a1)==str(a2_v2):
+		    a2 = a2_v1
+		else:
+		    # just as a precaution
+		    a2 = "NA_WRONG_SNP_A1"
+
+	        
+	    beta = log(float(oddr))
 
         # get meta info
 	# verify use freq of correct allele
@@ -462,12 +539,32 @@ for ch in chnames:
  
         # construct output
         if args.model == 'gee' or args.model == 'logistic':
-            # ditch gee results with implausible SEs (likely errors / numerical instability)
+            # ditch results with implausible SEs (likely errors / numerical instability)
             if str(se) == 'NA' or float(se) > float(args.max_se):
                 continue
             else:
                 outline = [chrom, snp, bp, a1, a2, frqa, frqu, info, beta, se, chisq, p, na, nu, ngt]
-            
+        
+	elif args.model == 'unphased':
+	    if str(se) == 'NA' or float(se) > float(args.max_se):
+	        continue
+	    # should be impossible but has been observed; skip here to avoid sqrt error
+	    elif float(chisq) < 0:
+	        continue
+	    # oddr filtered on read, but noting here for reference
+	    # elif oddr <= 0:
+	    #    continue
+	    # disagreement between LRT, score test, and Wald (likely unstable, bad for IVW meta)
+	    elif abs(sqrt(float(chisq)) - abs(beta/float(se))) > args.wald_diff:
+	        continue
+	    elif float(omnibus[str(snp)]) < 0:
+	        continue
+	    elif abs(sqrt(float(chisq)) - sqrt(float(omnibus[str(snp)]))) > args.wald_diff:
+	        continue
+	    
+	    beta = str(round(log(float(oddr)),6))
+	    outline = [chrom, snp, bp, a1, a2, frqa, frqu, info, beta, se, chisq, p, na, nu, ngt]
+
         elif args.model == 'dfam':
             outline = [chrom, snp, bp, a1, a2, frqa, frqu, info, obs, exp, chisq, p, na, nu, ngt]
         
@@ -479,8 +576,9 @@ for ch in chnames:
 		chisq = float(z)*float(z)
                 outline = [chrom, snp, bp, a1, a2, frqa, frqu, info, -1.0*float(scoretest), scorevar, z, chisq, p, na, nu, ngt]
 	
+
 	elif args.model == 'linear':
-	    if str(se) == 'NA' or float(se) > float(args.max_se):
+	    if str(se) == 'NA' or str(se) == 'nan' or float(se) > float(args.max_se):
 	        continue
 	    else:
 	        outline = [chrom, snp, bp, a1, a2, frqa, info, beta, se, chisq, p, na, ngt]
@@ -499,13 +597,13 @@ for ch in chnames:
 out_file.close()
 filt_file.close()
 # final file data
-# gee/logistic: chr, snp, bp, a1, a2, frq_a, frq_u, info, beta, se, chi, p, nca, nco, ngt
+# gee/logistic/unphased: chr, snp, bp, a1, a2, frq_a, frq_u, info, beta, se, chi, p, nca, nco, ngt
 # dfam: chr, snp, bp, a1, a2, frq_a, frq_u, info, obs, exp, chi, p, nca, nco, ngt
 # gmmat: chr, snp, bp, a1, a2, frq_a, frq_u, info, score, var, z, chi, p, nca, nco, ngt
 # linear: chr, snp, bp, a1, a2, frq, info, beta, se, chi, p, n, ngt
 
 # sort filtered file
-if args.model == 'dfam' or args.model == 'gee' or args.model == 'logistic':
+if args.model == 'dfam' or args.model == 'gee' or args.model == 'logistic' or args.model=='unphased':
     pcol = '12,12'
 elif args.model == 'gmmat' or args.model == 'gmmat-fam':
     pcol = '13,13'

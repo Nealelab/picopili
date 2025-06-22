@@ -9,7 +9,7 @@ Impute GWAS data with related individuals
 # 
 # Is a wrapper for:
 # - shape_rel.py
-# - imp2_rel.py
+# - imp_rel.py
 # - bg_imp.py
 # - agg_imp.py
 # 
@@ -72,34 +72,56 @@ def print_ref_rec():
     print '\nWARNING: download filesize is > 12 GB\n'    
 
 # check these references exist
-if not os.path.isfile(args.ref_maps.replace('###','1')):
-    print "Failed to verify genetic maps exist."
-    print_ref_rec()
-    raise IOError("No chr 1 genetic map: %s" % args.ref_maps.replace('###','1'))
+if args.single_chr is None or args.single_chr=="None":
+    if not os.path.isfile(args.ref_maps.replace('###','1')):
+        print "Failed to verify genetic maps exist."
+        print_ref_rec()
+        raise IOError("No chr 1 genetic map: %s" % args.ref_maps.replace('###','1'))
     
-if not os.path.isfile(args.ref_haps.replace('###','1')):
-    print "Failed to verify reference haplotypes exist."
-    # print rec, since is possible have genetic map but not imputation panel
-    print_ref_rec()
-    raise IOError("No chr 1 reference haplotypes: %s" % args.ref_haps.replace('###','1'))
+    if not os.path.isfile(args.ref_haps.replace('###','1')):
+        print "Failed to verify reference haplotypes exist."
+        # print rec, since is possible have genetic map but not imputation panel
+        print_ref_rec()
+        raise IOError("No chr 1 reference haplotypes: %s" % args.ref_haps.replace('###','1'))
     
-if not os.path.isfile(args.ref_legs.replace('###','1')):
-    # not printing ref_rec here since at this point have verified haplotypes exist
-    raise IOError("Failed to verify reference legend files exist (tested for chr 1 at %s)" % args.ref_legs.replace('###','1'))
+    if not os.path.isfile(args.ref_legs.replace('###','1')):
+        # not printing ref_rec here since at this point have verified haplotypes exist
+        raise IOError("Failed to verify reference legend files exist (tested for chr 1 at %s)" % args.ref_legs.replace('###','1'))
     
-if not os.path.isfile(args.ref_samps.replace('###','1')):
-    # not printing ref_rec here since at this point have verified haplotypes exist
-    raise IOError("Failed to verify reference sample file exists (tested for chr 1 at %s)" % args.ref_samps.replace('###','1'))
+    if not os.path.isfile(args.ref_samps.replace('###','1')):
+        # not printing ref_rec here since at this point have verified haplotypes exist
+        raise IOError("Failed to verify reference sample file exists (tested for chr 1 at %s)" % args.ref_samps.replace('###','1'))
 
+else:
+    if not os.path.isfile(args.ref_maps.replace('###',args.single_chr)):
+        print "Failed to verify genetic maps exist."
+	print_ref_rec()
+	raise IOError("No genetic map: %s" % args.ref_maps.replace('###',args.single_chr))
+
+    if not os.path.isfile(args.ref_haps.replace('###',args.single_chr)):
+        print "Failed to verify reference haplotypes exist."
+	print_ref_rec()
+	raise IOError("No reference haplotypes: %s" % args.ref_haps.replace('###',args.single_chr))
+
+    if not os.path.isfile(args.ref_legs.replace('###',args.single_chr)):
+        raise IOError("Failed to verify reference legend files exist: %s" % args.ref_legs.replace('###',args.single_chr))
+
+    if not os.path.isfile(args.ref_samps.replace('###',args.single_chr)):
+        raise IOError("Failed to verify reference sample file exists: %s" % args.ref_samps.replace('###',args.single_chr))
 
 # more flexible handling for info file for shapeit, since could be external
-if not os.path.isfile(args.ref_info.replace('###','1')):
+if args.single_chr is None:
+    info_test_path = args.ref_info.replace('###','1')
+else:
+    info_test_path = args.ref_info.replace('###',args.single_chr)
+
+if not os.path.isfile(info_test_path):
         
-        if args.ref_dir is not None and os.path.isfile(str(args.ref_dir) +'/' + args.ref_info.replace('###','1')):
+        if args.ref_dir is not None and os.path.isfile(str(args.ref_dir) +'/' + info_test_path):
             args.ref_info = str(args.ref_dir) +'/' + args.ref_info
             
         else:
-            print "Reference information file for phasing not found (tested for chr 1: %s)." % args.ref_info.replace('###','1')
+            print "Reference information file for phasing not found (tested %s)." % info_test_path
             if args.ref_dir is not None:
                 print "Tried both relative path and in --ref-dir %s" % str(args.ref_dir)
             
@@ -110,13 +132,15 @@ if not os.path.isfile(args.ref_info.replace('###','1')):
                 # verified above that the legend file exists
                 print "--ref-info %s\n" % args.ref_legs
             
-            raise IOError("Failed to verify phasing info file exists (tested for chr 1 at %s)" % args.ref_info.replace('###','1'))
+            raise IOError("Failed to verify phasing info file exists (tested %s)" % info_test_path)
 
 
 # TODO: full sanity check of the args here
 
-
-
+if args.imp_seed is not None and str(args.imp_seed) != '' and int(args.imp_seed) > 0:
+    if args.imp_version==4:
+        print "\n\nWARNING: --seed is ignored for IMPUTE4 \n"
+        args.imp_seed = None
 
 # print args
 print '\nBasic settings:'
@@ -124,7 +148,8 @@ print '--bfile '+str(args.bfile)
 print '--out '+str(args.out)
 if args.addout is not None:
     print '--addout '+str(args.addout)
-
+if args.single_chr is not None:
+    print '--single-chr '+str(args.single_chr)
 
 print '\nReference Alignment:'
 print '--popname '+str(args.popname)
@@ -145,12 +170,12 @@ print '--mem-req '+str(args.mem_req)
 print '--threads '+str(args.threads)
 
 
-print '\nIMPUTE2 arguments:'
+print '\nIMPUTE arguments:'
+print '--imp-version '+str(args.imp_version)
 print '--Ne '+str(args.Ne)
 print '--buffer '+str(args.buffer)
 if args.imp_seed is not None and str(args.imp_seed) != '' and int(args.imp_seed) > 0:
     print '--seed '+str(args.imp_seed)
-
 
 print '\nGenomic chunks:'
 print '--Mb-size '+str(args.Mb_size)

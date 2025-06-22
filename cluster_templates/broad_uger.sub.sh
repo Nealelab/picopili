@@ -25,7 +25,8 @@ sleep {sleep_time}
 source /broad/software/scripts/useuse
 reuse -q Anaconda
 reuse -q .curl-7.47.1
-reuse -q .cairo-1.14.2
+# reuse -q .cairo-1.14.2
+reuse -q .r-3.5.0-cairo
 
 # main command line
 {cmd_string}

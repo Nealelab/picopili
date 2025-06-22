@@ -1,16 +1,16 @@
 #! /usr/bin/env python
 
 ####################################
-# imp2_rel.py
+# imp_rel.py
 # written by Raymond Walters, January 2016
 """
-Runs IMPUTE2 for GWAS data with related individuals
+Runs IMPUTE 2 or 4 for GWAS data with related individuals
 """
 # Overview:
 # 1) Parse arguments
 #    - check dependencies, print args, etc
 # 2) Define genomic chunks
-# 3) Run impute2
+# 3) Run impute
 #
 # TODO: better reference specification options
 # TODO: chrx imputation
@@ -25,11 +25,12 @@ if not (('-h' in sys.argv) or ('--help' in sys.argv)):
 
 ### load requirements
 import os
+import glob
 import subprocess
 import argparse
 from textwrap import dedent
 from args_impute import parserbase, parserimpute, parserref, parserchunk, parsercluster, parserjob, parserphase
-from py_helpers import unbuffer_stdout, file_len, link, find_exec, test_exec, read_conf
+from py_helpers import unbuffer_stdout, file_len, file_tail, link, find_exec, test_exec, read_conf
 from blueprint import send_job, read_clust_conf, init_sendjob_dict, save_job
 unbuffer_stdout()
 
@@ -38,7 +39,7 @@ unbuffer_stdout()
 if not (('-h' in sys.argv) or ('--help' in sys.argv)):
     print '\n...Parsing arguments...' 
 #############
-parser = argparse.ArgumentParser(prog='imp2_rel.py',
+parser = argparse.ArgumentParser(prog='imp_rel.py',
                                  formatter_class=lambda prog:
                                  argparse.ArgumentDefaultsHelpFormatter(prog, max_help_position=40),
                                  parents=[parserbase, parserimpute, parserref, parserchunk, parsercluster, parserjob, parserphase])
@@ -64,7 +65,11 @@ else:
     outdot = str(args.out)
     
 if args.imp_seed is not None and str(args.imp_seed) != '' and int(args.imp_seed) > 0:
-    seedtxt = '-seed '+str(args.imp_seed)
+    if args.imp_version==4:
+        print "\n\nWARNING: --seed is ignored for IMPUTE4 \n"
+        seedtxt = ''
+    else:
+        seedtxt = '-seed '+str(args.imp_seed)
 else:
     seedtxt = ''
 
@@ -75,11 +80,14 @@ print '--bfile '+str(args.bfile)
 print '--out '+str(args.out)
 if args.addout is not None:
     print '--addout '+str(args.addout)
+if args.single_chr is not None:
+    print '--single-chr '+str(args.single_chr)
 
-print '\nIMPUTE2 arguments:'
+print '\nIMPUTE arguments:'
+print '--imp-version '+str(args.imp_version)
 print '--Ne '+str(args.Ne)
 print '--buffer '+str(args.buffer)
-if args.imp_seed is not None and str(args.imp_seed) != '' and int(args.imp_seed) > 0:
+if seedtxt != '':
     print '--seed '+str(args.imp_seed)
 
 print '\nImputation reference files:'
@@ -111,7 +119,13 @@ cluster = configs['cluster']
 clust_conf = read_clust_conf()
 
 # from config
-impute_ex = find_exec('impute2',key='i2loc')
+if args.imp_version==2:
+    impute_ex = find_exec('impute2',key='i2loc')
+elif args.imp_version==4:
+    impute_ex = find_exec('impute4',key='i4loc')
+    qctool_ex = find_exec('qctool', key='qctoolloc')
+else:
+    raise ValueError("Currently --imp-version can only be 2 or 4")
 shapeit_ex = find_exec('shapeit',key='shloc')
 
 # get directory containing current script
@@ -157,15 +171,26 @@ print '\n...Verifying pre-phasing was successful...'
 
 bad_chr = []
 
-for chrom in xrange(1,23):
+if args.single_chr is not None:
+    chrom_list = [ args.single_chr ]
+else:
+    chrom_list = xrange(1,23)
+
+for chrom in chrom_list:
     haps_out = str(shape_dir)+'/'+str(outdot)+'.chr'+str(chrom)+'.phased.haps'
     samp_out = str(shape_dir)+'/'+str(outdot)+'.chr'+str(chrom)+'.phased.sample'
+    
+    # glob to catch logs from any previous resubs
+    log_list = glob.glob(shape_dir+'/'+str(outdot)+'.chr'+str(chrom)+'.shape.*log')
+    log_out = max(log_list, key=os.path.getctime)
 
-    if not os.path.isfile(haps_out):
+    # probably overkill to check all of this, but file existence isn't enough
+    if not os.path.isfile(haps_out) or not os.path.getsize(haps_out) > 1:
         bad_chr.append(str(chrom))
-    elif not os.path.isfile(samp_out):
+    elif not os.path.isfile(samp_out) or not os.path.getsize(samp_out) > 1:
         bad_chr.append(str(chrom))
-        
+    elif 'Running time:' not in file_tail(log_out, n=1):
+        bad_chr.append(str(chrom))
 
 # if any shapeit jobs failed, 
 # resubmit them and re-queue this job
@@ -199,12 +224,19 @@ if bad_chr:
 
     # setup submit script
     # with "chr_list" to get have adaptive chromosome list
-    cmd_templ = dedent("""\
-    chrs=({chr_list})
-    chrom=${cbopen}chrs[{task}-1]{cbclose}
+    if num_chr > 1:
+        cmd_templ = dedent("""\
+        chrs=({chr_list})
+        chrom=${cbopen}chrs[{task}-1]{cbclose}
 
-    {shape_ex} {bed} {map} {ref} {window} {duo_txt} {thread_str} {seed_str} {outmax} {shapelog}    
-    """)
+        {shape_ex} {bed} {map} {ph_ref} {window} {duo_txt} {thread_str} {seed_str} {outmax} {shapelog}    
+        """)
+    else:
+        cmd_templ = dedent("""\
+        chrom={chr_list}
+
+        {shape_ex} {bed} {map} {ph_ref} {window} {duo_txt} {thread_str} {seed_str} {outmax} {shapelog}
+        """)
 
 #    shape_call = [shapeit_ex,
 #                  '--input-bed', chrstem+'.bed', chrstem+'.bim', chrstem+'.fam',
@@ -224,6 +256,14 @@ if bad_chr:
         duo_txt = ''
     else:
         duo_txt = '--duohmm'
+
+    if args.no_phaseref:
+        ph_ref_txt =''
+    else:
+        ph_ref_txt ='--input-ref '+ \
+                        str(args.ref_haps).replace('###','${{chrom}}')+' '+ \
+                        str(args.ref_legs).replace('###','${{chrom}}')+' '+ \
+                        str(args.ref_samps).replace('###','${{chrom}}')
     
     # fill in shapeit template
     jobdict = {"task": "{task}",
@@ -231,17 +271,21 @@ if bad_chr:
                "shape_ex": str(shapeit_ex),
                "bed": '--input-bed '+str(chrstem)+'.bed '+str(chrstem)+'.bim '+str(chrstem)+'.fam',
                "map": '--input-map '+str(args.ref_maps).replace('###','${{chrom}}'),
-               "ref": '--input-ref '+str(args.ref_haps).replace('###','${{chrom}}')+' '+str(args.ref_legs).replace('###','${{chrom}}')+' '+str(args.ref_samps).replace('###','${{chrom}}'),
+               "ph_ref": str(ph_ref_txt),
                "window": '--window '+str(args.window),
                "duo_txt": str(duo_txt),
                "thread_str": '--thread '+str(args.threads),
                "seed_str": '--seed '+str(args.shape_seed),
                "outmax": '--output-max '+str(outstem)+'.phased.haps '+str(outstem)+'.phased.sample',
-               "shapelog": str(outstem)+'.shape.resub_'+str(num_chr)+'.log',
+               "shapelog": '--output-log '+str(outstem)+'.shape.resub_'+str(num_chr)+'.log',
 	       "cbopen":'{{',
 	       "cbclose":'}}',
                }    
     shape_cmd = cmd_templ.format(**jobdict)
+
+    # if only 1 chr, don't need to protect variable from additional task id formatting
+    if int(num_chr) == 1:
+        shape_cmd = shape_cmd.replace('${{chrom}}', '${chrom}')
 
     # submit
     jobres = send_job(jobname='shapeit.'+str(outdot)+'.resub_'+str(num_chr),
@@ -309,6 +353,8 @@ chunk_call = [chunker_ex,
               '--Mb-size',str(args.Mb_size),
               '--snp-size',str(args.snp_size),
               '--chr-info-file',str(args.chr_info_file)]
+if args.single_chr is not None:
+    chunk_call.extend(['--single-chr',args.single_chr])
 chunk_call = filter(None,chunk_call)
 
 chunk_log = open('chunk.'+str(outdot)+'.log', 'w')
@@ -319,7 +365,7 @@ chunk_log.close()
 
 
 ######################
-print '\n...Submitting IMPUTE2 job array...'
+print '\n...Submitting IMPUTE job array...'
 # - require "allow_large_regions" to handle centromere boundaries
 # - write submit script to include chunk name parsing
 # TODO: consider making queue/resources flexible
@@ -349,13 +395,27 @@ imp_templ = dedent("""\
     cend=`awk -v a={task} 'NR==a+1{cbopen}print $3{cbclose}' {cfile}`
     cname=`awk -v a={task} 'NR==a+1{cbopen}print $4{cbclose}' {cfile}`
 
-    {impute_ex} -use_prephased_g -known_haps_g {in_haps} -h {ref_haps} -l {ref_leg} -m {map} -int ${cbopen}cstart{cbclose} ${cbopen}cend{cbclose} -buffer {buffer} -Ne {Ne} -allow_large_regions -o_gz -o {out} {seedtxt}
+    {impute_ex} {version_args} {g_arg} {in_haps} -h {ref_haps} -l {ref_leg} -m {map} -int ${cbopen}cstart{cbclose} ${cbopen}cend{cbclose} -buffer {buffer} -Ne {Ne} -o_gz -o {out} {seedtxt}
+
+    {info_cmd}
 """)
+
+if args.imp_version==2:
+    version_args = '-allow_large_regions'
+    g_arg = '-use_prephased_g -known_haps_g'
+    info_cmd = ''
+elif args.imp_version==4:
+    version_args = '-no_maf_align'
+    g_arg = '-g'
+    info_cmd = qctool_ex + ' -g {out}.gen.gz -snp-stats -osnp {out}.qctool_info.txt -log {out}.qctool_info.log'
+    info_cmd = info_cmd.format(**{"out": str(outdot)+'.imp.${{cname}}'})
 
 # fill in template
 jobdict = {"task": "{task}",
            "cfile": str(outdot)+'.chunks.txt',
            "impute_ex": str(impute_ex),
+           "version_args": str(version_args),
+           "g_arg": str(g_arg),
            "in_haps": str(shape_dir)+'/'+str(outdot)+'.chr${{cchr}}.phased.haps',
            "ref_haps": str(args.ref_haps).replace('###','${{cchr}}'),
            "ref_leg": str(args.ref_legs).replace('###','${{cchr}}'),
@@ -364,8 +424,9 @@ jobdict = {"task": "{task}",
            "buffer": str(args.buffer),
            "out": str(outdot)+'.imp.${{cname}}',
            "seedtxt": str(seedtxt),
-	   "cbopen":'{{',
-	   "cbclose":'}}',
+           "cbopen":'{{',
+           "cbclose":'}}',
+           "info_cmd": str(info_cmd)
            }
 
 

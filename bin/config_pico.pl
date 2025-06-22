@@ -308,6 +308,8 @@ print "\n";
 my %longvar = ("p2loc","PLINK2",
 	       "shloc","SHAPEIT",
 	       "i2loc","IMPUTE2",
+	       "i4loc","IMPUTE4",
+	       "qctoolloc","QCTOOL",
 	       "liloc","Liftover",
 	       "eloc","Eigenstrat",
 		   "admloc","ADMIXTURE",
@@ -317,6 +319,7 @@ my %longvar = ("p2loc","PLINK2",
 		   "rscloc","Rscript",
 		   "rservloc", "Rserve",
 		   "rplloc","R-enabled Plink (e.g. v1.07, or a dev build of 1.90)",
+	       "unphasedloc","UNPHASED",
 	       "perlpack","Perl packages (for Compress::Zlib)",
     );
 	       
@@ -324,6 +327,8 @@ my %longvar = ("p2loc","PLINK2",
 my %variables = ("p2loc", "",
 		  "shloc","",
 		 "i2loc","",
+		 "i4loc","",
+		 "qctoolloc","",
 		  "liloc","",
 		  "eloc","",
 		  "admloc","",
@@ -333,6 +338,7 @@ my %variables = ("p2loc", "",
 		  "rscloc","",
 		  "rservloc","",
 		  "rplloc","",
+		  "unphasedloc","",
 		  "perlpack","",
     );
 
@@ -342,6 +348,8 @@ if ($clusters{broad}){
 		  "p2loc","/home/unix/sripke/plink_src/plink_1.9_newest",
 		  "shloc","/home/unix/sripke/shapeit/bin",
 		  "i2loc", "/psych/genetics_data/ripke/references_from_debakkerscratch/impute_v2/impute_v2/impute_2.2.7_beta",
+		  "i4loc","",
+		  "qctoolloc","/broad/software/free/Linux/redhat_7_x86_64/pkgs/qctool/qctool_2.0.6",
 		  "liloc","/home/unix/sripke/liftover",
 		  "eloc","/humgen/atgu1/fs03/shared_resources/shared_software/EIG6.0beta_noreq/bin",
 		  "admloc"," /humgen/atgu1/fs03/shared_resources/shared_software/admixture_linux-1.3.0",
@@ -351,6 +359,7 @@ if ($clusters{broad}){
 		  "rscloc","/broad/software/free/Linux/redhat_6_x86_64/pkgs/r_3.0.1/bin",
 		  "rservloc","/broad/software/free/Linux/redhat_6_x86_64/pkgs/r_3.0.1/lib64/R/library/Rserve/libs/",
 		  "rplloc","/home/unix/sripke/plink_src/src/",
+		  "unphasedloc", "/humgen/atgu1/fs03/shared_resources/shared_software/unphased-3.1.7/bin",
 		  "perlpack","/home/unix/sripke/perl_modules",
 	);
 }
@@ -369,6 +378,8 @@ elsif ($clusters{lisa}){
 		  "p2loc","/home/gwas/plink2/plink_1.9_newest",
 		  "shloc","/home/gwas/shapeit/bin",
 		  "i2loc","/home/gwas/bin_impute_v2/impute_v2.2.2_x86_64_static",
+		  "i4loc","",
+		  "qctoolloc","",
 		  "liloc","/home/gwas/liftover",
 		  "eloc","/home/gwas/eigensoft",
 		  "admloc","",
@@ -378,6 +389,7 @@ elsif ($clusters{lisa}){
 		  "rscloc","/sara/sw/R-3.1.2/bin",
 		  "rservloc","",
 		  "rplloc","/home/gwas/plink/1.08/src",
+		  "unphasedloc","",
 		  "perlpack","/home/gwas/perl_modules",
 	);
 }
@@ -396,6 +408,8 @@ elsif ($clusters{computerome}){
 		  "p2loc","/home/people/sripke/rp_external_bins/plink_1.9_newest",
 		  "shloc","/home/people/sripke/rp_external_bins/shapeit/bin",
 		  "i2loc","/home/people/sripke/rp_external_bins/impute2",
+		  "i4loc","",
+		  "qctoolloc","",
 		  "liloc","/home/people/sripke/rp_external_bins/liftover",
 		  "eloc","/home/people/sripke/rp_external_bins/EIG6.0beta",
 		  "admloc","",
@@ -405,6 +419,7 @@ elsif ($clusters{computerome}){
 		  "rscloc","/services/tools/R-3.1.2/bin",
 		  "rservloc","",
 		  "rplloc","/services/tools/R-3.1.2/bin",
+		  "unphasedloc","",
 		  "perlpack","/home/people/sripke/rp_external_bins/perl_packages",
 	);
 }
@@ -422,6 +437,8 @@ elsif ($clusters{co_ipsych}){
 		  "p2loc","/data/tools/plink2_sept2015",
 		  "shloc","/data/tools/shapeit_sept_2015/bin",
 		  "i2loc","/data/tools/impute-2.3.2/",
+		  "i4loc","",
+		  "qctoolloc","",
 		  "liloc","/data/user_tools/rp_external_bins/liftover",
 		  "eloc","/data/tools/eigensoft-6.0.1/bin",
 		  "admloc","",
@@ -431,6 +448,7 @@ elsif ($clusters{co_ipsych}){
 		  "rscloc","/data/tools/R-3.2.1/bin",
 		  "rservloc","",
 		  "rplloc","/data/tools/plink-1.07",
+		  "unphasedloc","",
 		  "perlpack","/data/user_tools/rp_external_bins/perl_packages",
 	);
 }
@@ -449,6 +467,8 @@ elsif ($clusters{genomedk}){
 		  "p2loc","/project/ricopili/plink_1.9_jul4",
 		  "shloc","/project/ricopili/3rd_bins/shapeit/bin",
 		  "i2loc","/project/ricopili/3rd_bins/impute2",
+		  "i4loc","",
+		  "qctoolloc","",
 		  "liloc","/project/ricopili/3rd_bins/liftover",
 		  "eloc","/project/ricopili/3rd_bins/eigenstrat/bin",
 		  "admloc","",
@@ -458,6 +478,7 @@ elsif ($clusters{genomedk}){
 		  "rscloc","/com/extra/R/3.1.0/bin",
 		  "rservloc","",
 		  "rplloc","/project/ricopili/plink_src",
+		  "unphasedloc","",
 		  "perlpack","/project/ricopili/perl_packages/",
 	);
 }
@@ -475,6 +496,8 @@ elsif ($clusters{mssm}){
 		  "p2loc","/hpc/users/xripkes01/ricopili/3rd_binaries/plink-1.09-src-aug4",
 		  "shloc","/hpc/users/xripkes01/ricopili/3rd_binaries/shapeit/bin",
 		  "i2loc","/hpc/users/xripkes01/ricopili/3rd_binaries/impute2",
+		  "i4loc","",
+		  "qctoolloc","",
 		  "liloc","/hpc/users/xripkes01/ricopili/3rd_binaries/liftover",
 		  "eloc","/hpc/packages/minerva-common/eigensoft/5.0.1/bin",
 		  "admloc","",
@@ -484,6 +507,7 @@ elsif ($clusters{mssm}){
 		  "rscloc","/hpc/packages/minerva-common/R/2.15.3/lib64/R/bin",
 		  "rservloc","",
 		  "rplloc","/hpc/users/xripkes01/ricopili/3rd_binaries/plink-1.07-src-sripke",
+		  "unphasedloc","",
 		  "perlpack","/hpc/users/xripkes01/perl_modules",
 	);
 }
@@ -595,6 +619,8 @@ my %locs = (
 		  "p2loc", "",
 		  "shloc","",
 		  "i2loc","",
+		  "i4loc","",
+		  "qctoolloc","",
 		  "liloc","",
 		  "eloc","",
 		  "admloc","",
@@ -603,6 +629,7 @@ my %locs = (
 		  "rloc","",
 		  "rscloc","",
 		  "rplloc","",
+		  "unphasedloc","",
 		  "perlpack","",
 );
 

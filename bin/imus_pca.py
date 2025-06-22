@@ -125,33 +125,42 @@ print '############'
 # b) verify ran successfully
 ####################################
 
-#############
-print '\n...Computing IMUS (unrelated) set...'
-#############
+if args.imus_file == None or args.imus_file == 'None':
 
-primelog = open(str('primus_' + args.out + '_imus.log'), 'w')
-subprocess.check_call([args.primus_ex,
-                       "--file", args.bfile,
-                       "--genome",
-                       "--rel_threshold", str(args.rel_th),
-                       "--no_PR",
-                       "--plink_ex", plinkx,
-                       "--smartpca_ex", smartpcax,
-                       "--output_dir", str(args.out+'_primus')],
-                       stderr=subprocess.STDOUT,
-                       stdout=primelog)
-                       
-primelog.close()
+    #############
+    print '\n...Computing IMUS (unrelated) set...'
+    #############
 
-# verify successful output
-primedir = os.getcwd() + '/' + args.out + '_primus'
-imus_file = args.bfile + '_cleaned.genome_maximum_independent_set'
-imus_dirfile = primedir + '/' + imus_file
+    primelog = open(str('primus_' + args.out + '_imus.log'), 'w')
+    subprocess.check_call([args.primus_ex,
+                        "--file", args.bfile,
+                        "--genome",
+                        "--rel_threshold", str(args.rel_th),
+                        "--no_PR",
+                        "--plink_ex", plinkx,
+                        "--smartpca_ex", smartpcax,
+                        "--output_dir", str(args.out+'_primus')],
+                        stderr=subprocess.STDOUT,
+                        stdout=primelog)
+                        
+    primelog.close()
 
-if not os.path.isdir(primedir):
-    raise IOError("Expected PRIMUS output directory %r not found" % primedir)
-elif not os.path.isfile(imus_dirfile):
-    raise IOError("Failed to create IMUS set (missing %r)" % imus_dirfile)
+    # verify successful output
+    primedir = os.getcwd() + '/' + args.out + '_primus'
+    imus_file = args.bfile + '_cleaned.genome_maximum_independent_set'
+    imus_dirfile = primedir + '/' + imus_file
+
+    if not os.path.isdir(primedir):
+        raise IOError("Expected PRIMUS output directory %r not found" % primedir)
+    elif not os.path.isfile(imus_dirfile):
+        raise IOError("Failed to create IMUS set (missing %r)" % imus_dirfile)
+    
+else:
+    if not os.path.isfile(args.imus_file):
+        raise IOError("IMUS file not found (missing %r)" % args.imus_file)
+    
+    imus_dirfile = os.path.abspath(args.imus_file)
+    imus_file = os.path.basename(args.imus_file)
 
 
 

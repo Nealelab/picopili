@@ -4,7 +4,7 @@
 # bg_imp.py
 # written by Raymond Walters, January 2016
 """
-Generate best-guess calls from IMPUTE2 output
+Generate best-guess calls from IMPUTE output
 """
 # Overview:
 # 1) Parse arguments
@@ -117,7 +117,10 @@ if args.info_th is None and args.max_info_th is None:
     info_txt = ''
 else:
     # init, then add thresholds
-    info_txt = '--qual-scores '+str(imp_dir)+'/'+str(outdot)+'.imp.${{cname}}_info' +' 5 2 1'
+    if args.imp_version==2:
+        info_txt = '--qual-scores '+str(imp_dir)+'/'+str(outdot)+'.imp.${{cname}}_info' +' 5 2 1'
+    elif args.imp_version==4:
+        info_txt = '--qual-scores '+str(imp_dir)+'/'+str(outdot)+'.imp.${{cname}}.qctool_info.txt' +' 18 2 \'#\''
     # minimum info
     if args.info_th >= 0.0 and args.info_th <= 1.0:
         info_txt = info_txt + ' --qual-threshold '+str(args.info_th)
@@ -232,16 +235,24 @@ for line in chunks_in:
     chunks[str(chname)] = [str(chrom), int(start), int(end)]
 
     # verify output file exists
-    ch_imp = imp_dir + '/' + str(outdot) + '.imp.' + str(chname) + '.gz'
+    if args.imp_version==2:
+        ch_imp = imp_dir + '/' + str(outdot) + '.imp.' + str(chname) + '.gz'
+    elif args.imp_version==4:
+        ch_imp = imp_dir + '/' + str(outdot) + '.imp.' + str(chname) + '.gen.gz'
     
     # verify completed successfully
-    # - based on expected output of concordance table on last line
-    ch_sum = imp_dir + '/' + str(outdot) + '.imp.' + str(chname) + '_summary'
+    # make sure use most recent log for resubs
+    if args.imp_version==2:
+        ch_sum = imp_dir + '/' + str(outdot) + '.imp.' + str(chname) + '_summary'
+        fin_string = '[0.9-1.0]'
+    elif args.imp_version==4:
+        ch_sum = imp_dir + '/' + str(outdot) + '.imp.' + str(chname) + '.qctool_info.log'
+        fin_string = 'Thank you for using qctool'
     
     # record failed chunks
     if not os.path.isfile(ch_imp):
         mis_chunks[str(chname)] = [str(chrom), int(start), int(end)]
-    elif '[0.9-1.0]' not in file_tail(ch_sum, n=1):
+    elif not os.path.isfile(ch_sum) or fin_string not in file_tail(ch_sum, n=1):
         mis_chunks[str(chname)] = [str(chrom), int(start), int(end)]
 
 chunks_in.close()
@@ -364,7 +375,7 @@ print '\n...Setting up working directory...'
 # working directories
 proc_dir = wd + '/imp_postproc'
 os.mkdir(proc_dir)
-print 'Impute2 output processing: %s' % proc_dir
+print 'Impute output processing: %s' % proc_dir
 os.chdir(proc_dir)
 link(str(chunk_dir)+'/'+str(outdot)+'.chunks.txt', str(outdot)+'.chunks.txt', 'genomic chunk results')
 
@@ -378,50 +389,82 @@ bg_templ = dedent("""\
     cname=`awk -v a={task} 'NR==a+1{cbopen}print $4{cbclose}' {cfile}`
     cchr=`awk -v a={task} 'NR==a+1{cbopen}print $1{cbclose}' {cfile}`
     
-    {plink_ex} --gen {gen_in} --sample {samp_in} --oxford-single-chr ${cbopen}cchr{cbclose} --oxford-pheno-name plink_pheno --hard-call-threshold {hard_call_th} --missing-code -9,NA,na --allow-no-sex --silent --memory 4000 --out {out_str} 
+    if [ "$cchr" == "X" ]; then
+        ox_chr=23
+    else
+        ox_chr=$cchr
+    fi
+
+    {plink_ex} --gen {gen_in} --sample {samp_in} --oxford-single-chr ${cbopen}ox_chr{cbclose} --oxford-pheno-name plink_pheno --hard-call-threshold {hard_call_th} --missing-code -9,NA,na --allow-no-sex --silent --memory 4000 --out {out_str} 
     
     sleep {sleep}
     # note: Mendel errors checked after --update-parents, see https://www.cog-genomics.org/plink2/order
-    {plink_ex} --bfile {out_str} {mendel_txt} --pheno {idnum} --mpheno 4 --update-parents {idnum} --allow-no-sex --make-bed --silent --memory 2000 --out {out_str2}
+    {plink_ex} --bfile {out_str} {mendel_txt} --pheno {idnum} --mpheno 4 --update-parents {idnum} --allow-no-sex --make-bed --output-chr MT --silent --memory 2000 --out {out_str2}
     rm {out_str}.bed
     rm {out_str}.bim
     rm {out_str}.fam
     
     sleep {sleep}
-    {plink_ex} --bfile {out_str2} {maf_txt} {mac_txt} {geno_txt} {info_txt} --allow-no-sex --make-bed --silent --memory 2000 --out {out_str_filt}
+    {plink_ex} --bfile {out_str2} {maf_txt} {mac_txt} {geno_txt} {info_txt} --allow-no-sex --make-bed --output-chr MT --silent --memory 2000 --out {out_str_filt}
     rm {out_str2}.bed
     rm {out_str2}.bim
     rm {out_str2}.fam
     
-    {rs_ex} --chunk ${cbopen}cname{cbclose} --name {outdot} --imp-dir {imp_dir} --fam-trans {trans}
+    {rs_ex} --chunk ${cbopen}cname{cbclose} --name {outdot} --imp-version {imp_v} --fam-trans {trans} --gt-bim {bim} --info-file {info}
 """)
 
 # get number of chunks
 nchunks = len(chunks)
 
+# edge case of 1 chunk
+if int(nchunks) == 1:
+    task_txt = "1"
+    cbopen_txt = '{'
+    cbclose_txt = '}'
+    cname_var = '${cname}'
+    chr_var = '${cchr}'
+    info_txt = info_txt.replace('${{cname}}', '${cname}')
+else:
+    task_txt = "{task}"
+    cbopen_txt = '{{'
+    cbclose_txt = '}}'
+    cname_var = '${{cname}}'
+    chr_var = '${{cchr}}'
+
 # info to fill in job template
-jobdict = {"task": "{task}",
+
+if args.imp_version==2:
+    gen_in = str(imp_dir)+'/'+str(outdot)+'.imp.'+cname_var+'.gz'
+    info = str(imp_dir)+'/'+str(outdot)+'.imp.'+cname_var+'_info'
+elif args.imp_version==4:
+    gen_in = str(imp_dir)+'/'+str(outdot)+'.imp.'+cname_var+'.gen.gz'
+    info = str(imp_dir)+'/'+str(outdot)+'.imp.'+cname_var+'.qctool_info.txt'
+
+
+jobdict = {"task": task_txt,
            "sleep": str(args.sleep),
            "cfile": str(outdot)+'.chunks.txt',
            "plink_ex": str(plink_ex),
-           "gen_in": str(imp_dir)+'/'+str(outdot)+'.imp.${{cname}}.gz',
-           "samp_in": str(shape_dir)+'/'+str(outdot)+'.chr${{cchr}}.phased.sample',
+           "gen_in": str(gen_in),
+           "samp_in": str(shape_dir)+'/'+str(outdot)+'.chr'+chr_var+'.phased.sample',
            "hard_call_th": str(hard_call_th),
-           "out_str": str(outdot)+'.bg.${{cname}}',
+           "out_str": str(outdot)+'.bg.'+cname_var,
            "mendel_txt": str(mendel_txt),
            "info_txt": str(info_txt),
-           "out_str2": str(outdot)+'.bg.tmp.${{cname}}',
+           "out_str2": str(outdot)+'.bg.tmp.'+cname_var,
            "maf_txt": str(maf_txt),
            "mac_txt": str(mac_txt),
            "geno_txt": str(geno_txt),
-           "out_str_filt": str(outdot)+'.bg.filtered.${{cname}}',
+           "out_str_filt": str(outdot)+'.bg.filtered.'+cname_var,
            "rs_ex": str(rs_ex),
            "outdot": str(outdot),
-           "imp_dir": str(imp_dir),
+           "imp_v": str(args.imp_version),
            "idnum": str(shape_dir)+'/'+str(args.bfile)+'.hg19.ch.fl.fam',
            "trans": str(shape_dir)+'/'+str(args.bfile)+'.hg19.ch.fl.fam.transl',
-	   "cbopen":'{{',
-	   "cbclose":'}}',
+           "bim": str(shape_dir)+'/'+str(args.bfile)+'.hg19.ch.fl.bim',
+           "info": str(info),
+           "cbopen":str(cbopen_txt),
+           "cbclose":str(cbclose_txt)
            }
 
 
@@ -430,7 +473,11 @@ job_store_file = 'bg.chunks.'+str(outdot)+'.pkl'
 
 clust_dict = init_sendjob_dict()
 clust_dict['jobname'] = 'bg.chunks.'+str(outdot)
-clust_dict['logname'] = str('bg.chunks.'+str(outdot)+'.'+str(clust_conf['log_task_id'])+'.sub.log')
+if int(nchunks)==1:
+	clust_dict['logname'] = str('bg.chunks.'+str(outdot)+'.1.sub.log')
+else:
+	clust_dict['logname'] = str('bg.chunks.'+str(outdot)+'.'+str(clust_conf['log_task_id'])+'.sub.log')
+
 clust_dict['mem'] = 8000
 clust_dict['walltime'] = 2
 clust_dict['njobs'] = int(nchunks)
@@ -445,7 +492,7 @@ bg_cmd = bg_templ.format(**jobdict)
 
 jobres2 = send_job(jobname='bg.chunks.'+str(outdot),
 	           cmd=bg_cmd,
-	           logname=str('bg.chunks.'+str(outdot)+'.'+str(clust_conf['log_task_id'])+'.sub.log'),
+	           logname=clust_dict['logname'],
 	           mem=8000,
 	           walltime=2,
 	           njobs=int(nchunks),

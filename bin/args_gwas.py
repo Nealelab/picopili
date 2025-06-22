@@ -47,6 +47,11 @@ arg_base.add_argument('--addout',
 arg_base.add_argument('--no-cleanup',
                     action='store_true',
                     help='skip cleanup of interim files')
+arg_base.add_argument('--single-chr',
+                    type=str,
+		    metavar="CHROM",
+		    help='only run GWAS for the given chromosome. Currently only implemented for logistic regression.',
+		    required=False)
 
 
 ############
@@ -64,8 +69,8 @@ arg_subset = parsergwas.add_argument_group('Analysis Subset')
 
 arg_test.add_argument('--model', 
                     type=str.lower,
-                    choices=['dfam','gee','gmmat','gmmat-fam','logistic','linear'],
-                    help='which GWAS testing method to use for family data. Current options are plink \'--dfam\' (generalized TDT-alike), GEE (generalized estimating equations), GMMAT (logistic mixed model), or classic linear or logistic regression (i.e. without controlling for family structure)',
+                    choices=['dfam','gee','gmmat','gmmat-fam','unphased','logistic','linear'],
+                    help='which GWAS testing method to use for family data. Current options are plink \'--dfam\' (generalized TDT-alike), GEE (generalized estimating equations), GMMAT (logistic mixed model), UNPHASED (TDT extension by Dudbridge), or classic linear or logistic regression (i.e. without controlling for family structure)',
                     required=False,
                     default='gee')
 arg_test.add_argument('--pheno', 
@@ -76,12 +81,12 @@ arg_test.add_argument('--pheno',
 arg_test.add_argument('--covar', 
                     type=str,
                     metavar='FILE',
-                    help='file containing analysis covariates (GEE analysis only). Passed directly to plink.',
+                    help='file containing analysis covariates. Passed directly to plink where applicable, or else parsed for GMMAT/UNPHASED.',
                     required=False)
 arg_test.add_argument('--covar-number',
                     nargs='+',
                     metavar='COL',
-                    help='which columns to use from covariate file (numbered from third column). Passed directly to plink.',
+                    help='which columns to use from covariate file (numbered from third column). Passed directly to plink where applicable, or else parsed for GMMAT/UNPHASED.',
                     required=False)
 arg_test.add_argument('--strict-bfile',
                       type=str,
@@ -109,6 +114,32 @@ arg_subset.add_argument('--exclude',
                     metavar='FILE',
                     help='file of SNPs to remove from analysis. Passed directly to plink.',
                     required=False)
+
+
+############
+#
+# UNPHASED
+#
+############
+
+arg_unphased = parsergwas.add_argument_group('UNPHASED Model Settings')
+
+arg_unphased.add_argument('--unphased-model',
+                    type=str.lower,
+                    choices=['commonmain','full','haplomain','allelemain','gxg','null'],
+                    help='which model to use within UNPHASED. See UNPHASED documentation for details. Options other than \'commonmain\' are currently untested, and may break output formatting currently assumed by picopili here.',
+                    required=False,
+                    default='commonmain')
+arg_unphased.add_argument('--unphased-no-missing',
+                    action='store_true',
+		    help='run UNPHASED without \'-missing\', i.e. will exclude individuals with missing genotypes instead of averaging over possible genotypes in family. Dropping \'-missing\' should be faster, at the cost of reduced robustness to missingness.')
+arg_unphased.add_argument('--unphased-linkage',
+                    action='store_true',
+		    help='run UNPHASED without \'-nolinkage\', i.e. do not assume siblings in a family have independent transmissions from one another. Assuming no linkage will be faster and more powerful, but may be incorrect for regions with linkage (e.g. in presence of association if siblings were selected based on case status)')
+arg_unphased.add_argument('--unphased-no-parentrisk',
+                    action='store_true',
+		    help='run UNPHASED without \'-parentrisk\', i.e. do not model the genetic risk of parents. Dropping \'-parentrisk\' should run faster and increase power, but at the cost of less valid inference in the presence of missing parents or multiple siblings in a family.')
+
 
 ############
 #
@@ -169,9 +200,16 @@ arg_agg.add_argument('--p-th2',
 arg_agg.add_argument('--max-se', 
                     type=float,
                     metavar='FLOAT',
-                    help='Maximum SE allowed for GWAS results. Only applies to GEE model. Useful for filtering out numerically unstable results.',
+                    help='Maximum SE allowed for GWAS results. Does not apply to GMMAT or dfam model. Useful for filtering out numerically unstable results.',
                     required=False,
                     default=100.0)
+arg_agg.add_argument('--wald-diff',
+                    type=float,
+		    metavar='FLOAT',
+		    help='Maximum difference between Wald and likihood ratio Z score. Only applies to UNPHASED model.',
+		    required=False,
+		    default=0.15)
+
 
 ############
 #

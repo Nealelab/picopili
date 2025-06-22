@@ -78,6 +78,8 @@ print '--bfile '+str(args.bfile)
 print '--out '+str(args.out)
 if args.addout is not None:
     print '--addout '+str(args.out)
+if args.single_chr is not None:
+    print '--single-chr '+str(args.single_chr)
 
 print '\nReference Alignment:'
 print '--popname '+str(args.popname)
@@ -89,6 +91,8 @@ print '\nPrephasing:'
 print '--window '+str(args.window)
 if args.no_duohmm:
     print '--no-duohmm '
+if args.no_phaseref:
+    print '--no-phaseref '
 print '--shape-seed '+str(args.shape_seed)
 
 print '\nImputation Reference Files:'
@@ -159,6 +163,9 @@ prep_call = [str(impprep_ex),
              '--sfh',str(args.sfh),
              '--fth',str(args.fth),
              '--outname',str(outdot)]
+if args.single_chr is not None:
+    prep_call.extend(['--single_chr',str(args.single_chr)])
+
 
 print ' '.join(prep_call) + '\n'
 subprocess.check_call(prep_call, 
@@ -265,9 +272,29 @@ link(pi_dir + '/' +str(args.bfile) +'.hg19.ch.fl.fam.idnum', str(args.bfile) +'.
 link(pi_dir + '/' +str(args.bfile) +'.hg19.ch.fl.fam.transl', str(args.bfile) +'.hg19.ch.fl.fam.transl', 'fam number translation file')
 
 # TODO: handle empty chromosomes
-for i in xrange(1,23):
-    chr_log = open(str(outdot) + '.chr' + str(i) + '.log', 'w')
+if args.single_chr is not None:
+    chr_log = open(str(outdot) + '.chr' + args.single_chr + '.log', 'w')
     chr_call = [plinkx,
+                '--bfile', str(args.bfile) + '.hg19.ch.fl',
+		'--chr', args.single_chr,
+		'--output-chr','MT',
+		'--make-bed',
+		'--silent',
+		'--memory', str(2000),
+		'--out', str(args.bfile) + '.hg19.ch.fl.chr' + args.single_chr]
+
+    print ' '.join(chr_call)
+
+    subprocess.check_call(chr_call,
+                      stderr=subprocess.STDOUT,
+		      stdout=chr_log)
+    chr_log.close()
+
+
+else:
+    for i in xrange(1,23):
+        chr_log = open(str(outdot) + '.chr' + str(i) + '.log', 'w')
+        chr_call = [plinkx,
                 '--bfile', str(args.bfile) + '.hg19.ch.fl',
                 '--chr', str(i),
                 '--make-bed',
@@ -275,38 +302,53 @@ for i in xrange(1,23):
                 '--memory', str(2000),
                 '--out', str(args.bfile) + '.hg19.ch.fl.chr' + str(i)]
     
-    if i == 1:
-        print ' '.join(chr_call)
-    else:
-        print 'Chr '+str(i)+'...'
+        if i == 1:
+            print ' '.join(chr_call)
+        else:
+            print 'Chr '+str(i)+'...'
 
-    subprocess.check_call(chr_call,
+        subprocess.check_call(chr_call,
                           stderr=subprocess.STDOUT,
                           stdout=chr_log)                          
-    chr_log.close()
+        chr_log.close()
 
 
 ######################
 print '\n...Submitting SHAPEIT jobs...'
 ######################
 
+
+# TODO: handle empty chromosomes
+if args.single_chr is None:
+    chrstem = str(args.bfile)+'.hg19.ch.fl.chr{task}'
+    outstem = str(outdot)+'.chr{task}'
+    map_arg = str(args.ref_maps).replace('###','{task}')
+    hap_arg = str(args.ref_haps).replace('###','{task}')
+    leg_arg = str(args.ref_legs).replace('###','{task}')
+    samp_arg = str(args.ref_samps).replace('###','{task}')
+else:
+    chrstem = str(args.bfile)+'.hg19.ch.fl.chr'+args.single_chr
+    outstem = str(outdot)+'.chr'+args.single_chr
+    map_arg = str(args.ref_maps).replace('###',args.single_chr)
+    hap_arg = str(args.ref_haps).replace('###',args.single_chr)
+    leg_arg = str(args.ref_legs).replace('###',args.single_chr)
+    samp_arg = str(args.ref_samps).replace('###',args.single_chr)
+
+
 if args.no_duohmm:
     duo_txt = ''
 else:
     duo_txt = '--duohmm'
 
-# TODO: handle empty chromosomes
-chrstem = str(args.bfile)+'.hg19.ch.fl.chr{task}'
-outstem = str(outdot)+'.chr{task}'
-map_arg = str(args.ref_maps).replace('###','{task}')
-hap_arg = str(args.ref_haps).replace('###','{task}')
-leg_arg = str(args.ref_legs).replace('###','{task}')
-samp_arg = str(args.ref_samps).replace('###','{task}')
+if args.no_phaseref:
+    ph_ref_txt =''
+else:
+    ph_ref_txt =' '.join(['--input-ref', hap_arg, leg_arg, samp_arg])
 
 shape_call = [shapeit_ex,
               '--input-bed', chrstem+'.bed', chrstem+'.bim', chrstem+'.fam',
               '--input-map', map_arg,
-              '--input-ref', hap_arg, leg_arg, samp_arg,
+              str(ph_ref_txt),
               '--window', str(args.window),
               str(duo_txt),
               '--thread', str(args.threads),
@@ -323,7 +365,8 @@ clust_conf = read_conf(clust_confdir+str(configs['cluster']+'.conf'))
 task_id = str(clust_conf['log_task_id'])
 
 # submit
-jobres = send_job(jobname='shapeit.'+str(outdot),
+if args.single_chr is None:
+    jobres = send_job(jobname='shapeit.'+str(outdot),
                   cmd=' '.join(shape_call),
                   logname='shapeit.'+str(outdot)+'.chr'+task_id+'.sub.log',
                   mem=int(args.mem_req)*1000,
@@ -332,6 +375,14 @@ jobres = send_job(jobname='shapeit.'+str(outdot),
                   threads=int(args.threads),
                   sleep=str(args.sleep))
 
+else:
+    jobres = send_job(jobname='shapeit.'+str(outdot),
+                  cmd=' '.join(shape_call),
+		  logname='shapeit.'+str(outdot)+'.chr'+args.single_chr+'.sub.log',
+		  mem=int(args.mem_req)*1000,
+		  walltime=30,
+		  threads=int(args.threads),
+		  sleep=str(args.sleep))
 
 ###
 # submit next imputation task
@@ -342,7 +393,7 @@ if args.full_pipe:
     ######################
     
     os.chdir(wd)
-    next_call = str(rp_bin) + '/imp2_rel.py '+' '.join(sys.argv[1:])
+    next_call = str(rp_bin) + '/imp_rel.py '+' '.join(sys.argv[1:])
 
     imp_log = 'imp_chunks.'+str(outdot)+'.sub.log'
 

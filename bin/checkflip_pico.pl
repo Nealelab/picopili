@@ -764,7 +764,7 @@ my $cmd1 = "cat $bim_xal $bim_uif $bim_bf $bim_nal > $bim_excl\n";
 push @log_lines,  $cmd1;
 push @log_lines,  "use plink\n";
 #my $cmd2 = "$p2loc/plink --bfile $bfile --exclude $bim_excl --flip  $bim_fli --out $bfile_flipped --make-bed > /dev/null\n";
-my $cmd2 = "$p2loc/plink --memory 2000 --update-alleles $bim_inde --bfile $bfile --exclude $bim_excl --flip  $bim_fli --out $bfile_flipped --make-bed > /dev/null\n";
+my $cmd2 = "$p2loc/plink --memory 2000 --update-alleles $bim_inde --bfile $bfile --exclude $bim_excl --flip  $bim_fli --output-chr MT --out $bfile_flipped --make-bed > /dev/null\n";
 push @log_lines,  $cmd2;
 
 

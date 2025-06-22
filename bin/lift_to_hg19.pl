@@ -198,10 +198,11 @@ if ($ibdrep){
     print B2L "#chrom chromStart chromEnd name\n";
     while (my $line = <BIM>) {
 	my @cells = @{&split_line_ref(\$line)};
-	my ($chr,$pos)=  ($cells[0],$cells[2]);
+	my $chr = $cells[0];
+	my $pos =  $cells[2];
 #	print "$chr\t$pos\n";
 #	sleep(1);
-	printf B2L "chr%i %i %i %s\n",$chr,$pos,$pos+1,$cells[1];
+	printf B2L "chr%s %i %i %s\n",$chr,$pos,$pos+1,$cells[1];
     }
     close BIM;
     close B2L;
@@ -263,7 +264,7 @@ if ($posfile){
     while (my $line = <BIM>) {
 	my @cells = &split_line($line);
 	my ($chr,$pos)=  split /:/, $cells[0];
-	printf B2L "chr%i %i %i %s\n",$chr,$pos,$pos+1,$cells[0];
+	printf B2L "chr%s %i %i %s\n",$chr,$pos,$pos+1,$cells[0];
     }
     close BIM;
     close B2L;
@@ -306,7 +307,7 @@ if ($markers){
     print B2L "#chrom chromStart chromEnd name\n";
     while (my $line = <BIM>) {
 	my @cells = &split_line($line);
-	printf B2L "chr%i %i %i %s\n",$markers,$cells[1],$cells[1]+1,$cells[0];
+	printf B2L "chr%s %i %i %s\n",$markers,$cells[1],$cells[1]+1,$cells[0];
     }
     close BIM;
     close B2L;
@@ -366,7 +367,7 @@ die $!." <$bim_2lift>" unless open B2L, "> $bim_2lift";
 print B2L "#chrom chromStart chromEnd name\n";
 while (my $line = <BIM>) {
     my @cells = &split_line($line);
-    printf B2L "chr%i %i %i %s\n",$cells[0],$cells[3],$cells[3]+1,$cells[1];
+    printf B2L "chr%s %i %i %s\n",$cells[0],$cells[3],$cells[3]+1,$cells[1];
 }
 close BIM;
 close B2L;
@@ -422,7 +423,7 @@ unless ($noex) {
 }
 
 if (-e "$bfile.bed") {
-    &mysystem("$ploc/plink --memory 2000  --bfile $bfile $ex_txt --out $bfile_out --update-map $bim_update --make-bed");
+    &mysystem("$ploc/plink --memory 2000  --bfile $bfile $ex_txt --out $bfile_out --update-map $bim_update --output-chr MT --make-bed");
 }
 
 die $!."($bim_file).buigue.liftover" unless open BC, "> $bim_file.buigue.liftover";

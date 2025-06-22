@@ -19,6 +19,7 @@ Update rsIDs and info scores for best-guess calls
 # Arg parsing
 ###
 
+import os
 import argparse
 
 parser = argparse.ArgumentParser(prog='rs_trans.py',
@@ -33,7 +34,7 @@ parser.add_argument('--name',
                     type=str,
                     help='file name stem',
                     required=True)
-parser.add_argument('--imp-dir',
+parser.add_argument('--info-file',
                     type=str,
                     help='Imputation directory with _info file for chunk',
                     required=True)
@@ -41,15 +42,23 @@ parser.add_argument('--fam-trans',
                     type=str,
                     help='Fam ID translation file',
                     required=True)
+parser.add_argument('--gt-bim',
+                    type=str,
+                    help='bim file for genotyped data (to identify which SNPs typed vs imputed)',
+                    required=False)
+parser.add_argument('--imp-version',
+                    type=int,
+                    choices=[2,4],
+                    help="Version of IMPUTE (for expected info file format). Currently supports version 2 or 4. Version 4 expects qctool snpstats format.",
+                    required=False,
+                    default=2)
+
                     
 args = parser.parse_args()
 
 # rename args
 chname = str(args.chunk)
 outdot = str(args.name)
-imp_dir = str(args.imp_dir)
-
-
 
 
 ###
@@ -112,18 +121,49 @@ bim_raw.close()
 bim_out.close()
 
 
+###
+# Get genotype status
+###
+
+gt_bim = open(os.path.realpath(str(args.gt_bim)), 'r')
+
+gt_snps = []
+for line in gt_bim:
+    (chrom, snpid, cm, bp, a1, a2) = line.split()
+    gt_snps.append(snpid)
+
+gt_bim.close()
+
 
 ###
-# Get info scores, genotype status
+# Get info scores
 ###
 
-info_in = open(imp_dir+'/'+outdot+'.imp.'+str(chname)+'_info', 'r')
+# info_in = open(imp_dir+'/'+outdot+'.imp.'+str(chname)+'_info', 'r')
+info_in = open(os.path.realpath(str(args.info_file)), 'r')
 info_out = open(str(outdot)+'.bg.filtered.'+str(chname)+'.info', 'w')
 
-dumphead = info_in.readline()
+if args.imp_version==2:
+    dumphead = info_in.readline()
+elif args.imp_version==4:
+    dumphead = info_in.readline()
+    while '#' in dumphead:
+        dumphead = info_in.readline()
+
 info_out.write(' '.join(['SNP','oldID','CHR','BP','A1','A2','INFO','EXP_A1','TYPED'])+'\n')
 for line in info_in:
-    (foo, snpid, bpinf, exp_frq, info, certain, imptype, info0, concord0, r2_0) = line.split()
+    
+    if args.imp_version==2:
+        (foo, snpid, bpinf, exp_frq, info, certain, imptype, info0, concord0, r2_0) = line.split()
+    elif args.imp_version==4:
+        
+        # catch completion message at end of file
+        if '#' in line:
+            continue
+
+        # assumes QC tool snpstats will provide:
+        # alternate_ids rsid chromosome position alleleA alleleB comment HW_exact_p_value HW_lrt_p_value alleleA_count alleleB_count alleleA_frequency alleleB_frequency minor_allele_frequency minor_allele major_allele info impute_info missing_proportion A B AA AB BB NULL total
+        (aid, snpid, chrinf, bpinf, aA, aB, com, hwe, hwe2, Acount, Bcount, Afreq, exp_frq, maf, minorA, majorA, qcinfo, info, miss, A, B, AA, AB, BB, null, total) = line.split()
 
     # check if SNP survived filtering        
     if str(snpid) not in bim_trans.keys():
@@ -138,13 +178,11 @@ for line in info_in:
         a1 = str(bim_trans[str(snpid)][4])
         a2 = str(bim_trans[str(snpid)][5])
         
-        # translate "type" to indicator if genotyped
-        if int(imptype) == 2:
+        # get genotyped status
+        if snpid in gt_snps:
             gt = 1
-        elif int(imptype) == 0 or int(imptype) == 1:
-            gt = 0
         else:
-            raise ValueError("Unexpected type when getting info for %s in %s" % (str(snpid), info_in.name))
+            gt = 0
 
         # write to file
         info_out.write(' '.join([rs, snpid, chrom, bp, a1, a2, str(info), str(exp_frq), str(gt)]) + '\n')
