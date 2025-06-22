@@ -217,12 +217,19 @@ if bad_chr:
 
     # setup submit script
     # with "chr_list" to get have adaptive chromosome list
-    cmd_templ = dedent("""\
-    chrs=({chr_list})
-    chrom=${cbopen}chrs[{task}-1]{cbclose}
+    if num_chr > 1:
+        cmd_templ = dedent("""\
+        chrs=({chr_list})
+        chrom=${cbopen}chrs[{task}-1]{cbclose}
 
-    {shape_ex} {bed} {map} {ph_ref} {window} {duo_txt} {thread_str} {seed_str} {outmax} {shapelog}    
-    """)
+        {shape_ex} {bed} {map} {ph_ref} {window} {duo_txt} {thread_str} {seed_str} {outmax} {shapelog}    
+        """)
+    else:
+        cmd_templ = dedent("""\
+        chrom={chr_list}
+
+        {shape_ex} {bed} {map} {ph_ref} {window} {duo_txt} {thread_str} {seed_str} {outmax} {shapelog}
+        """)
 
 #    shape_call = [shapeit_ex,
 #                  '--input-bed', chrstem+'.bed', chrstem+'.bim', chrstem+'.fam',
@@ -268,6 +275,10 @@ if bad_chr:
 	       "cbclose":'}}',
                }    
     shape_cmd = cmd_templ.format(**jobdict)
+
+    # if only 1 chr, don't need to protect variable from additional task id formatting
+    if int(num_chr) == 1:
+        shape_cmd = shape_cmd.replace('${{chrom}}', '${chrom}')
 
     # submit
     jobres = send_job(jobname='shapeit.'+str(outdot)+'.resub_'+str(num_chr),
