@@ -47,6 +47,11 @@ arg_base.add_argument('--addout',
 arg_base.add_argument('--no-cleanup',
                     action='store_true',
                     help='skip cleanup of interim files')
+arg_base.add_argument('--single-chr',
+                    type=str,
+		    metavar="CHROM",
+		    help='only run GWAS for the given chromosome. Currently only implemented for logistic regression.',
+		    required=False)
 
 
 ############

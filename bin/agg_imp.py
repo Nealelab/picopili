@@ -301,6 +301,7 @@ subprocess.check_call([plink_ex,
                        '--merge-list', str(merge_list.name),
                        '--merge-mode',str(4),
                        '--make-bed',
+		       '--output-chr','MT',
                        '--out', str(outdot)+'.cobg.filtered'],
                        stderr=subprocess.STDOUT, 
                        stdout=merge_log) 

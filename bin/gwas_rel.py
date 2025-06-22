@@ -92,6 +92,8 @@ if args.model == 'gmmat' or args.model == 'gmmat-fam':
 print '--out '+str(args.out)
 if args.addout is not None:
     print '--addout '+str(args.addout)
+if args.single_chr is not None:
+    print '--single-chr '+args.single_chr
 
 print '\nAssociation Testing:'
 print '--model '+str(args.model)
@@ -224,6 +226,8 @@ chunk_call = [chunker_ex,
               '--ignore-centromeres',
               '--allow-small-chunks',
               '--max-chunks',str(64000)]
+if args.single_chr is not None:
+    chunk_call.extend(['--single-chr', args.single_chr])
 chunk_call = filter(None,chunk_call)
 
 chunk_log = open('chunk.'+str(outdot)+'.log', 'w')
@@ -269,9 +273,12 @@ bim = open(str(args.bfile)+'.bim', 'r')
 for line in bim:
     (chrom, snp, cm, bp, a1, a2) = line.split()
 
+    if args.single_chr is not None and str(chrom) != args.single_chr:
+        continue
+
     # record novel chrs
-    if int(chrom) not in chrs:
-        chrs.append(int(chrom))
+    if str(chrom) not in chrs:
+        chrs.append(str(chrom))
 
     # find matching chunk    
     snp_chunk = find_chunk(chrom, bp, last_chunk)
@@ -627,6 +634,10 @@ jobdict = {"task": "{task}",
 
 nchunk = len(chunks.keys())
 
+if nchunk == 1:
+    jobdict['task'] = '1'
+    for k, v in jobdict.iteritems():
+        jobdict[k] = v.replace('{{','{').replace('}}','}')
 
 # store job information for possible resubs
 job_store_file = 'gwas.chunks.'+str(outdot)+'.pkl'
@@ -634,6 +645,8 @@ job_store_file = 'gwas.chunks.'+str(outdot)+'.pkl'
 clust_dict = init_sendjob_dict()
 clust_dict['jobname'] = 'gwas.chunks.'+str(outdot)
 clust_dict['logname'] = str('gwas.chunks.'+str(outdot)+'.'+str(clust_conf['log_task_id'])+'.sub.log')
+if nchunk == 1:
+    clust_dict['logname'] = str('gwas.chunks.'+str(outdot)+'.1.sub.log')
 clust_dict['mem'] = max(4000,args.plink_mem)
 clust_dict['walltime'] = 2
 clust_dict['njobs'] = int(nchunk)

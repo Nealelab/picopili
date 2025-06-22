@@ -54,6 +54,12 @@ arg_base.add_argument('--imp-version',
                     help="which version of IMPUTE to use. Currently supports version 2 or 4.",
                     required=False,
                     default=2)
+arg_base.add_argument('--single-chr',
+                    type=str,
+		    metavar='CHROM',
+		    help='impute only this single chromosome',
+		    required=False,
+		    default=None)
 
 
 
