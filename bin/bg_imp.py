@@ -515,7 +515,6 @@ if args.full_pipe:
     agg_log = 'agg_imp.'+str(outdot)+'.sub.log'
 
     # some dynamic adjustment of mem based on sample size population
-    # (empirically, seem to get ~2x sites from afr vs eur)
     fam_n = file_len(str(shape_dir)+'/'+str(args.bfile)+'.hg19.ch.fl.fam')
     if fam_n > 3000:
         agg_mem = 32000
@@ -524,6 +523,8 @@ if args.full_pipe:
     else:
         agg_mem = 8000
 
+    # (empirically, seem to get ~2x sites from afr vs eur)
+    # (admittedly this method of catching/handling it is _very_ informal)
     if "afr" in sys.argv[1:]:
         agg_mem = 2*agg_mem
 
