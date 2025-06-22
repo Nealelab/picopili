@@ -574,7 +574,7 @@ if cross_ids:
             rel_phen = int(fam_dict[rel_id][5])
             if fam_dict[rel_id][0] != fam_dict[ind_id][0]:
                 pref += weight_dict['rel_cross']
-            elif rel_phen == 2:
+            if rel_phen == 2:
                 pref += weight_dict['fam_case']
             elif rel_phen == 1:
                 pref += weight_dict['fam_control']
