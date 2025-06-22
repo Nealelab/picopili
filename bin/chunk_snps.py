@@ -114,6 +114,8 @@ chrend_orig = copy.deepcopy(chrend)
 print '\n...Reading input bim file...'
 #############
 chroms = []
+if args.single_chr is not None:
+    chroms = [ args.single_chr ]
 snps = {}
 nbimsnps_valid = 0
 bim = open(args.bfile + '.bim', 'r')
@@ -121,8 +123,9 @@ for line in bim:
     (chrom, snp_id, cm, bp, a1, a2) = line.split()
     snps[str(snp_id)] = [str(chrom), int(bp)]
     if str(chrom) not in chroms:
-        chroms.append(str(chrom))
-    if int(chrom) in xrange(1,23):
+        if args.single_chr is None and str(chrom).isdigit() and int(chrom) in xrange(1,23):
+	        chroms.append(str(chrom))
+    if chrom in chroms:
         nbimsnps_valid += 1
     # prevent later errors
     if int(bp) > chrend[str(chrom)]:
@@ -130,7 +133,7 @@ for line in bim:
         chrend[str(chrom)] = int(bp)
 bim.close()
 nbimsnps = file_len(args.bfile + '.bim')
-print 'Loaded %d autosomal SNPs (of %d total in %s).' % (nbimsnps_valid, nbimsnps, bim.name)
+print 'Loaded %d SNPs on desired chromosomes (of %d total in %s).' % (nbimsnps_valid, nbimsnps, bim.name)
 
 
 
@@ -141,10 +144,7 @@ chunks = open(outname, 'w')
 chunks.write(' '.join(['CHR','START','END','NAME']) + '\n')
 idx = 1
 nsnps = 0
-for ch in xrange(1,23):
-
-    if str(ch) not in chroms:
-        continue
+for ch in chroms:
     
     if args.ignore_centromeres:
         arms = [0]
@@ -182,7 +182,7 @@ for ch in xrange(1,23):
             if snps_left < args.snp_size:
                 nth_snp = bp_sort_keys[snps_left-1]
                 if not args.allow_small_chunks:
-                    warnings.warn('Starting with too few SNPs (%d) at chr %d, bp %d. Check for sparse data or misaligned chromosome info?' % (snps_left, int(ch), first))                    
+                    warnings.warn('Starting with too few SNPs (%d) at chr %s, bp %d. Check for sparse data or misaligned chromosome info?' % (snps_left, str(ch), first))                    
             else:
             # get bp of (minsnp)th SNP in curr_snps
                 nth_snp = bp_sort_keys[args.snp_size-1]            

@@ -80,6 +80,8 @@ print '--bfile '+str(args.bfile)
 print '--out '+str(args.out)
 if args.addout is not None:
     print '--addout '+str(args.addout)
+if args.single_chr is not None:
+    print '--single-chr '+str(args.single_chr)
 
 print '\nIMPUTE arguments:'
 print '--imp-version '+str(args.imp_version)
@@ -169,7 +171,12 @@ print '\n...Verifying pre-phasing was successful...'
 
 bad_chr = []
 
-for chrom in xrange(1,23):
+if args.single_chr is not None:
+    chrom_list = [ args.single_chr ]
+else:
+    chrom_list = xrange(1,23)
+
+for chrom in chrom_list:
     haps_out = str(shape_dir)+'/'+str(outdot)+'.chr'+str(chrom)+'.phased.haps'
     samp_out = str(shape_dir)+'/'+str(outdot)+'.chr'+str(chrom)+'.phased.sample'
     
@@ -346,6 +353,8 @@ chunk_call = [chunker_ex,
               '--Mb-size',str(args.Mb_size),
               '--snp-size',str(args.snp_size),
               '--chr-info-file',str(args.chr_info_file)]
+if args.single_chr is not None:
+    chunk_call.extend(['--single-chr',args.single_chr])
 chunk_call = filter(None,chunk_call)
 
 chunk_log = open('chunk.'+str(outdot)+'.log', 'w')

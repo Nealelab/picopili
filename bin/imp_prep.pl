@@ -79,6 +79,7 @@ my $sec_freq = .2;  ## secure freq distance around 50%
 my $fth_th = 0.15;
 my $popname = "eur";
 
+my $single_chr = "";
 
 
 ##### help message
@@ -96,6 +97,8 @@ version: $version
                             can use \"###\" as chr placeholder 
 
  --outname STRING  identifier for imputation run (mandatory)
+
+ --single_chr STRING  only running this single chromosome
 
 
 ##### alignment to reference:
@@ -144,6 +147,7 @@ GetOptions(
 	"bim=s"=> \my $bim,
 	"reffiles=s"=> \my $reffile_struct,
 	"outname=s"=> \my $outname,
+	"single_chr=s" => \$single_chr,
 
 	"popname=s"=> \$popname,
     "sfh=f"=> \$sec_freq,
@@ -309,11 +313,22 @@ die $usage unless $outname;
 #########
 ## check files exist for readref
 #########
-foreach my $chrloc(1..22) {
-    my $reffi = $reffile_struct;
+if ($single_chr eq "") { 
+
+    foreach my $chrloc(1..22) {
+        my $reffi = $reffile_struct;
 	$reffi =~ s/###/$chrloc/g;
+        unless (-e $reffi) {
+	    die "Error: $reffi not found\n";
+        }
+    }
+
+} else {
+
+    my $reffi = $reffile_struct;
+    $reffi =~ s/###/$single_chr/g;
     unless (-e $reffi) {
-		die "Error: $reffi not found\n";
+	die "Error: $reffi not found\n";
     }
 }
 
@@ -811,8 +826,13 @@ unless (-e "$rootdir/readref_done") {
 	    $bfile =~ s/.bim$//;
 	    my $accfli ="$bfile".".hg19.bim";
 	    
-	    
-	    foreach my $chrloc(1..22) {
+	    my @chrloclist = ();
+	    if ($single_chr ne ""){
+	        @chrloclist = ( $single_chr );
+	    } else {
+	        @chrloclist = (1..22);
+	    }
+	    foreach my $chrloc ( @chrloclist ) {
 			my $bimref ="$accfli".".ref.chr$chrloc";
 		    my $reffi = $reffile_struct;
 			$reffi =~ s/###/$chrloc/g;

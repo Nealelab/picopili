@@ -692,7 +692,7 @@ push @log_lines,  "** multiple Annotation contains possibly SNPs from the wrong-
 
 
 push @log_lines,  "\n\n -> have a look at the ouput files\n";
-
+&a2file($bim_log,@log_lines);
 
 print "update bim...\n";
 #foreach my $line (@bim_lines) {
@@ -729,7 +729,7 @@ print "copy files...\n";
 
 my $exclude_txt = ""; 
 $exclude_txt = "--exclude $bim_xdup" if ($exmulti);
-my $cmd3 = "$p2loc/plink --memory 2000 --bed $bfile.bed --fam $bfile.fam --bim $bim_updated --out $bfile_dbsnp --extract $bim_extr $exclude_txt --make-bed \n";
+my $cmd3 = "$p2loc/plink --memory 2000 --bed $bfile.bed --fam $bfile.fam --bim $bim_updated --out $bfile_dbsnp --extract $bim_extr $exclude_txt --output-chr MT --make-bed \n";
 
 print "make new bed...\n";
 &mysystem ($cmd3) unless (-e "$bfile_dbsnp.bed");
@@ -767,8 +767,8 @@ sleep(1);
 exit;
 
 
-my $cmd1 = "$p2loc/ploc --memory 2000 --bfile $bfile --update-map $bim_uchr --update-chr --out $bfile_chr --make-bed > /dev/null\n";
-my $cmd2 = "$p2loc/ploc --memory 2000 --bfile $bfile --update-map $bim_ukb --out $bfile_kb --make-bed > /dev/null\n";
+my $cmd1 = "$p2loc/ploc --memory 2000 --bfile $bfile --update-map $bim_uchr --update-chr --output-chr MT --out $bfile_chr --make-bed > /dev/null\n";
+my $cmd2 = "$p2loc/ploc --memory 2000 --bfile $bfile --update-map $bim_ukb --output-chr MT --out $bfile_kb --make-bed > /dev/null\n";
 
 my $nokeep_txt = ""; 
 $nokeep_txt = "cat $bim_npos >> $bim_rpos; " if ($nokeep);

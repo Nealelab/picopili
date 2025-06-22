@@ -40,7 +40,7 @@ GetOptions(
     "help"=> \my $help,
     "ref=s"=> \my $reffile,
 	"refheads=s"=> \my $refhead_str,
-    "chr=i"=> \my $chrstr,
+    "chr=s"=> \my $chrstr,
     );
 
 die $usage if $help;

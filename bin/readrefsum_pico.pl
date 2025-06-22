@@ -83,24 +83,40 @@ print "sum ref-files\n";
 
 die "$outfile".$! unless open FD , "> $outfile";
 
-die $!."$bimfile.ref.chr1" unless open FILE, "< $bimfile.ref.chr1";
-my $line = <FILE>;
-print FD "$line";
-close FILE;
 
+my $tt=0;
+my $nn=0;
+foreach my $chrloc(1..23) {
 
-foreach my $chrloc(1..22) {
-    die $!."$bimfile.ref.chr$chrloc" unless open FILE, "< $bimfile.ref.chr$chrloc";
-    my $line = <FILE>;
-
-    while (my $line = <FILE>){
-	print FD "$line";
+    if($chrloc == 23){
+        $chrloc = "X";
     }
-    close FILE;
 
+    unless (-e "$bimfile.ref.chr$chrloc") {
+        print "Warning: $bimfile.ref.chr$chrloc is not existing\n"
+    } else {
+        $nn++;
+	die $!."$bimfile.ref.chr$chrloc" unless open FILE, "< $bimfile.ref.chr$chrloc";
+	my $line = <FILE>;
+	if ($tt == 0){
+	    print FD "$line";
+	    $tt = 1;
+	}
+
+	while (my $line = <FILE>){
+	    print FD "$line";
+	}
+
+	close FILE;
+    }
 }
 
 close FD;
+
+if ($nn==0) {
+    print "Error: no readref files found\n";
+    exit;
+}
 
 
 &mysystem ("tar -cvzf $bimfile.ref.addinfo.tar.gz $bimfile.ref.chr*.leftloc $bimfile.ref.chr*.renames");

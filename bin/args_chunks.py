@@ -94,5 +94,12 @@ arg_snpchunk.add_argument('--allow-small-chunks',
                     help='Allow chunks with fewer than \'--snp-size\' markers without a warning. ' + \
                          'Such chunks may occur due to sparse data (e.g. few SNPs ' + \
                          'on the short arm of chr21) or could indicate bad chromosome build information.')
+arg_snpchunk.add_argument('--single-chr',
+                    type=str,
+                    metavar='CHROM',
+                    help='Chunk only the given chromosome',
+                    required=False,
+                    default=None)
+
 
 # eof
