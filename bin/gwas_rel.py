@@ -505,6 +505,62 @@ elif args.covar is None and (args.model == 'gmmat' or args.model == 'gmmat-fam')
     raise ValueError('GMMAT without covariates not currently implemented.\n')
 
 
+# if both covariates and a keep/remove,
+# need to consolidate to a single file for 
+# freq calculation (since it doesn't consider a separate cov file)
+if args.covar is not None and (args.keep is not None or args.remove is not None):
+
+    # already built for unphased
+    if args.model is not "unphased":
+
+        fam = pd.read_csv(str(args.bfile)+'.fam', header=None, names=['FID','IID','pat','mat','sex','phen'], delim_whitespace=True, dtype=str)
+        fam['key'] = fam['FID'].astype(str)+'::'+fam['IID'].astype(str)
+    
+    # already built for some models
+    if not (args.model == 'gmmat' or args.model == 'gmmat-fam' or args.model == 'unphased'):
+        cov_in = pd.read_csv(str(args.covar), header=None, delim_whitespace=True, dtype=str)
+    
+        if cov_in.iloc[0,0] != 'FID' or cov_in.iloc[0,1] != 'IID':
+            ValueError('Covariate file does not have header starting with FID and IID.')
+
+        cov_in['key'] = cov_in.iloc[:,0].astype(str) + '::' + cov_in.iloc[:,1].astype(str)
+        cov_in.set_index('key', inplace=True)
+    
+    # setup output file
+    cov_keep_out = open(str(args.covar)+'.cov_keep.sub.txt', 'w')
+    cov_keep_out.write('\t'.join(['FID','IID'])+'\n')
+
+
+    n_keep_cov = 0
+
+    if args.keep is not None:
+
+        keep_in = pd.read_csv(str(args.keep), header=None, delim_whitespace=True, dtype=str)
+	keep_in['key'] = keep_in.iloc[:,0].astype(str)+'::'+keep_in.iloc[:,1].astype(str)
+
+        for k, v in fam.iterrows():
+            
+            if str(v['key']) in cov_in.index.tolist() and str(v['key']) in keep_in.index.tolist():
+                cov_keep_out.write('\t'.join([v['FID'],v['IID']])+'\n')
+                n_keep_cov = n_keep_cov + 1
+
+
+    elif args.remove is not None:
+
+        remove_in = pd.read_csv(str(args.remove), header=None, delim_whitespace=True, dtype=str)
+	remove_in['key'] = remove_in.iloc[:,0].astype(str)+'::'+remove_in.iloc[:,1].astype(str)
+
+	for k, v in fam.iterrows():
+
+	    if str(v['key']) in cov_in.index.tolist() and str(v['key']) not in remove_in.index.tolist():
+	        cov_keep_out.write('\t'.join([v['FID'],v['IID']])+'\n')
+                n_keep_cov = n_keep_cov + 1
+
+
+    cov_keep_out.close()
+    
+    if n_keep_cov < 10:
+         ValueError('Fewer than 10 intersecting IDs between covar and keep/remove files. Possible ID mismatch or unexpected format?')
 
 
 
@@ -693,7 +749,11 @@ frq_call = [plinkx,
             '--memory', str(args.plink_mem),
             '--out','freqinfo.'+str(outdot)]
 frq_call = filter(None, frq_call)
-if args.keep is not None:
+if args.covar is not None and (args.keep is not None or args.remove is not None):
+    frq_call.extend(['--keep',str(args.covar)+'.cov_keep.sub.txt'])
+elif args.covar is not None:
+    frq_call.extend(['--keep',str(args.covar)])
+elif args.keep is not None:
     frq_call.extend(['--keep',str(args.keep)])
 elif args.remove is not None:
     frq_call.extend(['--remove',str(args.remove)])
