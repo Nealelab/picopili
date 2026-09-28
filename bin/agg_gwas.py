@@ -66,6 +66,12 @@ arg_file.add_argument('--freq-file',
                     metavar='FILE',
                     help='file with case/control allele frequencies for full data (from \'plink --freq case-control --nonfounders\')',
                     required=True)
+arg_file.add_argument('--agg-rename',
+			type=str,
+			metavar='STEM',
+			help='optional output name prefix for aggregation, if different from gwas files to be read',
+			require=False)
+
 
 arg_other.add_argument('--model', 
                     type=str.lower,
@@ -92,12 +98,19 @@ if args.addout is not None and str(args.addout) != '':
 else:
     outdot = str(args.out)
 
-outname = outdot +'.gwas.'+str(args.model)+'.txt.gz'
+if args.agg_rename is not None:
+    outname = str(args.agg_rename) + '.' + outdot +'.gwas.'+str(args.model)+'.txt.gz'
+else:
+    outname = outdot +'.gwas.'+str(args.model)+'.txt.gz'
 
 bim_file = str(args.bfile) + '.bim'
 
 logp_int = -1*int( log10(float(args.p_th2)) )
-filtoutname = outdot +'.gwas.'+str(args.model)+'.p'+str(logp_int)+'_sort.txt.gz'
+
+if args.agg_rename is not None:
+    filtoutname = str(args.agg_rename) + '.' + outdot +'.gwas.'+str(args.model)+'.p'+str(logp_int)+'_sort.txt.gz'
+else:
+    filtoutname = outdot +'.gwas.'+str(args.model)+'.p'+str(logp_int)+'_sort.txt.gz'
 
 
 
@@ -285,7 +298,10 @@ if len(mis_chunks) > 0:
 
     # TODO: adjust memory setting here
 
-    agg_log = 'agg.'+str(outdot)+'.resub_'+str(nummiss)+'.sub.log'
+    if args.agg_rename is not None:
+        agg_log = 'agg.'+str(args.agg_rename)+'.'+str(outdot)+'.resub_'+str(nummiss)+'.sub.log'
+    else:
+        agg_log = 'agg.'+str(outdot)+'.resub_'+str(nummiss)+'.sub.log'
 
     send_job(jobname='agg_'+str(outdot),
              cmd=' '.join(sys.argv[:]),
