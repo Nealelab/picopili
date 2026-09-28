@@ -318,8 +318,11 @@ chnames = [k for k, v in sorted(chunks.iteritems(), key=lambda (key,value): floa
 # for gee: a2
 # for dfam: bp
 # gmmat: nothing
-if args.model == 'gee' or args.model == 'logistic' or args.model == 'linear':
+if args.model == 'gee':
     a2_info = {}
+elif args.model == 'logistic' or args.model == 'linear':
+    a2_info = {}
+    a1_info = {}
 elif args.model=='unphased':
     a2_info = {}
     a1_info = {}
@@ -332,9 +335,9 @@ if args.model == 'gee' or args.model == 'dfam' or args.model == 'logistic' or ar
 	for line in bim:
 	    (chrom, snp, cm, bp, a1, a2) = line.split()
     
-	    if args.model == 'gee' or args.model == 'logistic' or args.model == 'linear':
+	    if args.model == 'gee':
 	        a2_info[str(snp)] = str(a2)
-	    elif args.model=='unphased':
+	    elif args.model=='unphased' or args.model == 'logistic' or args.model == 'linear':
 	        a2_info[str(snp)] = str(a2)
 		a1_info[str(snp)] = str(a1)
 	    elif args.model == 'dfam':
@@ -457,6 +460,15 @@ for ch in chnames:
         elif args.model == 'logistic' or args.model == 'linear':
             (chrom, snp, bp, a1, testnam, n, beta, se, ci_lo, ci_hi, tstat, p) = line.split()
             a2 = a2_info.pop(str(snp))
+	    if a2 == a1:
+	        # if plink flipped allele for gwas
+		a2 = a1_info.pop(str(snp))
+	    else:
+	        bim_a1 = a1_info.pop(str(snp))
+		if a1 != bim_a1:
+		    raise IOError("Something wrong with alleles for %s, exiting" % str(snp))
+
+
 	    if str(beta) == 'NA' or str(se) == 'NA':
 	    	continue
             z = float(beta)/float(se)
