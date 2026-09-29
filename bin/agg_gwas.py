@@ -70,7 +70,7 @@ arg_file.add_argument('--agg-rename',
 			type=str,
 			metavar='STEM',
 			help='optional output name prefix for aggregation, if different from gwas files to be read',
-			require=False)
+			required=False)
 
 
 arg_other.add_argument('--model', 
