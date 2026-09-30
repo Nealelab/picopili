@@ -537,6 +537,7 @@ if args.covar is not None and (args.keep is not None or args.remove is not None)
 
         keep_in = pd.read_csv(str(args.keep), header=None, delim_whitespace=True, dtype=str)
 	keep_in['key'] = keep_in.iloc[:,0].astype(str)+'::'+keep_in.iloc[:,1].astype(str)
+	keep_in.set_index('key', inplace=True)
 
         for k, v in fam.iterrows():
             
@@ -549,6 +550,7 @@ if args.covar is not None and (args.keep is not None or args.remove is not None)
 
         remove_in = pd.read_csv(str(args.remove), header=None, delim_whitespace=True, dtype=str)
 	remove_in['key'] = remove_in.iloc[:,0].astype(str)+'::'+remove_in.iloc[:,1].astype(str)
+	remove_in.set_index('key', inplace=True)
 
 	for k, v in fam.iterrows():
 
@@ -559,6 +561,7 @@ if args.covar is not None and (args.keep is not None or args.remove is not None)
 
     cov_keep_out.close()
     
+
     if n_keep_cov < 10:
          ValueError('Fewer than 10 intersecting IDs between covar and keep/remove files. Possible ID mismatch or unexpected format?')
 
